@@ -42,7 +42,7 @@ function screenAt(days, i, instByDay, valByDay, rev, names) {
       why: [`${r.fund.revMonth || '最新'} 營收年增 ${fmt(r.fund.revYoY)}%`, `本益比 ${r.fund.pe}`, `殖利率 ${r.fund.yld}%`, '站上季線且月線在季線之上'] })) : [];
 
   const used = new Set();
-  const top = list => list.sort((a, b) => b.score - a.score).filter(r => !used.has(r.code) && used.add(r.code)).slice(0, 3).map(r => {
+  const top = list => list.sort((a, b) => b.score - a.score).filter(r => !used.has(r.code) && used.add(r.code)).slice(0, 10).map(r => {
     let a = null; try { a = Engine.analyze({ code: r.code, name: r.name, bars: r.bars, inst: r.ins.length ? r.ins : undefined, fund: r.fund }); } catch (e) {}
     return { code: r.code, name: r.name, market: r.market, close: r.c, chg: +r.chg.toFixed(2), why: r.why, index: a ? a.index : null, trend: a ? a.trendLabel : null,
       sup: a && a.st.sup[0] ? a.st.sup[0].level : null, res: a && a.st.res[0] ? a.st.res[0].level : (a && a.st.limitRef) || null };

@@ -24,7 +24,7 @@ module.exports = async (req, res) => {
     });
     const picks = live.filter(x => x.chg >= 1.5 && x.chg <= 9 && !x.atLimit && x.range >= 2.5 && x.pos >= 0.6 && x.pace >= 1.3)
       .map(x => Object.assign(x, { score: Math.min(x.pace, 5) * 10 + x.range * 3 + x.pos * 10 + x.chg }))
-      .sort((a, b) => b.score - a.score).slice(0, 3)
+      .sort((a, b) => b.score - a.score).slice(0, 10)
       .map(x => Object.assign(x, { why: [`成交量約為昨日按時間比例的 ${x.pace.toFixed(1)} 倍`, `盤中振幅 ${x.range.toFixed(1)}%`, `位於今日高低區間 ${Math.round(x.pos * 100)}%`] }));
     res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=60');
     res.status(200).end(JSON.stringify({ session: ses, date: today, time: live.map(x => x.time).filter(Boolean).sort().pop() || null, scanned: live.length, picks }));
