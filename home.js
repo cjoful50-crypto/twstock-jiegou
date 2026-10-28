@@ -23,7 +23,11 @@ async function loadIntraday() {
         <div class="lv num"><span>成交 ${fi(x.vol)} 張</span><span>更新 ${esc((x.time || '').slice(0, 5))}</span></div></button>`).join('')
       : `<div class="empty">${open ? '目前沒有股票同時符合量能放大、振幅夠大、價格在高檔的條件，3 分鐘後會再掃一次。' : '今天收盤時沒有股票符合條件。'}</div>`;
     box.innerHTML = `<div class="section-head"><h2 id="intraTitle">盤中當沖觀察</h2>${state}</div>
-      <p class="small muted" style="margin:6px 0 0">從前一日成交值前 150 大的上市股票，用證交所即時行情篩出量能放大、振幅大、價格在今日高檔的股票。這是觀察名單，不是買進建議。</p>
+      <div class="howto">
+        <div><b>這是什麼</b><span>開盤時間，從交易最熱絡的 150 檔上市股票裡，找出「現在」成交量明顯放大、上下波動大、價格又在今天高點附近的股票。</span></div>
+        <div><b>可以怎麼用</b><span>給有在做當沖的人當盯盤清單：點進個股看支撐和壓力，價格守在支撐上方代表還強，跌破支撐通常代表轉弱。</span></div>
+        <div><b>要注意</b><span>名單每 3 分鐘變一次，強勢股也可能隨時翻黑。當沖需要開立當沖資格、風險高，這裡只是篩選結果，不是買進建議。</span></div>
+      </div>
       <div class="picks-grid">${cards}</div>
       <details class="rules"><summary>盤中名單怎麼選出來的</summary><p>條件：漲幅 1.5%～9% 且未鎖漲停、今日振幅 2.5% 以上、價格位於今日高低區間 60% 以上、成交量達前一日依時間比例的 1.3 倍以上（例如 10:30 時，交易時間過了三分之一，就和前一日總量的三分之一相比）。依量能倍數、振幅、高檔位置與漲幅加權排名。開盤初期量能通常偏大，倍數會比較高。</p></details>`;
     box.querySelectorAll('.pick').forEach(b => b.onclick = () => goTo(b.dataset.code));
@@ -46,8 +50,12 @@ async function loadPicks() {
       <div class="sigs">${x.why.map(w => `<span>${esc(w)}</span>`).join('')}</div>
       <div class="lv num"><span>漲停指數 <b style="color:${scoreColor(x.index)}">${x.index ?? '—'}</b></span><span>支撐 <b style="color:var(--sup)">${x.sup != null ? pxd(x.sup) : '—'}</b></span><span>壓力 <b style="color:var(--res)">${x.res != null ? pxd(x.res) : '—'}</b></span></div></button>`).join('') : '<div class="empty">今天沒有股票符合條件。</div>'}</div>`;
     box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h2 id="picksTitle">盤後篩選名單</h2><span class="small muted num">${esc(j.date)} 收盤・掃描 ${j.universe} 檔上市股票</span></div>
-      <p class="small muted" style="margin:6px 0 0">依下方規則從上市股票篩選後排名，是觀察名單，不是買進建議。每個交易日下午 4:40 用收盤資料重算，點任一檔看完整分析。</p>
-      <div class="picks-grid">${col('當沖觀察', '量大、振幅大、收高', j.day, j.counts.day)}${col('短期觀察', '數日至數週', j.swing, j.counts.swing)}${col('長期觀察', '營收成長與估值', j.long, j.counts.long)}</div>
+      <div class="howto">
+        <div><b>這是什麼</b><span>每天收盤後，用當天的收盤資料篩出的觀察名單，適合在下一個交易日開盤前看。三欄對應不同的持有時間：當沖是當天買當天賣，短期是持有幾天到幾週，長期是持有幾個月以上。</span></div>
+        <div><b>可以怎麼用</b><span>先點進個股看漲停指數、支撐和壓力。例如明天開盤後價格守住支撐、或站上壓力，代表結構延續；開低跌破支撐，就代表條件已經變了。</span></div>
+        <div><b>要注意</b><span>名單只代表「今天收盤時符合條件」，不是預測明天會漲，也不是買進建議。下單前請自己判斷，並設好停損。</span></div>
+      </div>
+      <div class="picks-grid">${col('當沖觀察', '當天買賣', j.day, j.counts.day)}${col('短期觀察', '持有數天到數週', j.swing, j.counts.swing)}${col('長期觀察', '持有數月以上', j.long, j.counts.long)}</div>
       <details class="rules"><summary>名單怎麼選出來的</summary>
         <p>共同條件：一般上市股票（排除 ETF、權證），股價 10 元以上，近 20 日平均成交量 1,000 張以上。同一檔只會出現在一個名單。</p>
         <p><b>當沖觀察</b>：日均成交值 5 億以上、近 14 日平均振幅 3% 以上、當日量比 1.5 倍以上、漲幅 2%～9.5% 且未鎖漲停、收盤位於當日高低區間 70% 以上、站上 MA5。依量比、振幅、收盤位置與漲幅加權排名。</p>

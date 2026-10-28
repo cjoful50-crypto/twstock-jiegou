@@ -194,3 +194,12 @@ a.btn{text-decoration:none;display:inline-block}
 .glossary p{margin:8px 0 0;color:var(--muted);font-size:.9rem;max-width:68ch}
 @media (max-width:720px){.steps{grid-template-columns:1fr 1fr}}
 @media (max-width:420px){.steps{grid-template-columns:1fr}}
+
+.zones{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.zones div{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:4px;align-content:start;font-size:.8rem;color:var(--muted)}
+.zones b{color:var(--ink);font-size:.85rem}
+.zones div.on{border-color:var(--accent);background:var(--accent-soft)}
+.howto{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}
+.howto div{background:var(--sunk);border-radius:10px;padding:10px 12px;font-size:.82rem;color:var(--muted);display:grid;gap:2px;align-content:start}
+.howto b{color:var(--ink);font-size:.85rem}
+@media (max-width:720px){.zones,.howto{grid-template-columns:1fr}}

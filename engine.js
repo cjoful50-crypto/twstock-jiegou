@@ -219,7 +219,7 @@ const Engine = (() => {
 
     // 位置量表：近 20 日低點到近 20 日高點（或第一壓力，取高者）
     const top = Math.max(ind.high20, R1 ? R1.level : 0), posPct = clamp((c - ind.low20) / (top - ind.low20) * 100, 0, 100);
-    const posZone = posPct < 35 ? '結構觀察區' : posPct < 70 ? '觀察區' : '偏熱區';
+    const posZone = posPct < 35 ? '低檔區' : posPct < 70 ? '中段區' : '偏熱區';
 
     return { stock, ind, flows, st, dims, raw, pen, index, legacy, trendLabel, zone, zoneWhy, posPct, posZone, top };
   }

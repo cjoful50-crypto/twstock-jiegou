@@ -103,12 +103,13 @@ function render(s) {
       </div>
       <div class="gauge">${ring(a.index)}<div style="display:grid;gap:6px;justify-items:center"><span class="pill ${legacyCls(a.legacy)}">舊版綜合評等：${a.legacy}</span><span class="small muted num">加權原始分 ${fx(a.raw, 1)}${a.pen.length ? '，風險折減 ' + a.pen.reduce((x, y) => x + y.pts, 0) : ''}</span></div></div>
     </div>
+    <p class="note" style="margin:14px 0 0">漲停指數是下面五個面向的綜合分數（0～100）。分數越高，代表趨勢、量能、法人、籌碼、基本面整體越強；分數低代表目前偏弱。它是整理現況，不保證之後會漲。</p>
     <div class="dims">${dimsHtml}</div>
     <div class="dates num"><span>行情：${esc(d.price || t.d)}</span>${d.inst ? `<span>法人：${esc(d.inst)}</span>` : ''}${d.chip ? `<span>籌碼：${esc(d.chip)}</span>` : ''}${d.val ? `<span>基本面：${esc(d.val)}</span>` : ''}${d.rev ? `<span>營收：${esc(d.rev)}</span>` : ''}</div>
   </section>
 
   <section class="card">
-    <div class="eyebrow">結構觀察區</div>
+    <div class="eyebrow">價位地圖</div>
     <div class="map" style="margin-top:8px">
       <div class="ladder">${ladder(a)}</div>
       <div style="min-width:0">
@@ -118,25 +119,32 @@ function render(s) {
         <div class="pos">
           <div class="small" style="font-weight:700">現在的位置</div>
           <div class="track"><span></span><span></span><span></span><div class="marker num" style="left:${a.posPct}%">NOW ${Math.round(a.posPct)}%</div></div>
-          <div class="legend"><span>結構觀察區</span><span>觀察區</span><span>偏熱區</span></div>
-          <p class="small muted" style="margin:8px 0 0">以近 20 日低點 ${pxd(ind.low20)} 到 ${R1 && R1.level > ind.high20 ? '第一壓力' : '近 20 日高點'} ${pxd(a.top)} 衡量，價格位於區間約 ${Math.round(a.posPct)}% 的位置，屬「${a.posZone}」。結構觀察區代表價格靠近近期低點與支撐；觀察區代表在區間中段；偏熱區代表靠近近期高點，追價空間較小。這只描述位置，不代表買賣建議。</p>
+          <div class="legend"><span>低檔區</span><span>中段區</span><span>偏熱區</span></div>
+          <p class="small" style="margin:10px 0 0">目前位於區間約 <b class="num">${Math.round(a.posPct)}%</b>，屬「<b>${a.posZone}</b>」。區間從近 20 日最低 <span class="num">${pxd(ind.low20)}</span> 到${R1 && R1.level > ind.high20 ? '第一壓力' : '近 20 日最高'} <span class="num">${pxd(a.top)}</span>。</p>
+          <div class="zones">
+            <div class="${a.posZone === '低檔區' ? 'on' : ''}"><b>低檔區　0～35%</b><span>價格靠近近期低點與支撐。往下的空間相對小，但如果走勢正在轉弱，也可能繼續破底。</span></div>
+            <div class="${a.posZone === '中段區' ? 'on' : ''}"><b>中段區　35～70%</b><span>價格在近期區間的中間，上下都有空間，方向還不明確。</span></div>
+            <div class="${a.posZone === '偏熱區' ? 'on' : ''}"><b>偏熱區　70～100%</b><span>價格靠近近期高點或壓力，短線已經漲了一段，這時追價買進的風險比較高。</span></div>
+          </div>
+          <p class="note" style="margin:8px 0 0">這只描述價格現在的位置，不代表買賣建議。</p>
+
         </div>
       </div>
     </div>
   </section>
 
   <section class="card">
-    <h2>重點整理</h2>
+    <h2>重點整理</h2><p class="small muted" style="margin:4px 0 0">一眼看完這檔股票現在的狀況。</p>
     <ul class="points">${pts.map(p => `<li>${p}</li>`).join('')}</ul>
   </section>
 
   <section class="card">
-    <h2>今天為什麼動？</h2>
+    <h2>今天為什麼動？</h2><p class="small muted" style="margin:4px 0 0">今天漲跌背後的價格、成交量與法人動向。</p>
     <div class="why">${why.map(([h, b, k]) => `<div><b class="${k}">${h}</b><span class="small muted">${b}</span></div>`).join('')}</div>
   </section>
 
   <section class="card">
-    <h2>接下來看哪裡？</h2>
+    <h2>接下來看哪裡？</h2><p class="small muted" style="margin:4px 0 0"><b style="color:var(--sup)">支撐</b>是股價往下時比較可能止跌的價位，跌破代表轉弱；<b style="color:var(--res)">壓力</b>是股價往上時比較可能遇到賣壓的價位，站上代表轉強。強度越高，代表越多種結構重疊在這個價位。</p>
     <div class="levels">
       ${levelCard('sup', '支撐', a.st.sup, '現價下方 20% 內沒有真實支撐結構。', a)}
       ${levelCard('res', '第一壓力', R1 ? [R1] : [], a.st.limitRef ? '創新高且上方無歷史結構，明日漲停參考價 ' + pxd(a.st.limitRef) + '（非結構價位）。' : '上方找不到有效壓力結構。', a)}
@@ -150,7 +158,7 @@ function render(s) {
   </section>
 
   <section class="card">
-    <h2>研究室</h2>
+    <h2>研究室</h2><p class="small muted" style="margin:4px 0 0">想深入研究再展開：K 線圖、法人買賣、融資借券、本益比與營收，以及每一分是怎麼算出來的。</p>
     <div class="tabs" role="tablist">
       ${[['tech', '技術面'], ['inst', '法人'], ['chip', '籌碼'], ['fund', '基本面'], ['score', '評分怎麼算']].map(([k, l]) => `<button role="tab" type="button" data-tab="${k}" aria-selected="${tab === k}">${l}</button>`).join('')}
     </div>
