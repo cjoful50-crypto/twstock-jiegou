@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>使用教學｜盤後結構室</title>
-<meta name="description" content="看懂漲停指數、支撐壓力、價格位置與兩份名單。">
+<meta name="description" content="看懂強度分數、支撐壓力、價格位置與兩份名單。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;800&display=swap">
 <link rel="stylesheet" href="/style.css">
@@ -17,13 +17,13 @@
     <h2 id="guideTitle">四個步驟</h2>
     <ol class="steps">
       <li><b>搜尋股票</b><span class="small muted">在上方輸入代號或名稱，上市、上櫃都可以查，選單會邊打邊提示。</span></li>
-      <li><b>先看漲停指數</b><span class="small muted">0～100 分的綜合分數，下方五個面向告訴你強在哪、弱在哪。</span></li>
+      <li><b>先看強度分數</b><span class="small muted">0～100 分的綜合分數，下方五個面向告訴你強在哪、弱在哪。</span></li>
       <li><b>再看價位地圖</b><span class="small muted">現價下方的支撐、上方的壓力，以及價格在近 20 日區間的位置。</span></li>
       <li><b>展開研究室</b><span class="small muted">K 線、法人、融資借券、本益比與營收，以及每一分是怎麼算的。</span></li>
     </ol>
     <div class="glossary">
-      <details open><summary>走勢、綜合評等、漲停指數<span>三個標示的差別</span></summary><p><b>走勢</b>只看均線與動能，分成多頭、偏多、整理、偏空、風險。<b>綜合評等</b>是五個面向的平均，分成偏多、中性、偏空。<b>漲停指數</b>是綜合評等再扣掉風險，所以三者可能不一樣，例如基本面很好讓綜合評等是中性，但走勢正在轉弱，漲停指數就會偏低。</p></details>
-      <details open><summary>漲停指數<span>綜合分數，不是漲停機率</span></summary><p>名稱沿用原站的叫法。把趨勢面（25%）、量價（20%）、法人（20%）、籌碼（15%）、基本面（20%）五個分數加權平均，再扣掉風險折減（例如緊貼強壓力、走勢轉弱、RSI 過熱）。分數只代表資料整理後的強弱，不代表未來漲跌。</p></details>
+      <details open><summary>走勢、綜合評等、強度分數<span>三個標示的差別</span></summary><p><b>走勢</b>只看均線與動能，分成多頭、偏多、整理、偏空、風險。<b>綜合評等</b>是五個面向的平均，分成偏多、中性、偏空。<b>強度分數</b>是綜合評等再扣掉風險，所以三者可能不一樣，例如基本面很好讓綜合評等是中性，但走勢正在轉弱，強度分數就會偏低。</p></details>
+      <details open><summary>強度分數<span>0～100 的綜合分數</span></summary><p>把趨勢面（25%）、量價（20%）、法人（20%）、籌碼（15%）、基本面（20%）五個分數加權平均，再扣掉風險折減（例如緊貼強壓力、走勢轉弱、RSI 過熱）。分數只代表資料整理後的強弱，不代表未來漲跌。</p></details>
       <details><summary>走勢標籤<span>多頭／偏多／整理／偏空／風險</span></summary><p>依趨勢面分數分級：70 分以上多頭、55 分以上偏多、42 分以上整理、30 分以上偏空，30 分以下為風險，代表均線與動能同步轉弱。</p></details>
       <details open><summary>支撐與壓力<span>來自真實成交結構</span></summary><p>支撐是股價往下時比較可能止跌的價位，跌破代表轉弱；壓力是股價往上時比較可能遇到賣壓的價位，站上代表轉強。候選價位包括波段高低點、均線、未回補缺口、爆量 K 棒的高低點、成交量最集中的價格帶與趨勢線。相近的價位合併成價格帶；離現價不到 1% 的不列。支撐取現價下方 20% 內、壓力取現價上方最近的兩道。</p></details>
       <details><summary>共振強度<span>弱／中／強／極強</span></summary><p>同一個價格帶上同時出現幾種結構：分屬價格、均線、量能、籌碼四類。類別越多、訊號越多，這個價位越可能有反應。</p></details>
@@ -32,7 +32,7 @@
       <details open><summary>上下空間<span>往上到壓力、往下到支撐各有多遠</span></summary><p>「往上到第一壓力」是現價離上方最近壓力的距離，「往下到近端支撐」是離下方最近支撐的距離。上下空間比大於 2，代表往上的空間比往下大很多，位置相對有利；小於 1 代表往上空間比較小，這時追價比較不划算。</p></details>
       <details><summary>兩份當沖名單<span>盤中當沖 vs 隔日當沖</span></summary><p><b>盤中當沖觀察</b>是開盤時間每 3 分鐘即時掃描，看「現在」哪些股票量大、波動大、價格在高檔。<b>隔日當沖觀察</b>在盤後名單裡，是前一天收盤後依「量價突破」規則算好，給隔天開盤後參考。</p></details>
       <details><summary>名單成績單<span>名單到底準不準</span></summary><p>把每天的盤後名單存下來，追蹤入選後 1、5、10、20 個交易日的漲跌，並和大盤比較。名單的規則就是依這份成績單調整的；筆數越多越可信，而且沒有扣手續費與交易稅。</p></details>
-      <details><summary>盤中即時<span>開盤時間會自動更新</span></summary><p>交易日 9:00～13:30 打開個股頁，價格每 15 秒更新一次，漲停指數與位置會用即時價格重算。法人、融資、借券、本益比只在盤後公布，盤中沿用前一交易日的資料。</p></details>
+      <details><summary>盤中即時<span>開盤時間會自動更新</span></summary><p>交易日 9:00～13:30 打開個股頁，價格每 15 秒更新一次，強度分數與位置會用即時價格重算。法人、融資、借券、本益比只在盤後公布，盤中沿用前一交易日的資料。</p></details>
       <details><summary>資料來源與時間<span>證交所、櫃買中心、公開資訊觀測站</span></summary><p>日K與籌碼為收盤後公開資料：行情約下午 2 點後、三大法人約下午 3 點後、融資融券與借券約晚上更新；月營收每月 10 日前公布。盤中價格取自證交所即時行情，約延遲數秒。</p></details>
     </div>
   </section>

@@ -65,11 +65,11 @@ async function loadPicks(date) {
     const col = (title, sub, list, n, cat) => `<div class="pcol"><h3>${title}<small>${sub}・符合 ${n} 檔</small></h3>${track(cat)}${list.length ? list.map(x => `<button class="pick" type="button" data-code="${esc(x.code)}">
       <div class="top1"><span><span class="code num" style="color:var(--accent)">${esc(x.code)}</span> <span class="nm">${esc(x.name)}</span></span><span class="num ${cls(x.chg)}">${pxd(x.close)} ${sg(x.chg)}%</span></div>
       <div class="sigs">${x.why.map(w => `<span>${esc(w)}</span>`).join('')}</div>
-      <div class="lv num"><span>漲停指數 <b style="color:${scoreColor(x.index)}">${x.index ?? '—'}</b></span><span>支撐 <b style="color:var(--sup)">${x.sup != null ? pxd(x.sup) : '—'}</b></span><span>壓力 <b style="color:var(--res)">${x.res != null ? pxd(x.res) : '—'}</b></span></div></button>`).join('') : '<div class="empty">今天沒有股票符合條件。</div>'}</div>`;
+      <div class="lv num"><span>強度分數 <b style="color:${scoreColor(x.index)}">${x.index ?? '—'}</b></span><span>支撐 <b style="color:var(--sup)">${x.sup != null ? pxd(x.sup) : '—'}</b></span><span>壓力 <b style="color:var(--res)">${x.res != null ? pxd(x.res) : '—'}</b></span></div></button>`).join('') : '<div class="empty">今天沒有股票符合條件。</div>'}</div>`;
     box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h2 id="picksTitle">盤後篩選名單</h2><span class="small muted num">${idx && idx.dates.length > 1 ? `<label for="pickDate">查看日期 </label><select id="pickDate">${idx.dates.slice().reverse().map(d => `<option value="${d}"${d.replace(/-/g, '/') === j.date ? ' selected' : ''}>${d.replace(/-/g, '/')}</option>`).join('')}</select>　` : esc(j.date) + ' 收盤・'}掃描 ${j.universe} 檔上市櫃股票</span></div>
       <div class="howto">
         <div><b>這是什麼</b><span>每天收盤後，用當天的收盤資料篩出的觀察名單，適合在下一個交易日開盤前看。三欄對應不同的持有時間：隔日當沖是隔天開盤後當天進出（和「盤中當沖」頁不同，那是開盤時即時掃描的），短期大約持有 1～2 週，長期是持有幾個月以上。</span></div>
-        <div><b>可以怎麼用</b><span>先點進個股看漲停指數、支撐和壓力。例如明天開盤後價格守住支撐、或站上壓力，代表結構延續；開低跌破支撐，就代表條件已經變了。</span></div>
+        <div><b>可以怎麼用</b><span>先點進個股看強度分數、支撐和壓力。例如明天開盤後價格守住支撐、或站上壓力，代表結構延續；開低跌破支撐，就代表條件已經變了。</span></div>
         <div><b>要注意</b><span>名單只代表「今天收盤時符合條件」，不是預測明天會漲，也不是買進建議。下單前請自己判斷，並設好停損。</span></div>
       </div>
       <div class="picks-grid">${col('隔日當沖觀察', '隔天開盤後當天進出', j.day, j.counts.day, 'day')}${col('短期觀察', '持有約 1～2 週', j.swing, j.counts.swing, 'swing')}${col('長期觀察', '持有數月以上', j.long, j.counts.long, 'long')}</div>
@@ -105,8 +105,8 @@ async function renderWatch() {
     return `<tr data-code="${esc(w.code)}"><td class="nm"><a href="/analysis/${esc(w.code)}"><span class="num">${esc(w.code)}</span>${esc(w.name || x.name || '')}</a></td>
       <td class="num">${x.price ? pxd(x.price) : '—'}</td><td class="num ${cls(chg)}">${chg == null ? '—' : sg(chg) + '%'}</td><td class="num">${x.vol != null ? fi(x.vol) : '—'}</td>
       <td class="num" style="color:${scoreColor(w.index)}">${w.index ?? '—'}${w.trend ? `<span class="small muted">・${esc(w.trend)}</span>` : ''}</td><td>${starBtn(w.code, w.name)}</td></tr>`; }).join('');
-  const table = q => `<div class="scroll"><table class="stock-table"><thead><tr><th>股票</th><th>價格</th><th>漲跌</th><th>成交量（張）</th><th>漲停指數</th><th></th></tr></thead><tbody>${rowsHtml(q)}</tbody></table></div>
-    <p class="note" style="margin:6px 0 0">漲停指數是你上次打開該檔個股頁時算出的分數；點進去會用最新資料重算。清單存在這台裝置的瀏覽器裡，換手機或電腦不會同步。</p>`;
+  const table = q => `<div class="scroll"><table class="stock-table"><thead><tr><th>股票</th><th>價格</th><th>漲跌</th><th>成交量（張）</th><th>強度分數</th><th></th></tr></thead><tbody>${rowsHtml(q)}</tbody></table></div>
+    <p class="note" style="margin:6px 0 0">強度分數是你上次打開該檔個股頁時算出的分數；點進去會用最新資料重算。清單存在這台裝置的瀏覽器裡，換手機或電腦不會同步。</p>`;
   box.innerHTML = head + table();
   const bind = () => { bindStars(box, renderWatch); box.querySelectorAll('tr[data-code]').forEach(tr => tr.onclick = e => { if (!e.target.closest('a,button')) goTo(tr.dataset.code); }); };
   bind();

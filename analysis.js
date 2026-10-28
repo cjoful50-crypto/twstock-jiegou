@@ -1,10 +1,10 @@
 /* 個股分析頁：路徑 /analysis/代號 */
 function ring(score) {
   const R = 62, C = 2 * Math.PI * R, off = C * (1 - score / 100);
-  return `<svg viewBox="0 0 150 150" role="img" aria-label="漲停指數 ${score} 分">
+  return `<svg viewBox="0 0 150 150" role="img" aria-label="強度分數 ${score} 分">
     <circle cx="75" cy="75" r="${R}" fill="none" stroke="var(--sunk)" stroke-width="12"/>
     <circle class="ring" cx="75" cy="75" r="${R}" fill="none" stroke="${scoreColor(score)}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}" transform="rotate(-90 75 75)"/>
-    <text x="75" y="62" text-anchor="middle" font-size="12" fill="var(--muted)" font-family="var(--f-body)">漲停指數</text>
+    <text x="75" y="62" text-anchor="middle" font-size="12" fill="var(--muted)" font-family="var(--f-body)">強度分數</text>
     <text x="75" y="98" text-anchor="middle" font-size="40" font-weight="600" fill="var(--ink)" font-family="var(--f-num)">${score}</text>
   </svg>`;
 }
@@ -50,7 +50,7 @@ function ladder(a) {
     g += `<text x="${AX + 26}" y="${m.ly - 6}" font-size="12" font-weight="700" fill="${m.now ? 'var(--ink)' : m.col}" font-family="var(--f-body)">${m.label}<tspan fill="var(--faint)" font-size="10" font-family="var(--f-num)">${dots}</tspan></text>
       <text x="${AX + 26}" y="${m.ly + 10}" font-size="${m.now ? 17 : 15}" font-weight="700" fill="${m.now ? 'var(--ink)' : m.col}" font-family="var(--f-num)">${pxd(m.p)}${m.now ? '' : `<tspan font-size="11" font-weight="500" fill="var(--muted)"> ${dist > 0 ? '+' : ''}${dist.toFixed(1)}%</tspan>`}</text>`;
   }
-  const legend = `<div class="map-legend"><span><i style="background:var(--up-soft)"></i>偏熱區</span><span><i style="background:var(--warn-soft)"></i>中段區</span><span><i style="background:var(--accent-soft)"></i>低檔區</span><span><i style="background:var(--res)"></i>壓力</span><span><i style="background:var(--sup)"></i>支撐</span><span class="num">●●●● 強度</span></div>`;
+  const legend = `<div class="map-legend"><span><i style="background:var(--up-soft)"></i>偏熱區</span><span><i style="background:var(--warn-soft)"></i>中段區</span><span><i style="background:var(--accent-soft)"></i>低檔區</span><span><i style="background:var(--res)"></i>壓力</span><span><i style="background:var(--sup)"></i>支撐</span><span class="num">●●●● 價位強度</span></div>`;
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="價位地圖：現價 ${pxd(c)}">${g}</svg>${legend}`;
 }
 function spaceSummary(a) {
@@ -95,7 +95,7 @@ function levelCard(kind, title, bands, emptyMsg, a) {
       <span class="tag">${kind === 'sup' ? (i ? '第二支撐' : '近端支撐') : title}｜${b.tier}</span>
       <span class="p num" style="color:var(--${kind})">${pxd(b.level)}</span>
       <span class="small muted num">${b.lo !== b.hi ? '價格帶 ' + pxd(b.lo) + '–' + pxd(b.hi) + '　' : ''}距現價 ${sg((b.level / c - 1) * 100, 1)}%</span>
-      <span class="str s${b.rank}">強度：${b.strength}（${b.cats.length} 類 ${b.labels.length} 個訊號）</span>
+      <span class="str s${b.rank}">價位強度：${b.strength}（${b.cats.length} 類 ${b.labels.length} 個訊號）</span>
       <div class="sigs">${b.labels.map(l => `<span>${esc(l)}</span>`).join('')}</div></div>`).join('') : `<div class="row"><span class="tag">${title}</span><span class="p num muted">尚未形成</span><span class="small muted">${emptyMsg}</span></div>`;
   return `<div class="lv ${kind}"><b>${kind === 'sup' ? '支撐觀察' : title}</b>${rows}</div>`;
 }
@@ -114,7 +114,7 @@ function render(s) {
   pts.push(`距支撐 ${S1 ? pxd(S1.level) + '（' + sg((S1.level / c - 1) * 100, 1) + '%）' : '尚未形成'}、距壓力 ${R1 ? pxd(R1.level) + '（' + sg((R1.level / c - 1) * 100, 1) + '%）' : a.st.limitRef ? '上方無歷史結構，明日漲停參考 ' + pxd(a.st.limitRef) : '尚未形成'}`);
   pts.push(`量能為近 20 日均量的 ${fx(ind.volRatio)} 倍，RSI(14) ${fx(ind.rsi, 1)}，收盤${c >= ind.ma20.at(-1) ? '站上' : '低於'} 20 日均線 ${fx(ind.ma20.at(-1))}`);
   if (s.fund && s.fund.revYoY != null) pts.push(`${esc(s.fund.revMonth || '最新')} 月營收年增 ${sg(s.fund.revYoY)}%${s.fund.revMoM != null ? '、月增 ' + sg(s.fund.revMoM) + '%' : ''}${s.fund.pe != null ? '，本益比 ' + s.fund.pe : ''}${s.fund.yld != null ? '、殖利率 ' + s.fund.yld + '%' : ''}`);
-  pts.push(`漲停指數 ${a.index} 為綜合分數${strong.length ? '；' + strong.join('、') + ' 偏強' : ''}${weak.length ? '；' + weak.join('、') + ' 偏低' : ''}${a.pen.length ? '；另因' + a.pen.map(p => p.label.split('，')[0].split('：')[0]).join('、') + '扣分' : ''}`);
+  pts.push(`強度分數 ${a.index} 為綜合分數${strong.length ? '；' + strong.join('、') + ' 偏強' : ''}${weak.length ? '；' + weak.join('、') + ' 偏低' : ''}${a.pen.length ? '；另因' + a.pen.map(p => p.label.split('，')[0].split('：')[0]).join('、') + '扣分' : ''}`);
   if (R1) pts.push(`第一壓力共振強度「${R1.strength}」，訊號：${R1.labels.join('、')}`);
 
   const why = [];
@@ -133,9 +133,9 @@ function render(s) {
         <div class="price"><span class="px num">${pxd(c)}</span><span class="ch num ${cls(ind.chg)}">${sg(ind.chg)}（${sg(ind.chgPct)}%）</span></div>
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="small muted">走勢（只看均線與動能）</span><span class="pill ${trendCls(a.trendLabel)}">${a.trendLabel}</span></div>
       </div>
-      <div class="gauge">${ring(a.index)}<div style="display:grid;gap:6px;justify-items:center"><span class="pill ${legacyCls(a.legacy)}">綜合評等：${a.legacy}</span><span class="small muted num" style="text-align:center">五面向平均 ${fx(a.raw, 1)}${a.pen.length ? `<br>風險扣分 ${a.pen.reduce((x, y) => x + y.pts, 0)} → 漲停指數 ${a.index}` : ''}</span></div></div>
+      <div class="gauge">${ring(a.index)}<div style="display:grid;gap:6px;justify-items:center"><span class="pill ${legacyCls(a.legacy)}">綜合評等：${a.legacy}</span><span class="small muted num" style="text-align:center">五面向平均 ${fx(a.raw, 1)}${a.pen.length ? `<br>風險扣分 ${a.pen.reduce((x, y) => x + y.pts, 0)} → 強度分數 ${a.index}` : ''}</span></div></div>
     </div>
-    <p class="note" style="margin:14px 0 0"><b>三個標示各看什麼：</b>「走勢」只看均線與動能；「綜合評等」是下面五個面向的平均；「漲停指數」是綜合評等再扣掉風險（例如緊貼強壓力、走勢轉弱、短線過熱），0～100 分，越高代表整體越強。名稱沿用原站的叫法，不是漲停的機率，也不保證之後會漲。</p>
+    <p class="note" style="margin:14px 0 0"><b>三個標示各看什麼：</b>「走勢」只看均線與動能；「綜合評等」是下面五個面向的平均；「強度分數」是綜合評等再扣掉風險（例如緊貼強壓力、走勢轉弱、短線過熱），0～100 分，越高代表整體越強。分數代表目前整體的強弱，不保證之後會漲。</p>
     <div class="dims">${dimsHtml}</div>
     <div class="dates num"><span>行情：${esc(d.price || t.d)}</span>${d.inst ? `<span>法人：${esc(d.inst)}</span>` : ''}${d.chip ? `<span>籌碼：${esc(d.chip)}</span>` : ''}${d.val ? `<span>基本面：${esc(d.val)}</span>` : ''}${d.rev ? `<span>營收：${esc(d.rev)}</span>` : ''}</div>
   </section>
@@ -156,7 +156,7 @@ function render(s) {
             <div class="${a.posZone === '偏熱區' ? 'on' : ''}"><b>偏熱區　70～100%</b><span>價格靠近近期高點或壓力，短線已經漲了一段，這時追價買進的風險比較高。</span></div>
           </div>
           <p class="note" style="margin:8px 0 0">這只描述價格現在的位置，不代表買賣建議。</p>
-          ${R1 ? `<p class="small" style="margin:14px 0 0">第一壓力 <b class="num" style="color:var(--res)">${pxd(R1.level)}</b> 的強度是<b>${R1.strength}</b>，有 ${R1.cats.map(x => x + '結構').join('、')}疊在一起；越強代表股價到這裡越容易遇到賣壓。</p>` : ''}
+          ${R1 ? `<p class="small" style="margin:14px 0 0">第一壓力 <b class="num" style="color:var(--res)">${pxd(R1.level)}</b> 的價位強度是<b>${R1.strength}</b>，有 ${R1.cats.map(x => x + '結構').join('、')}疊在一起；越強代表股價到這裡越容易遇到賣壓。</p>` : ''}
           <div class="zone-box"><b>${a.zone ? `支撐密集區 <span class="num" style="color:var(--accent)">${pxd(a.zone.lo)}–${pxd(a.zone.hi)}</span>` : '支撐密集區：目前沒有'}</b><span>${a.zone ? '近端兩道支撐疊在同一個價格帶，而且走勢沒有轉入「風險」。股價回到這裡時，下方有多種結構同時承接。' : esc(a.zoneWhy)}</span><span class="note">支撐密集區是指好幾種支撐（均線、前波低點、大量成交區等）剛好疊在同一個價格帶，形成比較紮實的承接區。</span></div>
 
         </div>
@@ -175,7 +175,7 @@ function render(s) {
   </section>
 
   <section class="card">
-    <h2>接下來看哪裡？</h2><p class="small muted" style="margin:4px 0 0"><b style="color:var(--sup)">支撐</b>是股價往下時比較可能止跌的價位，跌破代表轉弱；<b style="color:var(--res)">壓力</b>是股價往上時比較可能遇到賣壓的價位，站上代表轉強。強度越高，代表越多種結構重疊在這個價位。</p>
+    <h2>接下來看哪裡？</h2><p class="small muted" style="margin:4px 0 0"><b style="color:var(--sup)">支撐</b>是股價往下時比較可能止跌的價位，跌破代表轉弱；<b style="color:var(--res)">壓力</b>是股價往上時比較可能遇到賣壓的價位，站上代表轉強。價位強度越高，代表越多種結構重疊在這個價位。</p>
     <div class="levels">
       ${levelCard('sup', '支撐', a.st.sup, '現價下方 20% 內沒有真實支撐結構。', a)}
       ${levelCard('res', '第一壓力', R1 ? [R1] : [], a.st.limitRef ? '創新高且上方無歷史結構，明日漲停參考價 ' + pxd(a.st.limitRef) + '（非結構價位）。' : '上方找不到有效壓力結構。', a)}
@@ -218,10 +218,10 @@ function render(s) {
       <div class="scroll" style="margin-top:12px"><table><thead><tr><th>日期</th><th>融資餘額</th><th>融券餘額</th><th>借券賣出餘額</th><th>借券賣出</th><th>還券</th></tr></thead><tbody>${days.map(dd => { const mm = m.find(x => x.d === dd) || {}, bb = b.find(x => x.d === dd) || {}; return `<tr><td class="num">${dd}</td><td class="num">${fi(mm.mb)}</td><td class="num">${fi(mm.sb)}</td><td class="num">${fi(bb.bal)}</td><td class="num">${fi(bb.sell)}</td><td class="num">${fi(bb.ret)}</td></tr>`; }).join('')}</tbody></table></div><p class="note">單位：張。借券賣出餘額下降代表空方回補，對股價壓力減輕。</p>`;
     },
     fund: () => { const f = s.fund || {}; return `<div class="kv"><div><span>本益比</span><b class="num">${fx(f.pe)}</b></div><div><span>殖利率</span><b class="num">${f.yld != null ? fx(f.yld) + '%' : '—'}</b></div><div><span>股價淨值比</span><b class="num">${fx(f.pb)}</b></div><div><span>${esc(f.revMonth || '最新')} 營收年增</span><b class="num ${cls(f.revYoY)}">${f.revYoY != null ? sg(f.revYoY) + '%' : '—'}</b></div><div><span>${esc(f.revMonth || '最新')} 營收月增</span><b class="num ${cls(f.revMoM)}">${f.revMoM != null ? sg(f.revMoM) + '%' : '—'}</b></div></div>`; },
-    score: () => `<p class="small muted" style="margin-top:0">漲停指數 = 五面向加權平均（趨勢 25%、量價 20%、法人 20%、籌碼 15%、基本面 20%；缺資料的面向不計，權重重新分配）＋ 風險折減。趨勢、量價、法人、籌碼從 50 分起算，基本面從 40 分起算，各自加減後限制在 0～100。</p>
+    score: () => `<p class="small muted" style="margin-top:0">強度分數 = 五面向加權平均（趨勢 25%、量價 20%、法人 20%、籌碼 15%、基本面 20%；缺資料的面向不計，權重重新分配）＋ 風險折減。趨勢、量價、法人、籌碼從 50 分起算，基本面從 40 分起算，各自加減後限制在 0～100。</p>
       ${a.dims.map(x => `<div class="score-dim"><header><span>${x.name}（權重 ${x.w * 100}%）</span><span class="num" style="color:${scoreColor(x.s)}">${x.s ?? '資料不足'}</span></header><ul>${x.items.map(i => `<li><span>${esc(i.label)}</span><span class="num ${cls(i.pts)}">${sgi(i.pts)}</span></li>`).join('') || '<li><span>沒有資料</span></li>'}</ul></div>`).join('')}
       <div class="score-dim"><header><span>風險折減</span><span class="num">${a.pen.reduce((x, y) => x + y.pts, 0)}</span></header><ul>${a.pen.map(i => `<li><span>${esc(i.label)}</span><span class="num down">${i.pts}</span></li>`).join('') || '<li><span>無</span></li>'}</ul></div>
-      <p class="small muted">加權原始分 ${fx(a.raw, 1)}，即綜合評等（60 以上偏多、38～60 中性、38 以下偏空）；扣掉風險折減後為漲停指數 ${a.index}。走勢標籤看趨勢面分數：70 以上多頭、55 偏多、42 整理、30 偏空、30 以下風險。</p>`
+      <p class="small muted">加權原始分 ${fx(a.raw, 1)}，即綜合評等（60 以上偏多、38～60 中性、38 以下偏空）；扣掉風險折減後為強度分數 ${a.index}。走勢標籤看趨勢面分數：70 以上多頭、55 偏多、42 整理、30 偏空、30 以下風險。</p>`
   };
   const showTab = () => { $('#panel').innerHTML = panels[tab](); document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab)); };
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; showTab(); });
