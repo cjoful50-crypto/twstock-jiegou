@@ -16,6 +16,7 @@ function screenAt(days, i, instByDay, valByDay, rev, names) {
     const n = bars.length; if (n < 40 || bars.at(-1).d !== D) continue;
     const C = bars.map(b => b.c), V = bars.map(b => b.v), t = bars.at(-1), p = bars.at(-2);
     const ma = k => n >= k ? avg(C.slice(-k)) : null, maPrev = (k, back) => n >= k + back ? avg(C.slice(-k - back, -back)) : null;
+    const hi20 = Math.max(...bars.slice(-20).map(b => b.h));
     const avgV20 = avg(V.slice(-20)); if (t.c < 10 || avgV20 < 1000) continue;
     let g = 0, l = 0; for (let j = n - 14; j < n; j++) { const df = C[j] - C[j - 1]; if (df > 0) g += df; else l -= df; }
     const rsi = l === 0 ? 100 : 100 - 100 / (1 + g / l);
@@ -23,17 +24,19 @@ function screenAt(days, i, instByDay, valByDay, rev, names) {
     const ins = instDays.map(d => { const x = (instByDay[d] || {})[code]; return x ? { d, f: x[0], t: x[1], dl: x[2] } : null; }).filter(Boolean);
     const vv = val[code] || [], rv = rev && rev[code];
     rows.push({ code, name: (names[code] || [])[0] || code, market: (names[code] || [])[1] || '', bars, c: t.c, chg: (t.c / p.c - 1) * 100,
-      ma5: ma(5), ma10: ma(10), ma20: ma(20), ma60: ma(60), ma20p: maPrev(20, 5), avgV20, volRatio: t.v / avgV20, turnover: avgV20 * t.c * 1000, rsi,
+      ma5: ma(5), ma10: ma(10), ma20: ma(20), ma60: ma(60), ma20p: maPrev(20, 5), ma5p3: maPrev(5, 3), ma20p3: maPrev(20, 3), hi20, avgV20, volRatio: t.v / avgV20, turnover: avgV20 * t.c * 1000, rsi,
       atrPct: avg(tr) / t.c * 100, closePos: t.h > t.l ? (t.c - t.l) / (t.h - t.l) : 0.5, locked: t.h === t.l, ret20: (t.c / C[n - 21] - 1) * 100, high60: Math.max(...bars.map(b => b.h)),
       ins, inst5: sum(ins.map(x => x.f + x.t + x.dl)), trust5: sum(ins.map(x => x.t)),
       fund: { pe: vv[0] ?? null, yld: vv[1] ?? null, pb: vv[2] ?? null, revYoY: rv ? rv.yoy : null, revMoM: rv ? rv.mom : null, revMonth: rv ? rv.month : null } });
   }
-  const day = rows.filter(r => r.turnover >= 5e8 && r.atrPct >= 3 && r.volRatio >= 1.5 && r.chg >= 2 && r.chg <= 9.5 && !r.locked && r.closePos >= 0.7 && r.c > r.ma5)
-    .map(r => Object.assign(r, { score: Math.min(r.volRatio, 5) * 10 + r.atrPct * 3 + r.closePos * 10 + r.chg,
-      why: [`量比 ${r.volRatio.toFixed(1)} 倍`, `近 14 日平均振幅 ${r.atrPct.toFixed(1)}%`, `收在當日高檔（${Math.round(r.closePos * 100)}%）`, `日均成交值 ${(r.turnover / 1e8).toFixed(0)} 億`] }));
-  const swing = rows.filter(r => r.ma60 && r.c > r.ma5 && r.ma5 > r.ma10 && r.ma10 > r.ma20 && r.ma20 > r.ma20p && r.rsi >= 55 && r.rsi <= 78 && r.ret20 >= 3 && r.ret20 <= 30 && r.volRatio >= 1 && r.inst5 > 0 && r.c >= r.high60 * 0.92)
-    .map(r => Object.assign(r, { score: Math.min(r.inst5 / r.avgV20 * 100, 50) + (r.rsi - 50) + Math.min(r.volRatio, 3) * 5 + (r.trust5 > 0 ? 10 : 0),
-      why: ['均線多頭排列（MA5 > MA10 > MA20）', `RSI ${r.rsi.toFixed(0)}`, `法人近 5 日買超 ${Math.round(r.inst5).toLocaleString('en-US')} 張`, r.trust5 > 0 ? '投信同步買超' : `近 20 日 ${fmt(r.ret20)}%`] }));
+  // 隔日當沖觀察（量價突破）：收盤創 20 日新高、量能放大、收在當日高檔，還沒漲過頭
+  const day = rows.filter(r => r.ma60 && r.c >= r.hi20 * 0.995 && r.volRatio >= 1.8 && r.closePos >= 0.7 && r.chg >= 1.5 && r.chg <= 7 && r.ret20 <= 25 && r.c > r.ma60 && r.turnover >= 3e8)
+    .map(r => Object.assign(r, { score: Math.min(r.volRatio, 5) * 8 + r.closePos * 10 + Math.min(Math.max(r.inst5, 0) / r.avgV20 * 100, 30),
+      why: ['收盤創 20 日新高', `量比 ${r.volRatio.toFixed(1)} 倍`, `收在當日高檔（${Math.round(r.closePos * 100)}%）`, `日均成交值 ${(r.turnover / 1e8).toFixed(0)} 億`] }));
+  // 短期觀察（剛轉強）：5 日線在近 3 天內剛站上月線，月線走平或向上，漲幅還不大，法人在買
+  const swing = rows.filter(r => r.ma5p3 != null && r.ma5 > r.ma20 && r.ma5p3 <= r.ma20p3 && r.c > r.ma20 && r.ma20 >= r.ma20p && r.ret20 >= -5 && r.ret20 <= 12 && r.rsi >= 50 && r.rsi <= 68 && r.volRatio >= 1.2 && r.inst5 > 0)
+    .map(r => Object.assign(r, { score: Math.min(r.inst5 / r.avgV20 * 100, 50) + Math.min(r.volRatio, 3) * 5 + (r.trust5 > 0 ? 10 : 0),
+      why: ['5 日線剛站上月線', `近 20 日 ${fmt(r.ret20)}%`, `法人近 5 日買超 ${Math.round(r.inst5).toLocaleString('en-US')} 張`, r.trust5 > 0 ? '投信同步買超' : `量比 ${r.volRatio.toFixed(1)} 倍`] }));
   const longT = rev ? rows.filter(r => r.ma60 && r.fund.revYoY != null && r.fund.revYoY >= 15 && r.fund.pe > 0 && r.fund.pe <= 25 && r.fund.yld >= 1.5 && r.c > r.ma60 && r.ma20 > r.ma60 && r.avgV20 >= 500)
     .map(r => Object.assign(r, { score: Math.min(r.fund.revYoY, 100) * 0.4 + (25 - r.fund.pe) + r.fund.yld * 3 + (r.inst5 > 0 ? 5 : 0),
       why: [`${r.fund.revMonth || '最新'} 營收年增 ${fmt(r.fund.revYoY)}%`, `本益比 ${r.fund.pe}`, `殖利率 ${r.fund.yld}%`, '站上季線且月線在季線之上'] })) : [];

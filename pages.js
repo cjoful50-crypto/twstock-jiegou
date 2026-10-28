@@ -1,13 +1,12 @@
 /* 各分頁共用：依頁面上有哪些區塊決定要載入什麼 */
-// 盤後名單：優先讀每日排程存好的檔案（秒開），沒有才即時計算
+// 盤後名單：讀每日排程（GitHub Actions）存好的檔案
 let pickIndex;
 async function getIndex() { if (pickIndex === undefined) pickIndex = await fetch('/data/index.json').then(r => r.ok ? r.json() : null).catch(() => null); return pickIndex; }
 async function getPicks(date) {
   if (date) { const r = await fetch(`/data/daily/${date}.json`); if (r.ok) return r.json(); }
   const s = await fetch('/data/latest.json').then(r => r.ok ? r.json() : null).catch(() => null);
   if (s && s.day) return s;
-  const r = await fetch('/api/picks'); const j = await r.json().catch(() => ({ error: '伺服器回應格式錯誤。' }));
-  if (!r.ok || j.error) throw new Error(j.error || 'HTTP ' + r.status); return j;
+  throw new Error('名單還沒產生。每個交易日 16:50 收盤資料公布後會自動更新。');
 }
 if ($('#searchForm')) attachSearch($('#searchForm'), $('#q'), $('#suggest'));
 loadStocks().then(() => { if ($('#browse')) renderBrowse(); if ($('#pvSectors')) renderPvSectors(); });
@@ -62,17 +61,17 @@ async function loadPicks(date) {
       <div class="lv num"><span>漲停指數 <b style="color:${scoreColor(x.index)}">${x.index ?? '—'}</b></span><span>支撐 <b style="color:var(--sup)">${x.sup != null ? pxd(x.sup) : '—'}</b></span><span>壓力 <b style="color:var(--res)">${x.res != null ? pxd(x.res) : '—'}</b></span></div></button>`).join('') : '<div class="empty">今天沒有股票符合條件。</div>'}</div>`;
     box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h2 id="picksTitle">盤後篩選名單</h2><span class="small muted num">${idx && idx.dates.length > 1 ? `<label for="pickDate">查看日期 </label><select id="pickDate">${idx.dates.slice().reverse().map(d => `<option value="${d}"${d.replace(/-/g, '/') === j.date ? ' selected' : ''}>${d.replace(/-/g, '/')}</option>`).join('')}</select>　` : esc(j.date) + ' 收盤・'}掃描 ${j.universe} 檔上市櫃股票</span></div>
       <div class="howto">
-        <div><b>這是什麼</b><span>每天收盤後，用當天的收盤資料篩出的觀察名單，適合在下一個交易日開盤前看。三欄對應不同的持有時間：當沖是當天買當天賣，短期是持有幾天到幾週，長期是持有幾個月以上。</span></div>
+        <div><b>這是什麼</b><span>每天收盤後，用當天的收盤資料篩出的觀察名單，適合在下一個交易日開盤前看。三欄對應不同的持有時間：隔日當沖是隔天開盤後當天進出，短期大約持有 1～2 週，長期是持有幾個月以上。</span></div>
         <div><b>可以怎麼用</b><span>先點進個股看漲停指數、支撐和壓力。例如明天開盤後價格守住支撐、或站上壓力，代表結構延續；開低跌破支撐，就代表條件已經變了。</span></div>
         <div><b>要注意</b><span>名單只代表「今天收盤時符合條件」，不是預測明天會漲，也不是買進建議。下單前請自己判斷，並設好停損。</span></div>
       </div>
-      <div class="picks-grid">${col('當沖觀察', '當天買賣', j.day, j.counts.day)}${col('短期觀察', '持有數天到數週', j.swing, j.counts.swing)}${col('長期觀察', '持有數月以上', j.long, j.counts.long)}</div>
+      <div class="picks-grid">${col('隔日當沖觀察', '隔天開盤後當天進出', j.day, j.counts.day)}${col('短期觀察', '持有約 1～2 週', j.swing, j.counts.swing)}${col('長期觀察', '持有數月以上', j.long, j.counts.long)}</div>
       <details class="rules"><summary>名單怎麼選出來的</summary>
         <p>共同條件：一般上市股票（排除 ETF、權證），股價 10 元以上，近 20 日平均成交量 1,000 張以上。同一檔只會出現在一個名單。</p>
-        <p><b>當沖觀察</b>：日均成交值 5 億以上、近 14 日平均振幅 3% 以上、當日量比 1.5 倍以上、漲幅 2%～9.5% 且未鎖漲停、收盤位於當日高低區間 70% 以上、站上 MA5。依量比、振幅、收盤位置與漲幅加權排名。</p>
-        <p><b>短期觀察</b>：MA5 &gt; MA10 &gt; MA20 且 MA20 上彎、RSI 55～78、近 20 日漲幅 3%～30%（不追過熱）、量比 1 倍以上、三大法人近 5 日合計買超、股價距 60 日高點 8% 以內。依法人買超占日均量比例、RSI、量比與投信是否同步買超排名。</p>
+        <p><b>隔日當沖觀察（量價突破）</b>：收盤創 20 日新高、當日量比 1.8 倍以上、收盤位於當日高低區間 70% 以上、漲幅 1.5%～7%、近 20 日漲幅不超過 25%、站上季線、日均成交值 3 億以上。依量能、收盤位置與法人買超排名。回測中隔天開盤買、收盤賣平均約 +0.4%，但當沖手續費加交易稅約 0.3%～0.4%，扣掉後接近打平，請把它當成觀察清單。</p>
+        <p><b>短期觀察（剛轉強）</b>：5 日線在近 3 個交易日內剛站上月線、收盤在月線之上、月線走平或向上、近 20 日漲幅在 −5%～12%（還沒漲多）、RSI 50～68、量比 1.2 倍以上、三大法人近 5 日合計買超。依法人買超占日均量比例、量能與投信是否同步買超排名。</p>
         <p><b>長期觀察</b>：最新月營收年增 15% 以上、本益比 0～25 倍、殖利率 1.5% 以上、收盤站上季線且月線在季線之上。依營收成長、本益比、殖利率與法人動向排名。</p>
-        <p>資料為證交所盤後公開資料。法人資料約下午 3 點後公布，盤後早些時候查看時法人條件可能用前一日資料。</p>
+        <p>規則經過歷史回測挑選，實際表現每天更新在<a href="/scorecard">名單成績單</a>。資料為證交所與櫃買中心盤後公開資料。法人資料約下午 3 點後公布，盤後早些時候查看時法人條件可能用前一日資料。</p>
       </details>`;
     box.querySelectorAll('.pick').forEach(b => b.onclick = () => goTo(b.dataset.code));
     const sel = $('#pickDate'); if (sel) sel.onchange = () => loadPicks(sel.value);
@@ -167,7 +166,7 @@ async function renderPvPicks() {
   box.innerHTML = '<p class="small muted" style="margin:0">載入中…</p>';
   try {
     const j = await getPicks();
-    const rows = [['當沖', j.day], ['短期', j.swing], ['長期', j.long]].flatMap(([t, l]) => l.slice(0, 1).map(x => miniRow(x.code, x.name, `<span class="num ${cls(x.chg)}">${pxd(x.close)}　${sg(x.chg)}%</span>`, t)));
+    const rows = [['隔日當沖', j.day], ['短期', j.swing], ['長期', j.long]].flatMap(([t, l]) => l.slice(0, 1).map(x => miniRow(x.code, x.name, `<span class="num ${cls(x.chg)}">${pxd(x.close)}　${sg(x.chg)}%</span>`, t)));
     box.innerHTML = `<p class="small muted" style="margin:0">${esc(j.date)} 收盤後篩選，各類第一名：</p>${rows.length ? `<ul class="mini">${rows.join('')}</ul>` : '<p class="small muted">今天沒有股票符合條件。</p>'}`;
   } catch (e) { box.innerHTML = `<p class="small err" style="margin:0">${esc(e.message)}</p>`; }
 }

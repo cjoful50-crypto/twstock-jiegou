@@ -58,7 +58,7 @@ const isoOf = d => d.toISOString().slice(0, 10);
   const dates = [];
   for (let i = from; i <= last; i++) {
     const d = days[i].d, f = path.join(DATA, 'daily', d + '.json');
-    if (rd(f) && i < last) { dates.push(d); continue; }
+    if (rd(f) && i < last && !process.env.RESCREEN) { dates.push(d); continue; }
     const res = screenAt(days, i, instByDay, valByDay, revAt(d), names);
     res.generatedAt = new Date().toISOString(); wr(f, res); dates.push(d); console.log('名單', d, res.counts);
   }
@@ -69,7 +69,7 @@ const isoOf = d => d.toISOString().slice(0, 10);
 
   // 5. 名單成績單：入選後第 1、5、20 個交易日的報酬，與加權指數比較
   const idx = new Map(days.map((x, i) => [x.d, i]));
-  const H = [1, 5, 20], picks = [];
+  const H = [1, 5, 10, 20], picks = [];
   for (const d of allDates) {
     const i = idx.get(d); if (i == null) continue; const L = rd(path.join(DATA, 'daily', d + '.json'));
     for (const cat of ['day', 'swing', 'long']) for (const p of L[cat] || []) {

@@ -8,6 +8,9 @@ on:
       backfill:
         description: '回補幾個交易日'
         default: '60'
+      rescreen:
+        description: '用目前規則重算所有歷史名單（true/false）'
+        default: 'false'
 permissions:
   contents: write
 concurrency:
@@ -25,6 +28,7 @@ jobs:
       - run: node scripts/build.js
         env:
           BACKFILL: ${{ github.event.inputs.backfill || '60' }}
+          RESCREEN: ${{ github.event.inputs.rescreen == 'true' && '1' || '' }}
       - name: 存檔
         run: |
           git config user.name "twstock-bot"
