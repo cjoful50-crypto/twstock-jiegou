@@ -17,9 +17,9 @@ const Recent = {
   add(code, name) { const r = [{ code, name }, ...this.get().filter(x => x.code !== code)].slice(0, 8); try { localStorage.setItem('jiegou-recent', JSON.stringify(r)); } catch (e) {} }
 };
 
-let STOCKS = null, stocksP = null;
+let STOCKS = null, SECTORS = [], stocksP = null;
 function loadStocks() {
-  if (!stocksP) stocksP = fetch('/api/list').then(r => r.json()).then(j => { if (Array.isArray(j)) STOCKS = j; return STOCKS; }).catch(() => null);
+  if (!stocksP) stocksP = fetch('/api/list').then(r => r.json()).then(j => { if (Array.isArray(j)) STOCKS = j; else if (j && Array.isArray(j.stocks)) { STOCKS = j.stocks; SECTORS = j.sectors || []; } return STOCKS; }).catch(() => null);
   return stocksP;
 }
 function findStocks(q, n = 8) {
