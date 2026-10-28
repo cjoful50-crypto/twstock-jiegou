@@ -1,0 +1,38 @@
+name: 研究用歷史資料
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: '起始日'
+        default: '2025-01-02'
+      to:
+        description: '結束日'
+        default: '2026-10-28'
+permissions:
+  contents: write
+concurrency:
+  group: daily
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node scripts/history-fetch.js
+        env:
+          FROM: ${{ github.event.inputs.from }}
+          TO: ${{ github.event.inputs.to }}
+      - name: 存檔
+        if: always()
+        run: |
+          git config user.name "twstock-bot"
+          git config user.email "twstock-bot@users.noreply.github.com"
+          git add data/cache
+          if git diff --cached --quiet; then echo "沒有變更"; exit 0; fi
+          git commit -m "研究用歷史資料"
+          git pull --rebase origin main
+          git push origin HEAD:main
