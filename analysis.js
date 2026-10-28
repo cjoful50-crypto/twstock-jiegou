@@ -12,18 +12,19 @@ function ring(score) {
 function ladder(a) {
   // 價位地圖：左邊是近 20 日區間（低檔／中段／偏熱），右邊是支撐壓力，與現價連成一條線
   const c = a.stock.bars.at(-1).c, S = a.st.sup, Rr = a.st.res, low = a.ind.low20, top = a.top;
-  const pts = [c, low, top, ...S.flatMap(b => [b.lo, b.level]), ...Rr.flatMap(b => [b.level, b.hi])];
+  const pts = [c, ...S.flatMap(b => [b.lo, b.level]), ...Rr.flatMap(b => [b.level, b.hi])];
   if (a.st.limitRef) pts.push(a.st.limitRef);
-  const lo = Math.min(...pts), hi = Math.max(...pts), pad = (hi - lo) * .06 || c * .02;
-  const W = 340, H = 360, t0 = 22, b0 = H - 22, y = p => t0 + (hi + pad - p) / ((hi + pad) - (lo - pad)) * (b0 - t0);
+  if (pts.length < 3) pts.push(low, top);
+  let lo = Math.min(...pts), hi = Math.max(...pts); const pad = (hi - lo) * .18 || c * .03; lo -= pad; hi += pad;
+  const W = 340, H = 420, t0 = 26, b0 = H - 26, y = p => t0 + (hi - p) / (hi - lo) * (b0 - t0), cy = p => Math.max(t0, Math.min(b0, y(p)));
   const BX = 14, BW = 16, AX = 132;
   let g = '';
-  // 近 20 日區間色帶
+  // 近 20 日區間色帶（超出刻度的部分截掉，用箭頭標示）
   const z1 = low + (top - low) * .35, z2 = low + (top - low) * .70;
-  [[low, z1, 'var(--accent-soft)'], [z1, z2, 'var(--warn-soft)'], [z2, top, 'var(--up-soft)']].forEach(([p0, p1, col]) => g += `<rect x="${BX}" y="${y(p1)}" width="${BW}" height="${Math.max(1, y(p0) - y(p1))}" fill="${col}"/>`);
-  g += `<rect x="${BX}" y="${y(top)}" width="${BW}" height="${y(low) - y(top)}" fill="none" stroke="var(--line)" rx="3"/>`;
-  g += `<text x="${BX - 4}" y="${y(top) - 7}" font-size="10" fill="var(--faint)" font-family="var(--f-num)">${top === a.ind.high20 ? '20日高' : '區間頂'} ${pxd(top)}</text>`;
-  g += `<text x="${BX - 4}" y="${y(low) + 15}" font-size="10" fill="var(--faint)" font-family="var(--f-num)">20日低 ${pxd(low)}</text>`;
+  [[low, z1, 'var(--accent-soft)'], [z1, z2, 'var(--warn-soft)'], [z2, top, 'var(--up-soft)']].forEach(([p0, p1, col]) => { const ya = cy(p1), yb = cy(p0); if (yb - ya > 0.5) g += `<rect x="${BX}" y="${ya}" width="${BW}" height="${yb - ya}" fill="${col}"/>`; });
+  g += `<rect x="${BX}" y="${cy(top)}" width="${BW}" height="${Math.max(1, cy(low) - cy(top))}" fill="none" stroke="var(--line)" rx="3"/>`;
+  g += `<text x="${BX - 4}" y="${cy(top) - 8}" font-size="11" fill="var(--faint)" font-family="var(--f-num)">${y(top) < t0 ? '↑ ' : ''}${top === a.ind.high20 ? '20日高' : '區間頂'} ${pxd(top)}</text>`;
+  g += `<text x="${BX - 4}" y="${cy(low) + 17}" font-size="11" fill="var(--faint)" font-family="var(--f-num)">${y(low) > b0 ? '↓ ' : ''}20日低 ${pxd(low)}</text>`;
   // 主軸
   g += `<line x1="${AX}" x2="${AX}" y1="${t0}" y2="${b0}" stroke="var(--line)" stroke-width="2"/>`;
   if (a.zone) g += `<rect x="${AX - 20}" y="${y(a.zone.hi)}" width="40" height="${Math.max(4, y(a.zone.lo) - y(a.zone.hi))}" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-dasharray="3 3"/>`;
@@ -35,8 +36,9 @@ function ladder(a) {
   marks.push({ p: c, label: '現在', col: 'var(--ink)', now: true });
   marks.forEach(m => m.ly = y(m.p));
   marks.sort((p, q) => p.ly - q.ly);
-  for (let i = 1; i < marks.length; i++) if (marks[i].ly - marks[i - 1].ly < 30) marks[i].ly = marks[i - 1].ly + 30;
-  const over = marks.at(-1).ly - (H - 8); if (over > 0) marks.forEach(m => m.ly -= over);
+  for (let i = 1; i < marks.length; i++) if (marks[i].ly - marks[i - 1].ly < 34) marks[i].ly = marks[i - 1].ly + 34;
+  const over = marks.at(-1).ly - (H - 18); if (over > 0) marks.forEach(m => m.ly -= over);
+  if (marks[0].ly < 18) { const d = 18 - marks[0].ly; marks.forEach(m => m.ly += d); }
   for (const m of marks) {
     const py = y(m.p), dist = (m.p / c - 1) * 100;
     if (m.band && m.band[0] !== m.band[1]) g += `<rect x="${AX - 9}" y="${y(m.band[1])}" width="18" height="${Math.max(3, y(m.band[0]) - y(m.band[1]))}" rx="3" fill="${m.col}" opacity=".22"/>`;
@@ -45,8 +47,8 @@ function ladder(a) {
     } else g += `<line x1="${AX - 14}" x2="${AX + 14}" y1="${py}" y2="${py}" stroke="${m.col}" stroke-width="3" stroke-linecap="round"/>`;
     if (Math.abs(m.ly - py) > 2) g += `<path d="M${AX + 16} ${py} L${AX + 24} ${m.ly - 4}" stroke="var(--line)" fill="none"/>`;
     const dots = m.rank ? ' ' + '●'.repeat(m.rank) + '○'.repeat(4 - m.rank) : '';
-    g += `<text x="${AX + 26}" y="${m.ly - 6}" font-size="11" font-weight="700" fill="${m.now ? 'var(--ink)' : m.col}" font-family="var(--f-body)">${m.label}<tspan fill="var(--faint)" font-size="9" font-family="var(--f-num)">${dots}</tspan></text>
-      <text x="${AX + 26}" y="${m.ly + 10}" font-size="${m.now ? 16 : 14}" font-weight="700" fill="${m.now ? 'var(--ink)' : m.col}" font-family="var(--f-num)">${pxd(m.p)}${m.now ? '' : `<tspan font-size="11" font-weight="500" fill="var(--muted)"> ${dist > 0 ? '+' : ''}${dist.toFixed(1)}%</tspan>`}</text>`;
+    g += `<text x="${AX + 26}" y="${m.ly - 6}" font-size="12" font-weight="700" fill="${m.now ? 'var(--ink)' : m.col}" font-family="var(--f-body)">${m.label}<tspan fill="var(--faint)" font-size="10" font-family="var(--f-num)">${dots}</tspan></text>
+      <text x="${AX + 26}" y="${m.ly + 10}" font-size="${m.now ? 17 : 15}" font-weight="700" fill="${m.now ? 'var(--ink)' : m.col}" font-family="var(--f-num)">${pxd(m.p)}${m.now ? '' : `<tspan font-size="11" font-weight="500" fill="var(--muted)"> ${dist > 0 ? '+' : ''}${dist.toFixed(1)}%</tspan>`}</text>`;
   }
   const legend = `<div class="map-legend"><span><i style="background:var(--up-soft)"></i>偏熱區</span><span><i style="background:var(--warn-soft)"></i>中段區</span><span><i style="background:var(--accent-soft)"></i>低檔區</span><span><i style="background:var(--res)"></i>壓力</span><span><i style="background:var(--sup)"></i>支撐</span><span class="num">●●●● 強度</span></div>`;
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="價位地圖：現價 ${pxd(c)}">${g}</svg>${legend}`;
