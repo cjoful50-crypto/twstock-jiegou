@@ -297,3 +297,6 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .mini-tabs{display:flex;gap:4px;margin:2px 0}
 .mini-tabs button{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:3px 12px;font-size:.8rem;font-weight:700}
 .mini-tabs button[aria-selected="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+
+.score-grid table{min-width:560px}
+#scoreList .stock-table{min-width:640px}
