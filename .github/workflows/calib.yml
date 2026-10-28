@@ -1,0 +1,32 @@
+name: 校正資料
+on:
+  workflow_dispatch:
+    inputs:
+      codes:
+        description: '股票代號，逗號分隔'
+        required: true
+permissions:
+  contents: write
+concurrency:
+  group: daily
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node scripts/calib-fetch.js
+        env:
+          CODES: ${{ github.event.inputs.codes }}
+      - run: |
+          git config user.name "twstock-bot"
+          git config user.email "twstock-bot@users.noreply.github.com"
+          git add data/calib
+          git diff --cached --quiet && exit 0
+          git commit -m "校正資料"
+          git pull --rebase origin main
+          git push origin HEAD:main
