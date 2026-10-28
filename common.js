@@ -19,7 +19,7 @@ const Recent = {
 
 let STOCKS = null, SECTORS = [], stocksP = null;
 function loadStocks() {
-  if (!stocksP) stocksP = fetch('/api/list').then(r => r.json()).then(j => { if (Array.isArray(j)) STOCKS = j; else if (j && Array.isArray(j.stocks)) { STOCKS = j.stocks; SECTORS = j.sectors || []; } return STOCKS; }).catch(() => null);
+  if (!stocksP) stocksP = fetch('/api/list').then(r => r.json()).then(j => { if (Array.isArray(j)) STOCKS = j; else if (j && Array.isArray(j.stocks)) { STOCKS = j.stocks; SECTORS = j.sectors || []; window.LIST_DATE = j.date || null; } return STOCKS; }).catch(() => null);
   return stocksP;
 }
 function findStocks(q, n = 8) {

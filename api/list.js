@@ -39,7 +39,22 @@ module.exports = async (req, res) => {
     const prev = close != null && change != null ? close - change : null;
     list.push([code, name, mkt, sec, close, prev ? +((change / prev) * 100).toFixed(2) : null, vol != null ? Math.round(vol / 1000) : null]);
   };
-  for (const x of Array.isArray(twse) ? twse : []) push(String(x.Code), String(x.Name).trim(), '上市', num(x.ClosingPrice), num(x.Change), num(x.TradeVolume));
+  // 上市：優先用當天的每日收盤行情（MI_INDEX），開放資料（STOCK_DAY_ALL）通常隔天才更新
+  let dataDate = null, mi = null;
+  const t = new Date(Date.now() + 8 * 3600e3);
+  for (let i = 0; i < 7 && !mi; i++) {
+    const d = new Date(t); d.setUTCDate(d.getUTCDate() - i); const wd = d.getUTCDay(); if (!wd || wd === 6) continue;
+    const ds = d.toISOString().slice(0, 10).replace(/-/g, '');
+    const j = await get(`https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date=${ds}&type=ALLBUT0999&response=json`, 20000);
+    const tb = (j && j.tables || []).find(x => (x.fields || []).includes('證券代號') && (x.fields || []).includes('收盤價'));
+    if (tb && tb.data && tb.data.length > 500) { mi = tb; dataDate = `${ds.slice(0, 4)}/${ds.slice(4, 6)}/${ds.slice(6)}`; }
+  }
+  if (mi) {
+    const f = mi.fields, ix = k => f.indexOf(k), iC = ix('證券代號'), iN = ix('證券名稱'), iV = ix('成交股數'), iP = ix('收盤價'), iS = ix('漲跌(+/-)'), iD = ix('漲跌價差');
+    for (const r of mi.data) { const sign = /-/.test(String(r[iS])) ? -1 : 1; const ch = num(r[iD]); push(String(r[iC]).trim(), String(r[iN]).trim(), '上市', num(r[iP]), ch == null ? null : sign * ch, num(r[iV])); }
+  } else {
+    for (const x of Array.isArray(twse) ? twse : []) push(String(x.Code), String(x.Name).trim(), '上市', num(x.ClosingPrice), num(x.Change), num(x.TradeVolume));
+  }
   if (Array.isArray(tpex) && tpex.length) {
     const s = tpex[0], kc = key(s, /SecuritiesCompanyCode|^Code$/), kn = key(s, /CompanyName|^Name$/), kp = key(s, /^Close$|ClosingPrice/), kch = key(s, /^Change$/), kv = key(s, /TradingShares|TradeVolume|Volume/);
     for (const x of tpex) push(String(x[kc]).trim(), String(x[kn]).trim(), '上櫃', num(x[kp]), num(x[kch]), num(x[kv]));
@@ -52,5 +67,5 @@ module.exports = async (req, res) => {
   const counts = {}; for (const s of list) if (s[3]) counts[s[3]] = (counts[s[3]] || 0) + 1;
   const sectors = Object.entries(counts).map(([id, n]) => ({ id, name: id === 'ETF' ? 'ETF' : (SECTORS[id] || '其他'), n })).filter(s => s.name !== '其他' || s.n > 0).sort((a, b) => (a.id === 'ETF') - (b.id === 'ETF') || a.id.localeCompare(b.id));
   res.setHeader('Cache-Control', 's-maxage=1800, stale-while-revalidate=86400');
-  res.status(200).end(JSON.stringify({ sectors, stocks: list }));
+  res.status(200).end(JSON.stringify({ sectors, stocks: list, date: dataDate }));
 };

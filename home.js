@@ -120,7 +120,7 @@ function renderBrowse() {
   const total = rows.length; if (!showAll) rows = rows.slice(0, 30);
   $('#sectorTable').innerHTML = `<table class="stock-table"><thead><tr><th>股票</th><th>市場</th><th>收盤</th><th>漲跌</th><th>成交量（張）</th><th></th></tr></thead><tbody>${rows.map(s => `<tr data-code="${esc(s[0])}"><td class="nm"><a href="/analysis/${esc(s[0])}"><span class="num">${esc(s[0])}</span>${esc(s[1])}</a></td><td class="small muted">${s[2]}</td><td class="num">${pxd(s[4])}</td><td class="num ${cls(s[5])}">${s[5] == null ? '—' : sg(s[5]) + '%'}</td><td class="num">${fi(s[6])}</td><td>${starBtn(s[0], s[1])}</td></tr>`).join('')}</tbody></table>
     ${total > rows.length ? `<button class="btn ghost" type="button" id="moreRows" style="margin-top:10px">顯示全部 ${total} 檔</button>` : ''}`;
-  $('#browseDate').textContent = '最近一個交易日收盤資料';
+  $('#browseDate').textContent = window.LIST_DATE ? window.LIST_DATE + ' 收盤資料' : '最近一個交易日收盤資料';
   bindStars($('#sectorTable'), renderWatch);
   $('#sectorTable').querySelectorAll('tr[data-code]').forEach(tr => tr.onclick = e => { if (!e.target.closest('a,button')) goTo(tr.dataset.code); });
   const more = $('#moreRows'); if (more) more.onclick = () => { showAll = true; renderBrowse(); };
