@@ -13,7 +13,7 @@
 <div class="wrap">
   <header class="top">
     <div class="brand"><a href="/"><b>盤後結構室</b></a><span>收盤資料・結構價位・五面向評分</span></div>
-    <nav class="chips" aria-label="頁面導覽"><a class="chip" href="#intraday" style="text-decoration:none">盤中觀察</a><a class="chip" href="#picks" style="text-decoration:none">今日名單</a><a class="chip" href="#guide" style="text-decoration:none">使用教學</a></nav>
+    <nav class="chips" aria-label="頁面導覽"><a class="chip" href="#watch" style="text-decoration:none">我的選股</a><a class="chip" href="#browse" style="text-decoration:none">依類型找股票</a><a class="chip" href="#intraday" style="text-decoration:none">盤中觀察</a><a class="chip" href="#picks" style="text-decoration:none">今日名單</a><a class="chip" href="#guide" style="text-decoration:none">使用教學</a></nav>
   </header>
 
   <section class="hero-home" aria-labelledby="heroTitle">
@@ -29,6 +29,16 @@
       <p class="search-msg" hidden></p>
     </div>
     <div class="quick" id="quick"></div>
+  </section>
+
+  <section class="card" id="watch" aria-labelledby="watchTitle"></section>
+
+  <section class="card" id="browse" aria-labelledby="browseTitle">
+    <div class="section-head"><h2 id="browseTitle">依類型找股票</h2><span class="small muted" id="browseDate"></span></div>
+    <p class="small muted" style="margin:4px 0 0">選一個產業，看這個類別裡的股票今天的收盤價、漲跌和成交量。點股票名稱看完整分析，按 ☆ 加入我的選股。</p>
+    <div class="sector-tabs" id="sectorTabs" role="tablist" aria-label="產業類別"></div>
+    <div class="sort-row" id="sortRow"></div>
+    <div class="scroll" id="sectorTable"><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">載入股票清單…</span></div></div>
   </section>
 
   <section class="card" id="intraday" aria-labelledby="intraTitle"></section>

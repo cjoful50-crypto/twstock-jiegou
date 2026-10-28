@@ -1,7 +1,7 @@
 // 股票清單：代號、名稱、市場、產業、收盤價、漲跌幅、成交量（張）。給搜尋與產業瀏覽用
 const UA = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130 Safari/537.36', Accept: 'application/json' };
 const errs = [];
-const get = url => fetch(url, { headers: UA, signal: AbortSignal.timeout(15000) }).then(async r => { const t = await r.text(); try { return JSON.parse(t); } catch (e) { errs.push(url + ' ' + r.status + ' ' + t.slice(0, 120)); return []; } }).catch(e => { errs.push(url + ' ' + e); return []; });
+const get = (url, ms = 15000) => fetch(url, { headers: UA, signal: AbortSignal.timeout(ms) }).then(async r => { const t = await r.text(); try { return JSON.parse(t); } catch (e) { errs.push(url + ' ' + r.status + ' ' + t.slice(0, 120)); return []; } }).catch(e => { errs.push(url + ' ' + e); return []; });
 const num = s => { const v = parseFloat(String(s ?? '').replace(/[,+\s]/g, '')); return isNaN(v) ? null : v; };
 const ok = c => /^\d{4}$/.test(c) || /^00\d{2,4}[A-Z]?$/.test(c); // 一般股票與 ETF，排除權證
 const key = (o, re) => Object.keys(o || {}).find(k => re.test(k));
@@ -17,6 +17,7 @@ module.exports = async (req, res) => {
     get('https://openapi.twse.com.tw/v1/opendata/t187ap03_L'),
     get('https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O')
   ]);
+  if (!Array.isArray(otInfo) || !otInfo.length) otInfo = await get('https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O', 25000);
   let tpexRows = null;
   if (!Array.isArray(tpex) || !tpex.length) {
     const j = await get('https://www.tpex.org.tw/www/zh-tw/afterTrading/otc?type=EW&response=json');

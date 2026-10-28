@@ -62,3 +62,28 @@ function attachSearch(form, input, list) {
     else { const m = form.parentElement.querySelector('.search-msg'); if (m) { m.hidden = false; m.textContent = `找不到「${v}」，請輸入股票代號或完整名稱。`; } }
   });
 }
+
+/* 我的選股：存在這台裝置的瀏覽器裡 */
+const Watch = {
+  get() { try { return JSON.parse(localStorage.getItem('jiegou-watch') || '[]') || []; } catch (e) { return []; } },
+  save(list) { try { localStorage.setItem('jiegou-watch', JSON.stringify(list)); } catch (e) {} },
+  has(code) { return this.get().some(x => x.code === code); },
+  toggle(code, name) {
+    const list = this.get();
+    if (list.some(x => x.code === code)) { this.save(list.filter(x => x.code !== code)); return false; }
+    list.unshift({ code, name, added: new Date().toISOString().slice(0, 10) }); this.save(list); return true;
+  },
+  update(code, patch) { const list = this.get(); const x = list.find(y => y.code === code); if (x) { Object.assign(x, patch); this.save(list); } }
+};
+function starBtn(code, name) {
+  const on = Watch.has(code);
+  return `<button class="star" type="button" data-star="${esc(code)}" data-name="${esc(name || '')}" aria-pressed="${on}" aria-label="${on ? '移出我的選股' : '加入我的選股'}" title="${on ? '移出我的選股' : '加入我的選股'}">${on ? '★' : '☆'}</button>`;
+}
+function bindStars(root, after) {
+  root.querySelectorAll('[data-star]').forEach(b => b.onclick = e => {
+    e.stopPropagation(); e.preventDefault();
+    const on = Watch.toggle(b.dataset.star, b.dataset.name);
+    b.setAttribute('aria-pressed', on); b.textContent = on ? '★' : '☆'; b.title = b.ariaLabel = on ? '移出我的選股' : '加入我的選股';
+    if (after) after();
+  });
+}

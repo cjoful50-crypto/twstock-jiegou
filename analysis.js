@@ -96,7 +96,7 @@ function render(s) {
   <section class="card">
     <div class="hero">
       <div>
-        <div class="id"><span class="code">${esc(s.code)}</span><span class="name">${esc(s.name || '')}</span></div>
+        <div class="id"><span class="code">${esc(s.code)}</span><span class="name">${esc(s.name || '')}</span><button class="watch-btn" type="button" id="watchBtn" aria-pressed="${Watch.has(s.code)}">${Watch.has(s.code) ? '★ 已加入我的選股' : '☆ 加入我的選股'}</button></div>
         ${s.live ? `<div class="live-badge"><span class="dot${s.live.open ? ' on' : ''}"></span>${s.live.open ? '盤中即時' : '今日收盤'} ${esc(s.live.time || '')}<span class="muted">・證交所即時行情，約延遲數秒；法人與籌碼為前一交易日</span></div>` : `<div class="small muted">資料更新至 ${esc(t.d.replace(/-/g, '/'))} 收盤</div>`}
         <div class="price"><span class="px num">${pxd(c)}</span><span class="ch num ${cls(ind.chg)}">${sg(ind.chg)}（${sg(ind.chgPct)}%）</span></div>
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="small muted">走勢</span><span class="pill ${trendCls(a.trendLabel)}">${a.trendLabel}</span></div>
@@ -195,6 +195,9 @@ function render(s) {
   const showTab = () => { $('#panel').innerHTML = panels[tab](); document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab)); };
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; showTab(); });
   showTab();
+  const wb = $('#watchBtn');
+  if (wb) wb.onclick = () => { const on = Watch.toggle(s.code, s.name); if (on) Watch.update(s.code, { index: a.index, trend: a.trendLabel, date: t.d }); wb.setAttribute('aria-pressed', on); wb.textContent = on ? '★ 已加入我的選股' : '☆ 加入我的選股'; };
+  Watch.update(s.code, { index: a.index, trend: a.trendLabel, date: t.d, name: s.name });
 }
 
 

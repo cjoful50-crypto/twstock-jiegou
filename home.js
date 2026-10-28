@@ -1,6 +1,7 @@
 /* 首頁：搜尋、快速選股、盤中當沖觀察、盤後名單 */
 attachSearch($('#searchForm'), $('#q'), $('#suggest'));
-loadStocks();
+loadStocks().then(() => { renderBrowse(); });
+
 
 (function quick() {
   const rec = Recent.get();
@@ -72,3 +73,56 @@ async function loadPicks() {
 
 loadIntraday();
 loadPicks();
+
+/* 我的選股 */
+let watchTimer = null;
+async function renderWatch() {
+  const box = $('#watch'), list = Watch.get();
+  const head = `<div class="section-head"><h2 id="watchTitle">我的選股</h2><span class="small muted" id="watchState"></span></div>`;
+  if (!list.length) {
+    box.innerHTML = head + `<p class="small muted" style="margin:6px 0 0">還沒有加入任何股票。在個股頁按「☆ 加入我的選股」，或在下方「依類型找股票」點 ☆，就會出現在這裡。清單存在這台裝置的瀏覽器裡。</p>`;
+    return;
+  }
+  const rowsHtml = (q = {}) => list.map(w => { const x = q[w.code] || {}; const chg = x.price && x.prev ? (x.price / x.prev - 1) * 100 : null;
+    return `<tr data-code="${esc(w.code)}"><td class="nm"><a href="/analysis/${esc(w.code)}"><span class="num">${esc(w.code)}</span>${esc(w.name || x.name || '')}</a></td>
+      <td class="num">${x.price ? pxd(x.price) : '—'}</td><td class="num ${cls(chg)}">${chg == null ? '—' : sg(chg) + '%'}</td><td class="num">${x.vol != null ? fi(x.vol) : '—'}</td>
+      <td class="num" style="color:${scoreColor(w.index)}">${w.index ?? '—'}${w.trend ? `<span class="small muted">・${esc(w.trend)}</span>` : ''}</td><td>${starBtn(w.code, w.name)}</td></tr>`; }).join('');
+  const table = q => `<div class="scroll"><table class="stock-table"><thead><tr><th>股票</th><th>價格</th><th>漲跌</th><th>成交量（張）</th><th>漲停指數</th><th></th></tr></thead><tbody>${rowsHtml(q)}</tbody></table></div>
+    <p class="note" style="margin:6px 0 0">漲停指數是你上次打開該檔個股頁時算出的分數；點進去會用最新資料重算。清單存在這台裝置的瀏覽器裡，換手機或電腦不會同步。</p>`;
+  box.innerHTML = head + table();
+  const bind = () => { bindStars(box, renderWatch); box.querySelectorAll('tr[data-code]').forEach(tr => tr.onclick = e => { if (!e.target.closest('a,button')) goTo(tr.dataset.code); }); };
+  bind();
+  try {
+    const codes = list.map(w => w.code), q = {}; let sess = null;
+    for (let i = 0; i < codes.length; i += 20) { const r = await fetch('/api/quote?codes=' + codes.slice(i, i + 20).join(',')); const j = await r.json(); sess = j.session; (j.quotes || []).forEach(x => { if (x.price) q[x.code] = x; }); }
+    box.innerHTML = head + table(q); bind();
+    const any = Object.values(q)[0];
+    $('#watchState').innerHTML = sess && sess.open ? `<span class="live-badge"><span class="dot on"></span>盤中 ${esc((any && any.time || '').slice(0, 5))}・每 30 秒更新</span>` : `<span class="live-badge"><span class="dot"></span>${any && any.date ? esc(any.date.replace(/-/g, '/')) + ' ' : ''}收盤價</span>`;
+    clearTimeout(watchTimer); if (sess && sess.open) watchTimer = setTimeout(renderWatch, 30000);
+  } catch (e) { $('#watchState').textContent = '即時價格暫時取不到'; }
+}
+renderWatch();
+
+/* 依類型找股票 */
+let curSector = null, sortBy = 'vol', showAll = false;
+function renderBrowse() {
+  if (!STOCKS) { $('#sectorTable').innerHTML = '<p class="err">股票清單暫時載不到，請重新整理頁面。</p>'; return; }
+  const secs = SECTORS.length ? SECTORS : [];
+  if (!curSector) curSector = (secs.find(s => s.id === '24') || secs[0] || {}).id;
+  $('#sectorTabs').innerHTML = secs.map(s => `<button class="chip" type="button" role="tab" data-sec="${esc(s.id)}" aria-selected="${s.id === curSector}" aria-pressed="${s.id === curSector}">${esc(s.name)} <span class="small muted num">${s.n}</span></button>`).join('');
+  $('#sectorTabs').querySelectorAll('[data-sec]').forEach(b => b.onclick = () => { curSector = b.dataset.sec; showAll = false; renderBrowse(); });
+  const sorts = [['vol', '成交量'], ['up', '漲幅'], ['down', '跌幅']];
+  $('#sortRow').innerHTML = '排序：' + sorts.map(([k, l]) => `<button type="button" data-sort="${k}" aria-pressed="${sortBy === k}">${l}</button>`).join('');
+  $('#sortRow').querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { sortBy = b.dataset.sort; renderBrowse(); });
+  let rows = STOCKS.filter(s => s[3] === curSector);
+  const f = { vol: (a, b) => (b[6] || 0) - (a[6] || 0), up: (a, b) => (b[5] ?? -99) - (a[5] ?? -99), down: (a, b) => (a[5] ?? 99) - (b[5] ?? 99) }[sortBy];
+  rows.sort(f);
+  const total = rows.length; if (!showAll) rows = rows.slice(0, 30);
+  $('#sectorTable').innerHTML = `<table class="stock-table"><thead><tr><th>股票</th><th>市場</th><th>收盤</th><th>漲跌</th><th>成交量（張）</th><th></th></tr></thead><tbody>${rows.map(s => `<tr data-code="${esc(s[0])}"><td class="nm"><a href="/analysis/${esc(s[0])}"><span class="num">${esc(s[0])}</span>${esc(s[1])}</a></td><td class="small muted">${s[2]}</td><td class="num">${pxd(s[4])}</td><td class="num ${cls(s[5])}">${s[5] == null ? '—' : sg(s[5]) + '%'}</td><td class="num">${fi(s[6])}</td><td>${starBtn(s[0], s[1])}</td></tr>`).join('')}</tbody></table>
+    ${total > rows.length ? `<button class="btn ghost" type="button" id="moreRows" style="margin-top:10px">顯示全部 ${total} 檔</button>` : ''}`;
+  $('#browseDate').textContent = '最近一個交易日收盤資料';
+  bindStars($('#sectorTable'), renderWatch);
+  $('#sectorTable').querySelectorAll('tr[data-code]').forEach(tr => tr.onclick = e => { if (!e.target.closest('a,button')) goTo(tr.dataset.code); });
+  const more = $('#moreRows'); if (more) more.onclick = () => { showAll = true; renderBrowse(); };
+}
+window.addEventListener('pageshow', e => { if (e.persisted) renderWatch(); });

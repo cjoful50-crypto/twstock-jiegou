@@ -203,3 +203,22 @@ a.btn{text-decoration:none;display:inline-block}
 .howto div{background:var(--sunk);border-radius:10px;padding:10px 12px;font-size:.82rem;color:var(--muted);display:grid;gap:2px;align-content:start}
 .howto b{color:var(--ink);font-size:.85rem}
 @media (max-width:720px){.zones,.howto{grid-template-columns:1fr}}
+
+/* 我的選股、產業瀏覽 */
+.star{border:0;background:none;font-size:1.15rem;line-height:1;color:var(--faint);padding:4px 6px;border-radius:6px}
+.star[aria-pressed="true"]{color:var(--warn)}
+.star:hover{background:var(--sunk)}
+.watch-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:5px 14px;font-weight:700;font-size:.85rem}
+.watch-btn[aria-pressed="true"]{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
+.sector-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-top:12px;scrollbar-width:thin}
+.sector-tabs .chip{white-space:nowrap;flex:none}
+.stock-table{width:100%;margin-top:8px}
+.stock-table td,.stock-table th{padding:9px 8px}
+.stock-table tbody tr{cursor:pointer}
+.stock-table tbody tr:hover{background:var(--sunk)}
+.stock-table td.nm{text-align:left;white-space:normal}
+.stock-table td.nm a{color:var(--ink);text-decoration:none;font-weight:700}
+.stock-table td.nm .num{color:var(--accent);margin-right:6px;font-weight:600}
+.sort-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px;font-size:.8rem;color:var(--muted)}
+.sort-row button{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:8px;padding:3px 10px;font-size:.8rem}
+.sort-row button[aria-pressed="true"]{color:var(--ink);border-color:var(--ink)}
