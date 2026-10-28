@@ -113,6 +113,7 @@ function renderBrowse() {
   $('#sectorTabs').innerHTML = secs.map(s => `<button class="chip" type="button" role="tab" data-sec="${esc(s.id)}" aria-selected="${s.id === curSector}" aria-pressed="${s.id === curSector}">${esc(s.name)} <span class="small muted num">${s.n}</span></button>`).join('');
   $('#sectorTabs').querySelectorAll('[data-sec]').forEach(b => b.onclick = () => { curSector = b.dataset.sec; showAll = false; history.replaceState(null, '', '#' + curSector); renderBrowse(); });
   const sorts = [['vol', '成交量'], ['up', '漲幅'], ['down', '跌幅']];
+  const selTab = $('#sectorTabs [aria-pressed="true"]'); if (selTab) { const box = $('#sectorTabs'); box.scrollLeft = selTab.offsetLeft - box.clientWidth / 2 + selTab.clientWidth / 2; }
   $('#sortRow').innerHTML = '排序：' + sorts.map(([k, l]) => `<button type="button" data-sort="${k}" aria-pressed="${sortBy === k}">${l}</button>`).join('');
   $('#sortRow').querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { sortBy = b.dataset.sort; renderBrowse(); });
   let rows = STOCKS.filter(s => s[3] === curSector);
