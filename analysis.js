@@ -196,7 +196,7 @@ const codeFromPath = () => decodeURIComponent((location.pathname.match(/\/analys
 function withLive(s, q) {
   if (!q || !q.price || !q.date) return s;
   const bars = s.bars.slice(), lastD = bars.at(-1).d;
-  if (q.date < lastD) return s;
+  if (q.date < lastD || (q.date === lastD && !(q._session || {}).open)) return s;
   const bar = { d: q.date, o: q.open ?? q.price, h: Math.max(q.high ?? q.price, q.price), l: Math.min(q.low ?? q.price, q.price), c: q.price, v: Math.round(q.vol || 0) };
   if (q.date === lastD) bars[bars.length - 1] = bar; else bars.push(bar);
   const sess = q._session || {};
