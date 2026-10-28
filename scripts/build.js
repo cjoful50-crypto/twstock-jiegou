@@ -72,22 +72,22 @@ const isoOf = d => d.toISOString().slice(0, 10);
   const H = [1, 5, 10, 20], picks = [];
   for (const d of allDates) {
     const i = idx.get(d); if (i == null) continue; const L = rd(path.join(DATA, 'daily', d + '.json'));
-    for (const cat of ['day', 'swing', 'long']) for (const p of L[cat] || []) {
-      const c0 = (days[i].q[p.code] || [])[3]; if (!c0) continue;
-      const row = { date: d, cat, code: p.code, name: p.name, close: c0 };
+    for (const cat of ['day', 'swing', 'long']) (L[cat] || []).forEach((p, rank) => {
+      const c0 = (days[i].q[p.code] || [])[3]; if (!c0) return;
+      const row = { date: d, cat, rank: rank + 1, code: p.code, name: p.name, close: c0 };
       for (const h of H) { const j = i + h; if (j <= last) { const c1 = (days[j].q[p.code] || [])[3]; if (c1) row['r' + h] = +((c1 / c0 - 1) * 100).toFixed(2); const t0 = taiex[d], t1 = taiex[days[j].d]; if (t0 && t1) row['m' + h] = +((t1 / t0 - 1) * 100).toFixed(2); } }
       if (i + 1 <= last) { const nb = days[i + 1].q[p.code]; if (nb && nb[0]) { row.oc = +((nb[3] / nb[0] - 1) * 100).toFixed(2); row.oh = +((nb[1] / nb[0] - 1) * 100).toFixed(2); } }
       picks.push(row);
-    }
+    });
   }
   const stat = (rows, k) => { const v = rows.map(r => r[k]).filter(x => x != null); if (!v.length) return null; const s = v.slice().sort((a, b) => a - b);
     return { n: v.length, avg: +(v.reduce((a, b) => a + b, 0) / v.length).toFixed(2), median: +s[Math.floor(s.length / 2)].toFixed(2), win: +(v.filter(x => x > 0).length / v.length * 100).toFixed(0) }; };
-  const summary = {};
-  for (const cat of ['day', 'swing', 'long']) {
-    const rows = picks.filter(p => p.cat === cat); summary[cat] = { picks: rows.length, from: rows.length ? rows[0].date : null };
-    for (const h of H) { summary[cat]['r' + h] = stat(rows, 'r' + h); summary[cat]['m' + h] = stat(rows, 'm' + h); }
-    summary[cat].oc = stat(rows, 'oc'); summary[cat].oh = stat(rows, 'oh');
-  }
-  wr(path.join(DATA, 'scorecard.json'), { updated: new Date().toISOString(), through: days[last].d, horizons: H, summary, picks: picks.slice().reverse() });
+  // 兩種統計：每天前 3 名、每天全部（最多 10 檔）
+  const summarize = sel => { const out = {}; for (const cat of ['day', 'swing', 'long']) {
+    const rows = picks.filter(p => p.cat === cat && sel(p)); out[cat] = { picks: rows.length, from: rows.length ? rows[0].date : null };
+    for (const h of H) { out[cat]['r' + h] = stat(rows, 'r' + h); out[cat]['m' + h] = stat(rows, 'm' + h); }
+    out[cat].oc = stat(rows, 'oc'); out[cat].oh = stat(rows, 'oh'); } return out; };
+  const summary = summarize(p => p.rank <= 3), summaryAll = summarize(() => true);
+  wr(path.join(DATA, 'scorecard.json'), { updated: new Date().toISOString(), through: days[last].d, horizons: H, summary, summaryAll, picks: picks.slice().reverse() });
   console.log(`::notice::完成 ${days[last].d}：名單 ${allDates.length} 天、成績單 ${picks.length} 筆、交易日 ${days.length}；最新名單 ${JSON.stringify(latest.counts)}`);
 })().catch(e => { console.log('::error::' + String(e && e.stack || e).replace(/\n/g, ' | ')); process.exit(1); });
