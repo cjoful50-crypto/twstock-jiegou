@@ -12,7 +12,7 @@ const call = code => new Promise(resolve => {
   for (const c of codes) {
     const r = await call(c);
     if (r.status === 200) { fs.writeFileSync(path.join(dir, c + '.json'), r.body); ok++; } else console.log('失敗', c, r.body.slice(0, 120));
-    await new Promise(r => setTimeout(r, 1500));
+    await new Promise(r => setTimeout(r, 4000));
   }
   console.log(`::notice::校正資料 ${ok}/${codes.length}`);
 })();

@@ -51,12 +51,20 @@ function monthList(n) {
   return out;
 }
 
+// 抓月資料：失敗會等一下再試，三次都失敗就標記為缺漏（不默默用不完整的資料計算）
+async function getMonth(url, ttl, missing, label) {
+  for (let a = 0; a < 3; a++) {
+    try { return await getJSON(url, ttl); } catch (e) { await new Promise(r => setTimeout(r, 1500 * (a + 1))); }
+  }
+  missing.push(label); return null;
+}
+
 /* 上市：個股日成交 */
 async function twseBars(code) {
-  let name = null; const bars = [];
+  let name = null; const bars = [], missing = [];
   for (const { y, m, current } of monthList(7)) {
     const url = `${TWSE}/afterTrading/STOCK_DAY?date=${y}${String(m).padStart(2, '0')}01&stockNo=${code}&response=json`;
-    let j; try { j = await getJSON(url, current ? 10 * 60e3 : 24 * 3600e3); } catch (e) { continue; }
+    const j = await getMonth(url, current ? 10 * 60e3 : 24 * 3600e3, missing, `${y}/${m}`); if (!j) continue;
     if (j.stat !== 'OK' || !j.data) continue;
     if (!name && j.title) { const t = j.title.split(/\s+/); const i = t.indexOf(code); if (i >= 0) name = t[i + 1]; }
     for (const r of j.data) {
@@ -64,15 +72,15 @@ async function twseBars(code) {
       if (d && c && o && h && l) bars.push({ d, o, h, l, c, v: Math.round(v / 1000) });
     }
   }
-  return { name, bars };
+  return { name, bars, missing };
 }
 
 /* 上櫃：個股日成交（櫃買中心） */
 async function tpexBars(code) {
-  let name = null; const bars = [];
+  let name = null; const bars = [], missing = [];
   for (const { y, m, current } of monthList(7)) {
     const url = `https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock?code=${code}&date=${y}/${String(m).padStart(2, '0')}/01&id=&response=json`;
-    let j; try { j = await getJSON(url, current ? 10 * 60e3 : 24 * 3600e3); } catch (e) { continue; }
+    const j = await getMonth(url, current ? 10 * 60e3 : 24 * 3600e3, missing, `${y}/${m}`); if (!j) continue;
     const tables = j.tables || (j.aaData ? [{ data: j.aaData }] : []);
     if (!name && j.name) name = j.name;
     for (const t of tables) for (const r of (t.data || [])) {
@@ -82,7 +90,7 @@ async function tpexBars(code) {
     }
     if (!name && tables[0] && tables[0].title) { const mm = String(tables[0].title).match(new RegExp(code + '\\s*(\\S+)')); if (mm) name = mm[1]; }
   }
-  return { name, bars };
+  return { name, bars, missing };
 }
 
 async function safe(p) { try { return await p; } catch (e) { return null; } }
@@ -92,12 +100,15 @@ module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   if (!/^[0-9A-Z]{4,6}$/.test(code)) { res.status(400).end(JSON.stringify({ error: '請輸入 4 到 6 碼的股票代號，例如 2330。' })); return; }
   try {
-    let market = 'TWSE', { name, bars } = await twseBars(code);
-    if (bars.length < 30) { const t = await tpexBars(code); if (t.bars.length > bars.length) { market = 'TPEx'; name = t.name || name; bars = t.bars; } }
+    let market = 'TWSE', { name, bars, missing } = await twseBars(code);
+    if (bars.length < 30) { const t = await tpexBars(code); if (t.bars.length > bars.length) { market = 'TPEx'; name = t.name || name; bars = t.bars; missing = t.missing; } }
+    // 有月份抓不到時，寧可回報稍後再試，也不要用缺漏的資料算出錯誤的分數
+    if (bars.length && missing.length) { res.status(503).end(JSON.stringify({ error: '證交所資料暫時無法完整取得，請稍後再試一次。', detail: '缺少月份：' + missing.join('、') })); return; }
     if (!bars.length) { res.status(404).end(JSON.stringify({ error: `找不到 ${code} 的成交資料。請確認代號是上市或上櫃股票，ETF 與權證不在支援範圍。` })); return; }
     bars.sort((a, b) => a.d < b.d ? -1 : 1);
     const seen = new Set(); bars = bars.filter(b => !seen.has(b.d) && seen.add(b.d));
 
+    if (name) name = name.replace(/[*＊]+$/, '');
     const out = { code, name: name || code, market, bars, inst: [], margin: [], sbl: [], fund: {}, dates: { price: slash(bars.at(-1).d) }, fetchedAt: new Date().toISOString(),
       source: market === 'TWSE' ? '臺灣證券交易所、公開資訊觀測站' : '證券櫃檯買賣中心、公開資訊觀測站' };
 

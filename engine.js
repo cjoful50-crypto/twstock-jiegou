@@ -125,7 +125,16 @@ const Engine = (() => {
     return { sup, res, limitRef, bands, tol };
   }
 
-  function analyze(stock) {
+  const DEFAULTS = {
+    t_m5: 5, t_m20: 16, t_m60: 8, t_slope: 6, t_align: 8, t_hist: 5, t_chgK: 0.5, t_chgLo: -8, t_chgHi: 3, t_rsiLow: 4,
+    v_up: 12, v_upLow: -4, v_dnHigh: -12, v_dnLow: 4, v_obv: 10, v_share: 40, v_v5: 4, v_scale: 0.35,
+    i_k: 60, i_cap: 30, i_trust: 6, i_streak: 2, i_streakCap: 8, i_today: 5,
+    c_scale: 0.6, c_mK: 1.5, c_mKdown: 3, c_sbl: 1.5,
+    f_base: 40, f_yoyK: 0.6, f_yoyLo: -15, f_yoyHi: 25, f_momK: 0.5, f_peLo: 10, f_peMid: 5, f_peBad: -8, f_y5: 8, f_y3: 4, f_yLow: -2,
+    w_t: 0.25, w_v: 0.20, w_i: 0.20, w_c: 0.15, w_f: 0.20,
+    p_r1dist: 3, p_r1s: -8, p_r1: -5, p_risk: -8, p_bt: 12, p_bk: 0.8, p_bmax: 20, p_rsiT: 80, p_rsi: -6, p_blk: -6
+  };
+  function analyze(stock, params) {
     const B = stock.bars, n = B.length;
     if (n < 30) throw new Error('至少需要 30 個交易日的日K資料才能計算（目前 ' + n + ' 筆）');
     const C = B.map(b => b.c), H = B.map(b => b.h), L = B.map(b => b.l), V = B.map(b => b.v);
@@ -141,58 +150,59 @@ const Engine = (() => {
     const flows = summarizeFlows(stock);
     const st = structures(B, ind, flows);
 
-    /* 五面向評分，每一項都留下加減分理由 */
-    const mk = () => ({ items: [], add(label, pts) { this.items.push({ label, pts: Math.round(pts) }); } });
+    /* 五面向評分，每一項都留下加減分理由；P 為評分參數（預設值見 DEFAULTS） */
+    const P = Object.assign({}, DEFAULTS, params || {});
+    const mk = () => ({ items: [], add(label, pts) { this.items.push({ label, pts: Math.round(pts * 10) / 10 }); } });
     const m5 = ma5.at(-1), m20 = ma20.at(-1), m60 = ma60.at(-1);
     // 趨勢
     const T = mk();
-    T.add(c > m5 ? '收盤站上 MA5' : '收盤跌破 MA5', c > m5 ? 5 : -5);
-    T.add(c > m20 ? '收盤站上 MA20' : '收盤低於 MA20', c > m20 ? 16 : -16);
-    if (m60 != null) T.add(c > m60 ? '收盤站上 MA60（季線）' : '收盤低於 MA60（季線）', c > m60 ? 8 : -8);
-    T.add(ind.ma20Slope > 0 ? 'MA20 上彎' : 'MA20 下彎', ind.ma20Slope > 0 ? 6 : -6);
-    if (m60 != null && m5 > m20 && m20 > m60) T.add('均線多頭排列', 8); else if (m60 != null && m5 < m20 && m20 < m60) T.add('均線空頭排列', -8);
-    T.add(ind.hist > 0 ? 'MACD 柱狀體翻正' : (ind.hist > ind.histPrev ? 'MACD 柱狀體為負但收斂' : 'MACD 柱狀體擴大為負'), ind.hist > 0 ? 5 : ind.hist > ind.histPrev ? 0 : -5);
-    T.add('近 20 日漲跌 ' + ind.chg20.toFixed(1) + '%', clamp(ind.chg20 * 0.5, -8, 3));
-    if (ind.rsi < 25) T.add('RSI 低於 25，短線超賣', 4);
+    T.add(c > m5 ? '收盤站上 MA5' : '收盤跌破 MA5', c > m5 ? P.t_m5 : -P.t_m5);
+    T.add(c > m20 ? '收盤站上 MA20' : '收盤低於 MA20', c > m20 ? P.t_m20 : -P.t_m20);
+    if (m60 != null) T.add(c > m60 ? '收盤站上 MA60（季線）' : '收盤低於 MA60（季線）', c > m60 ? P.t_m60 : -P.t_m60);
+    T.add(ind.ma20Slope > 0 ? 'MA20 上彎' : 'MA20 下彎', ind.ma20Slope > 0 ? P.t_slope : -P.t_slope);
+    if (m60 != null && m5 > m20 && m20 > m60) T.add('均線多頭排列', P.t_align); else if (m60 != null && m5 < m20 && m20 < m60) T.add('均線空頭排列', -P.t_align);
+    T.add(ind.hist > 0 ? 'MACD 柱狀體翻正' : (ind.hist > ind.histPrev ? 'MACD 柱狀體為負但收斂' : 'MACD 柱狀體擴大為負'), ind.hist > 0 ? P.t_hist : ind.hist > ind.histPrev ? 0 : -P.t_hist);
+    T.add('近 20 日漲跌 ' + ind.chg20.toFixed(1) + '%', clamp(ind.chg20 * P.t_chgK, P.t_chgLo, P.t_chgHi));
+    if (ind.rsi < 25) T.add('RSI 低於 25，短線超賣', P.t_rsiLow);
     // 量價
     const VP = mk(); const up = t.c >= p.c;
-    if (up && volRatio > 1.2) VP.add('價漲量增', 12); else if (up && volRatio < 0.8) VP.add('價漲量縮', -4); else if (!up && volRatio > 1.2) VP.add('價跌量增', -12); else if (!up && volRatio < 0.8) VP.add('價跌量縮', 4); else VP.add('量能持平', 0);
+    if (up && volRatio > 1.2) VP.add('價漲量增', P.v_up); else if (up && volRatio < 0.8) VP.add('價漲量縮', P.v_upLow); else if (!up && volRatio > 1.2) VP.add('價跌量增', P.v_dnHigh); else if (!up && volRatio < 0.8) VP.add('價跌量縮', P.v_dnLow); else VP.add('量能持平', 0);
     let obv = 0; const obvA = B.map((b, i) => obv += i === 0 ? 0 : Math.sign(b.c - B[i - 1].c) * b.v);
     const obvSlope = obvA.at(-1) - obvA.at(-11);
-    VP.add(obvSlope > 0 ? '近 10 日 OBV 上升' : '近 10 日 OBV 下降', obvSlope > 0 ? 10 : -10);
+    VP.add(obvSlope > 0 ? '近 10 日 OBV 上升' : '近 10 日 OBV 下降', obvSlope > 0 ? P.v_obv : -P.v_obv);
     const w = B.slice(-20); let uv = 0, tv = 0; w.forEach((b, i) => { const prev = i ? w[i - 1].c : B[n - 21]?.c ?? b.o; tv += b.v; if (b.c >= prev) uv += b.v; });
-    VP.add('近 20 日上漲日成交量占 ' + Math.round(uv / tv * 100) + '%', (uv / tv - 0.5) * 40);
-    const v5 = sum(V.slice(-5)) / 5; VP.add(v5 > avgV20 ? '近 5 日量能高於月均量' : '近 5 日量能低於月均量', v5 > avgV20 ? (up ? 4 : -4) : 0);
+    VP.add('近 20 日上漲日成交量占 ' + Math.round(uv / tv * 100) + '%', (uv / tv - 0.5) * P.v_share);
+    const v5 = sum(V.slice(-5)) / 5; VP.add(v5 > avgV20 ? '近 5 日量能高於月均量' : '近 5 日量能低於月均量', v5 > avgV20 ? (up ? P.v_v5 : -P.v_v5) : 0);
     // 法人
     const I = mk(), fi = flows.inst; let instOk = !!fi;
     if (fi) {
       const tot5 = fi.f5 + fi.t5 + fi.d5, ratio = tot5 / avgV20;
-      I.add('三大法人近 5 日合計 ' + fmtInt(tot5) + ' 張（約 ' + (ratio * 100).toFixed(0) + '% 日均量）', clamp(ratio * 60, -30, 30));
-      if (fi.t5) I.add(fi.t5 > 0 ? '投信近 5 日買超' : '投信近 5 日賣超', fi.t5 > 0 ? 6 : -6);
-      if (fi.streak) I.add('外資連續' + (fi.streak > 0 ? '買超 ' : '賣超 ') + Math.abs(fi.streak) + ' 日', clamp(fi.streak * 2, -8, 8));
-      if (fi.fToday != null) I.add(fi.fToday > 0 ? '最新一日外資買超' : '最新一日外資賣超', fi.fToday > 0 ? 5 : -5);
+      I.add('三大法人近 5 日合計 ' + fmtInt(tot5) + ' 張（約 ' + (ratio * 100).toFixed(0) + '% 日均量）', clamp(ratio * P.i_k, -P.i_cap, P.i_cap));
+      if (fi.t5) I.add(fi.t5 > 0 ? '投信近 5 日買超' : '投信近 5 日賣超', fi.t5 > 0 ? P.i_trust : -P.i_trust);
+      if (fi.streak) I.add('外資連續' + (fi.streak > 0 ? '買超 ' : '賣超 ') + Math.abs(fi.streak) + ' 日', clamp(fi.streak * P.i_streak, -P.i_streakCap, P.i_streakCap));
+      if (fi.fToday != null) I.add(fi.fToday > 0 ? '最新一日外資買超' : '最新一日外資賣超', fi.fToday > 0 ? P.i_today : -P.i_today);
     }
     // 籌碼
     const CH = mk(), cs = flows.chip; let chipOk = !!cs;
     if (cs) {
-      if (cs.marginChg != null) CH.add('融資餘額 5 日 ' + sgn(cs.marginChg) + '%' + (cs.marginChg > 1 && ind.chg20 < 0 ? '（股價下跌期間融資增加）' : ''), clamp(-cs.marginChg * (ind.chg20 < 0 ? 3 : 1.5), -15, 15));
-      if (cs.sblChg != null) CH.add('借券賣出餘額 5 日 ' + sgn(cs.sblChg) + '%', clamp(-cs.sblChg * 1.5, -18, 18));
+      if (cs.marginChg != null) CH.add('融資餘額 5 日 ' + sgn(cs.marginChg) + '%' + (cs.marginChg > 1 && ind.chg20 < 0 ? '（股價下跌期間融資增加）' : ''), clamp(-cs.marginChg * (ind.chg20 < 0 ? P.c_mKdown : P.c_mK), -15, 15));
+      if (cs.sblChg != null) CH.add('借券賣出餘額 5 日 ' + sgn(cs.sblChg) + '%', clamp(-cs.sblChg * P.c_sbl, -18, 18));
       if (cs.ratio != null) CH.add('券資比 ' + cs.ratio.toFixed(1) + '%', cs.ratio > 15 ? 4 : 0);
     }
     // 基本面
     const F = mk(), fd = stock.fund || {}; let fundOk = ['pe', 'yld', 'revYoY'].some(k => fd[k] != null);
-    if (fd.revYoY != null) F.add('月營收年增 ' + sgn(fd.revYoY) + '%', clamp(fd.revYoY * 0.6, -15, 25));
-    if (fd.revMoM != null) F.add('月營收月增 ' + sgn(fd.revMoM) + '%', clamp(fd.revMoM * 0.5, -5, 5));
-    if (fd.pe != null) F.add('本益比 ' + fd.pe, fd.pe <= 0 ? -8 : fd.pe < 12 ? 10 : fd.pe < 20 ? 5 : fd.pe < 30 ? 0 : -8);
-    if (fd.yld != null) F.add('殖利率 ' + fd.yld + '%', fd.yld >= 5 ? 8 : fd.yld >= 3 ? 4 : fd.yld < 1.5 ? -2 : 0);
+    if (fd.revYoY != null) F.add('月營收年增 ' + sgn(fd.revYoY) + '%', clamp(fd.revYoY * P.f_yoyK, P.f_yoyLo, P.f_yoyHi));
+    if (fd.revMoM != null) F.add('月營收月增 ' + sgn(fd.revMoM) + '%', clamp(fd.revMoM * P.f_momK, -5, 5));
+    if (fd.pe != null) F.add('本益比 ' + fd.pe, fd.pe <= 0 ? P.f_peBad : fd.pe < 12 ? P.f_peLo : fd.pe < 20 ? P.f_peMid : fd.pe < 30 ? 0 : P.f_peBad);
+    if (fd.yld != null) F.add('殖利率 ' + fd.yld + '%', fd.yld >= 5 ? P.f_y5 : fd.yld >= 3 ? P.f_y3 : fd.yld < 1.5 ? P.f_yLow : 0);
 
-    const score = (o, base) => clamp(Math.round(base + sum(o.items.map(x => x.pts))), 0, 100);
+    const score = (o, base, k = 1) => clamp(Math.round(base + sum(o.items.map(x => x.pts)) * k), 0, 100);
     const dims = [
-      { key: 'trend', name: '趨勢面', w: .25, ok: true, s: score(T, 50), items: T.items },
-      { key: 'vp', name: '量價', w: .20, ok: true, s: clamp(Math.round(50 + sum(VP.items.map(x => x.pts)) * 0.35), 0, 100), items: VP.items },
-      { key: 'inst', name: '法人', w: .20, ok: instOk, s: instOk ? score(I, 50) : null, items: I.items },
-      { key: 'chip', name: '籌碼', w: .15, ok: chipOk, s: chipOk ? clamp(Math.round(50 + sum(CH.items.map(x => x.pts)) * 0.6), 0, 100) : null, items: CH.items },
-      { key: 'fund', name: '基本面', w: .20, ok: fundOk, s: fundOk ? score(F, 40) : null, items: F.items }
+      { key: 'trend', name: '趨勢面', w: P.w_t, ok: true, s: score(T, 50), items: T.items },
+      { key: 'vp', name: '量價', w: P.w_v, ok: true, s: score(VP, 50, P.v_scale), items: VP.items },
+      { key: 'inst', name: '法人', w: P.w_i, ok: instOk, s: instOk ? score(I, 50) : null, items: I.items },
+      { key: 'chip', name: '籌碼', w: P.w_c, ok: chipOk, s: chipOk ? score(CH, 50, P.c_scale) : null, items: CH.items },
+      { key: 'fund', name: '基本面', w: P.w_f, ok: fundOk, s: fundOk ? score(F, P.f_base) : null, items: F.items }
     ];
     const used = dims.filter(d => d.ok), wsum = sum(used.map(d => d.w));
     const raw = sum(used.map(d => d.s * d.w)) / wsum;
@@ -202,12 +212,12 @@ const Engine = (() => {
     let trendLabel = trendS >= 70 ? '多頭' : trendS >= 55 ? '偏多' : trendS >= 42 ? '整理' : trendS >= 30 ? '偏空' : '風險';
     if (trendS >= 55 && ((c / m20 - 1) * 100 > 15 || ind.rsi > 80)) trendLabel = '過熱';
     const R1 = st.res[0];
-    if (R1 && R1.dist < 3 && R1.rank >= 3) pen.push({ label: '距第一壓力不到 3%，且壓力強度「' + R1.strength + '」', pts: R1.rank === 4 ? -8 : -5 });
-    if (trendLabel === '風險') pen.push({ label: '走勢屬「風險」：均線與動能同步轉弱', pts: -8 });
+    if (R1 && R1.dist < P.p_r1dist && R1.rank >= 3) pen.push({ label: '距第一壓力不到 ' + P.p_r1dist + '%，且壓力強度「' + R1.strength + '」', pts: R1.rank === 4 ? P.p_r1s : P.p_r1 });
+    if (trendLabel === '風險') pen.push({ label: '走勢屬「風險」：均線與動能同步轉弱', pts: P.p_risk });
     const bias = (c / m20 - 1) * 100;
-    if (bias > 12) pen.push({ label: '股價離月線 +' + bias.toFixed(0) + '%，短線乖離過大', pts: -Math.min(20, Math.round((bias - 12) * 0.8)) });
-    if (ind.rsi > 80) pen.push({ label: 'RSI 高於 80，短線過熱', pts: -6 });
-    if (volRatio > 3 && !up) pen.push({ label: '爆量收黑', pts: -6 });
+    if (bias > P.p_bt) pen.push({ label: '股價離月線 +' + bias.toFixed(0) + '%，短線乖離過大', pts: -Math.min(P.p_bmax, Math.round((bias - P.p_bt) * P.p_bk)) });
+    if (ind.rsi > P.p_rsiT) pen.push({ label: 'RSI 高於 ' + P.p_rsiT + '，短線過熱', pts: P.p_rsi });
+    if (volRatio > 3 && !up) pen.push({ label: '爆量收黑', pts: P.p_blk });
     const index = clamp(Math.round(raw + sum(pen.map(x => x.pts))), 0, 100);
     const legacy = raw >= 60 ? '偏多' : raw >= 38 ? '中性' : '偏空';
 
@@ -255,6 +265,6 @@ const Engine = (() => {
     const seen = new Set(); return rows.filter(r => !seen.has(r.d) && seen.add(r.d));
   }
 
-  return { analyze, parseBars, rt, tickOf };
+  return { analyze, parseBars, rt, tickOf, DEFAULTS };
 })();
 if (typeof module !== 'undefined') module.exports = Engine;
