@@ -250,7 +250,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .page-head p{margin:0;color:var(--muted);max-width:60ch}
 
 /* 首頁入口卡 */
-.entry-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.entry-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .entry{display:grid;gap:10px;align-content:start}
 .entry header{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .entry h2{font-size:1.05rem}
@@ -261,4 +261,13 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .mini .num.code{color:var(--accent);font-weight:600}
 .mini .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mini .tag{font-size:.72rem;color:var(--faint);margin-left:4px}
-@media (max-width:720px){.entry-grid{grid-template-columns:1fr}}
+@media (max-width:900px){.entry-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:620px){.entry-grid{grid-template-columns:1fr}}
+
+/* 類股強弱 */
+.heat{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}
+.heat a{display:grid;gap:1px;padding:10px;border-radius:10px;text-decoration:none;min-height:70px;align-content:center}
+.heat a b{font-size:.85rem}
+.heat a span{font-size:1.05rem;font-weight:600}
+.heat a small{font-size:.7rem;opacity:.85}
+.heat a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}

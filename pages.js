@@ -167,3 +167,28 @@ function renderPvSectors() {
   box.innerHTML = `<p class="small muted" style="margin:0">點一個產業，看這類股票今天的漲跌和成交量。</p><div class="chips">${secs.map(s => `<a class="chip" href="/sectors#${esc(s.id)}" style="text-decoration:none">${esc(s.name)} <span class="small muted num">${s.n}</span></a>`).join('')}</div>`;
 }
 renderPvWatch(); renderPvIntra(); renderPvPicks();
+
+/* 類股強弱：依成交值加權的平均漲跌、上漲／下跌家數 */
+function sectorStats() {
+  return SECTORS.filter(s => s.id !== '80' && s.id !== '91').map(s => {
+    const rows = STOCKS.filter(x => x[3] === s.id && x[5] != null && x[4] && x[6]);
+    let w = 0, acc = 0, up = 0, dn = 0;
+    rows.forEach(x => { const val = x[4] * x[6]; w += val; acc += x[5] * val; if (x[5] > 0) up++; else if (x[5] < 0) dn++; });
+    return { id: s.id, name: s.name, chg: w ? acc / w : 0, up, dn, n: rows.length, value: w };
+  }).filter(s => s.n >= 3);
+}
+function heatColor(chg) {
+  const a = Math.min(1, Math.abs(chg) / 3);
+  if (Math.abs(chg) < 0.05) return 'background:var(--sunk);color:var(--muted)';
+  return chg > 0 ? `background:color-mix(in srgb, var(--up) ${Math.round(12 + a * 70)}%, var(--surface));color:${a > .55 ? '#fff' : 'var(--ink)'}`
+                 : `background:color-mix(in srgb, var(--down) ${Math.round(12 + a * 70)}%, var(--surface));color:${a > .55 ? '#fff' : 'var(--ink)'}`;
+}
+function renderHeat(box, limit) {
+  if (!box || !STOCKS) return;
+  let st = sectorStats().sort((a, b) => b.value - a.value);
+  if (limit) st = st.slice(0, limit);
+  st.sort((a, b) => b.chg - a.chg);
+  box.innerHTML = `<div class="heat">${st.map(s => `<a href="/sectors#${esc(s.id)}" style="${heatColor(s.chg)}" title="${esc(s.name)}：上漲 ${s.up} 家、下跌 ${s.dn} 家"><b>${esc(s.name)}</b><span class="num">${sg(s.chg)}%</span><small class="num">漲 ${s.up}・跌 ${s.dn}</small></a>`).join('')}</div>
+    <p class="note" style="margin:8px 0 0">${window.LIST_DATE ? esc(window.LIST_DATE) + ' 收盤。' : ''}每格的漲跌幅以成交值加權（成交越大的股票影響越大），紅色代表上漲、綠色代表下跌，顏色越深漲跌越多。點一格看該產業的股票。</p>`;
+}
+loadStocks().then(() => { renderHeat($('#pvHeat'), 12); renderHeat($('#heatAll')); });
