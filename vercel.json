@@ -1,0 +1,1 @@
+{ "functions": { "api/stock.js": { "maxDuration": 60 } }, "regions": ["hnd1"] }
