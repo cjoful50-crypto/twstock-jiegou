@@ -76,7 +76,7 @@ const isoOf = d => d.toISOString().slice(0, 10);
   const idx = new Map(days.map((x, i) => [x.d, i]));
   const benchCache = {};
   // 除權息、減資、分割會讓價格出現超過漲跌幅限制的斷層，持有期間碰到這種情況的交易不列入統計
-  const jumpFree = (code, i, j) => { for (let k = i + 1; k <= j; k++) { const a = days[k - 1].q[code], b = days[k].q[code]; if (!a || !b || !a[3]) continue; const r = (b[0] || b[3]) / a[3]; if (r < 0.895 || r > 1.105) return false; } return true; };
+  const jumpFree = (code, i, j) => { let pc = (days[i].q[code] || [])[3]; for (let k = i + 1; k <= j; k++) { const b = days[k].q[code]; if (!b || !b[3]) continue; if (pc) { const r = (b[0] || b[3]) / pc; if (r < 0.895 || r > 1.105) return false; } pc = b[3]; } return true; };
   const bench = (i, h) => { const k = i + ':' + h; if (k in benchCache) return benchCache[k]; let s = 0, n = 0;
     if (i + h <= last) for (const [code, b] of Object.entries(days[i].q)) { const nb = days[i + 1].q[code], eb = days[i + h].q[code]; if (!nb || !nb[0] || !eb || !eb[3] || !b[3]) continue;
       // 成交值門檻用當日成交量近似
