@@ -99,7 +99,7 @@ module.exports = async (req, res) => {
     const seen = new Set(); bars = bars.filter(b => !seen.has(b.d) && seen.add(b.d));
 
     const out = { code, name: name || code, market, bars, inst: [], margin: [], sbl: [], fund: {}, dates: { price: slash(bars.at(-1).d) }, fetchedAt: new Date().toISOString(),
-      source: market === 'TWSE' ? '臺灣證券交易所、公開資訊觀測站' : '證券櫃檯買賣中心' };
+      source: market === 'TWSE' ? '臺灣證券交易所、公開資訊觀測站' : '證券櫃檯買賣中心、公開資訊觀測站' };
 
     if (market === 'TWSE') {
       const today = taipeiToday().iso;
@@ -142,7 +142,36 @@ module.exports = async (req, res) => {
       if (b) out.dates.val = slash(days.at(-1));
       if (out.fund.revMonth) out.dates.rev = out.fund.revMonth + ' 月營收';
       if (!out.inst.length) delete out.inst; if (!out.margin.length) delete out.margin; if (!out.sbl.length) delete out.sbl;
-    } else { delete out.inst; delete out.margin; delete out.sbl; }
+    } else {
+      // 上櫃：櫃買中心的三大法人、融資融券、借券、本益比、月營收
+      const TP = 'https://www.tpex.org.tw/www/zh-tw';
+      const today = taipeiToday().iso, ttl = d => d === today ? 30 * 60e3 : 12 * 3600e3;
+      const days = bars.slice(-6).map(b => b.d), instDays = days.slice(-5), chipDays = [days[0], days.at(-1)];
+      const tbl = j => ((j && j.tables) || [])[0] || {};
+      const row = j => (tbl(j).data || []).find(x => String(x[0]).trim() === code);
+      const [instRes, marRes, sblRes, pe, rev] = await Promise.all([
+        Promise.all(instDays.map(d => safe(getJSON(`${TP}/insti/dailyTrade?type=Daily&sect=EW&date=${slash(d)}&response=json`, ttl(d))).then(j => [d, j]))),
+        Promise.all(chipDays.map(d => safe(getJSON(`${TP}/margin/balance?date=${slash(d)}&response=json`, ttl(d))).then(j => [d, j]))),
+        Promise.all(chipDays.map(d => safe(getJSON(`${TP}/margin/sbl?date=${slash(d)}&response=json`, ttl(d))).then(j => [d, j]))),
+        safe(getJSON(`${TP}/afterTrading/peQryDate?date=${slash(days.at(-1))}&response=json`, ttl(days.at(-1)))),
+        safe(getJSON('https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap05_O', 6 * 3600e3))
+      ]);
+      for (const [d, j] of instRes) { const r = row(j); if (r) out.inst.push({ d, f: Math.round(num(r[4]) / 1000), t: Math.round(num(r[13]) / 1000), dl: Math.round(num(r[22]) / 1000) }); }
+      for (const [d, j] of marRes) { const r = row(j); if (r) out.margin.push({ d, mb: num(r[6]), sb: num(r[14]) }); }
+      for (const [d, j] of sblRes) { const r = row(j); if (r) out.sbl.push({ d, bal: Math.round(num(r[12]) / 1000), sell: Math.round(num(r[9]) / 1000), ret: Math.round(num(r[10]) / 1000) }); }
+      const p = row(pe); if (p) { out.fund.pe = num(p[2]); out.fund.yld = num(p[5]); out.fund.pb = num(p[6]); }
+      const rv = Array.isArray(rev) && rev.find(x => String(x['公司代號']).trim() === code);
+      if (rv) {
+        const key = part => Object.keys(rv).find(k => k.includes(part));
+        out.fund.revYoY = num(rv[key('去年同月增減')]); out.fund.revMoM = num(rv[key('上月比較增減')]);
+        const ym = String(rv[key('資料年月')] || ''); if (ym.length >= 4) out.fund.revMonth = `${+ym.slice(0, -2) + 1911}/${ym.slice(-2)}`;
+      }
+      if (out.inst.length) out.dates.inst = slash(out.inst.at(-1).d);
+      if (out.margin.length || out.sbl.length) out.dates.chip = slash((out.margin.at(-1) || out.sbl.at(-1)).d);
+      if (p) out.dates.val = slash(days.at(-1));
+      if (out.fund.revMonth) out.dates.rev = out.fund.revMonth + ' 月營收';
+      if (!out.inst.length) delete out.inst; if (!out.margin.length) delete out.margin; if (!out.sbl.length) delete out.sbl;
+    }
 
     res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=3600');
     res.status(200).end(JSON.stringify(out));

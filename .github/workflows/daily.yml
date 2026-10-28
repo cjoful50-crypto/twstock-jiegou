@@ -1,0 +1,36 @@
+name: 每日名單與成績單
+on:
+  schedule:
+    - cron: '50 8 * * 1-5'   # 台北 16:50，收盤資料與三大法人公布後
+    - cron: '30 11 * * 1-5'  # 台北 19:30 補跑一次，以防法人資料延遲
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: '回補幾個交易日'
+        default: '60'
+permissions:
+  contents: write
+concurrency:
+  group: daily
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node scripts/build.js
+        env:
+          BACKFILL: ${{ github.event.inputs.backfill || '60' }}
+      - name: 存檔
+        run: |
+          git config user.name "twstock-bot"
+          git config user.email "twstock-bot@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then echo "沒有變更"; exit 0; fi
+          git commit -m "每日名單 $(TZ=Asia/Taipei date +%F)"
+          git pull --rebase origin main
+          git push origin HEAD:main

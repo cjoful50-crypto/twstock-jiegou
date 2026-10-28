@@ -1,9 +1,0 @@
-name: ping
-on: workflow_dispatch
-jobs:
-  ping:
-    runs-on: ubuntu-latest
-    steps:
-      - run: |
-          for u in "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date=20261028&type=ALLBUT0999&response=json" "https://www.tpex.org.tw/www/zh-tw/afterTrading/otc?date=2026/10/28&type=EW&response=json" "https://openapi.twse.com.tw/v1/opendata/t187ap05_L"; do
-            r=$(curl -s -o /tmp/o -w "%{http_code} %{size_download}" -A "Mozilla/5.0 Chrome/130" "$u"); echo "::notice::$r $(head -c 120 /tmp/o | tr -d '\n') $u"; done
