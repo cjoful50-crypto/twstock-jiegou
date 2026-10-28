@@ -55,7 +55,14 @@ async function loadPicks(date) {
   box.innerHTML = `<h2 id="picksTitle">盤後篩選名單</h2><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">載入名單中…</span></div>`;
   try {
     const j = await getPicks(date); const idx = await getIndex();
-    const col = (title, sub, list, n) => `<div class="pcol"><h3>${title}<small>${sub}・符合 ${n} 檔</small></h3>${list.length ? list.map(x => `<button class="pick" type="button" data-code="${esc(x.code)}">
+    const sc = await fetch('/data/scorecard.json').then(r => r.ok ? r.json() : null).catch(() => null);
+    const track = cat => { const s = sc && sc.summary && sc.summary[cat]; if (!s) return '';
+      const [k, lab] = { day: ['oc', '隔日開盤買、收盤賣'], swing: ['r10', '持有 10 個交易日'], long: ['r20', '持有 20 個交易日'] }[cat];
+      let v = s[k], m = s['m' + k.slice(1)], l2 = lab; if (!v && cat === 'long') { v = s.r5; m = s.m5; l2 = '持有 5 個交易日'; }
+      if (!v) return `<p class="track">成績單：紀錄還不夠，暫時無法評估。</p>`;
+      const ok = v.n >= 30 && v.avg > 0 && (!m || v.avg > m.avg);
+      return `<p class="track ${ok ? 'good' : 'weak'}"><b>過去表現</b>　${l2}平均 <span class="num ${cls(v.avg)}">${sg(v.avg)}%</span>、勝率 ${v.win}%${m && cat !== 'day' ? `、同期大盤 ${sg(m.avg)}%` : ''}（${v.n} 筆）。${ok ? '' : v.n < 30 ? '筆數還少，參考價值有限。' : '目前沒有穩定勝過大盤，請保守看待。'} <a href="/scorecard">成績單</a></p>`; };
+    const col = (title, sub, list, n, cat) => `<div class="pcol"><h3>${title}<small>${sub}・符合 ${n} 檔</small></h3>${track(cat)}${list.length ? list.map(x => `<button class="pick" type="button" data-code="${esc(x.code)}">
       <div class="top1"><span><span class="code num" style="color:var(--accent)">${esc(x.code)}</span> <span class="nm">${esc(x.name)}</span></span><span class="num ${cls(x.chg)}">${pxd(x.close)} ${sg(x.chg)}%</span></div>
       <div class="sigs">${x.why.map(w => `<span>${esc(w)}</span>`).join('')}</div>
       <div class="lv num"><span>漲停指數 <b style="color:${scoreColor(x.index)}">${x.index ?? '—'}</b></span><span>支撐 <b style="color:var(--sup)">${x.sup != null ? pxd(x.sup) : '—'}</b></span><span>壓力 <b style="color:var(--res)">${x.res != null ? pxd(x.res) : '—'}</b></span></div></button>`).join('') : '<div class="empty">今天沒有股票符合條件。</div>'}</div>`;
@@ -65,7 +72,7 @@ async function loadPicks(date) {
         <div><b>可以怎麼用</b><span>先點進個股看漲停指數、支撐和壓力。例如明天開盤後價格守住支撐、或站上壓力，代表結構延續；開低跌破支撐，就代表條件已經變了。</span></div>
         <div><b>要注意</b><span>名單只代表「今天收盤時符合條件」，不是預測明天會漲，也不是買進建議。下單前請自己判斷，並設好停損。</span></div>
       </div>
-      <div class="picks-grid">${col('隔日當沖觀察', '隔天開盤後當天進出', j.day, j.counts.day)}${col('短期觀察', '持有約 1～2 週', j.swing, j.counts.swing)}${col('長期觀察', '持有數月以上', j.long, j.counts.long)}</div>
+      <div class="picks-grid">${col('隔日當沖觀察', '隔天開盤後當天進出', j.day, j.counts.day, 'day')}${col('短期觀察', '持有約 1～2 週', j.swing, j.counts.swing, 'swing')}${col('長期觀察', '持有數月以上', j.long, j.counts.long, 'long')}</div>
       <details class="rules"><summary>名單怎麼選出來的</summary>
         <p>共同條件：一般上市股票（排除 ETF、權證），股價 10 元以上，近 20 日平均成交量 1,000 張以上。同一檔只會出現在一個名單。</p>
         <p><b>隔日當沖觀察（量價突破）</b>：收盤創 20 日新高、當日量比 1.8 倍以上、收盤位於當日高低區間 70% 以上、漲幅 1.5%～7%、近 20 日漲幅不超過 25%、站上季線、日均成交值 3 億以上。依量能、收盤位置與法人買超排名。回測中隔天開盤買、收盤賣平均約 +0.4%，但當沖手續費加交易稅約 0.3%～0.4%，扣掉後接近打平，請把它當成觀察清單。</p>
