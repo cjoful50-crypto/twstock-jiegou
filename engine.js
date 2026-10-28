@@ -175,7 +175,7 @@ const Engine = (() => {
     // 籌碼
     const CH = mk(), cs = flows.chip; let chipOk = !!cs;
     if (cs) {
-      if (cs.marginChg != null) CH.add('融資餘額 5 日 ' + sgn(cs.marginChg) + '%' + (cs.marginChg > 1 && ind.chg20 < 0 ? '（下跌中增加，散戶接刀）' : ''), clamp(-cs.marginChg * (ind.chg20 < 0 ? 3 : 1.5), -15, 15));
+      if (cs.marginChg != null) CH.add('融資餘額 5 日 ' + sgn(cs.marginChg) + '%' + (cs.marginChg > 1 && ind.chg20 < 0 ? '（股價下跌期間融資增加）' : ''), clamp(-cs.marginChg * (ind.chg20 < 0 ? 3 : 1.5), -15, 15));
       if (cs.sblChg != null) CH.add('借券賣出餘額 5 日 ' + sgn(cs.sblChg) + '%', clamp(-cs.sblChg * 1.5, -18, 18));
       if (cs.ratio != null) CH.add('券資比 ' + cs.ratio.toFixed(1) + '%', cs.ratio > 15 ? 4 : 0);
     }

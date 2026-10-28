@@ -151,9 +151,9 @@ function render(s) {
           <div class="small" style="font-weight:700;margin-top:16px">現在的位置</div>
           <p class="small" style="margin:10px 0 0">目前位於區間約 <b class="num">${Math.round(a.posPct)}%</b>，屬「<b>${a.posZone}</b>」。區間從近 20 日最低 <span class="num">${pxd(ind.low20)}</span> 到${R1 && R1.level > ind.high20 ? '第一壓力' : '近 20 日最高'} <span class="num">${pxd(a.top)}</span>。</p>
           <div class="zones">
-            <div class="${a.posZone === '低檔區' ? 'on' : ''}"><b>低檔區　0～35%</b><span>價格靠近近期低點與支撐。往下的空間相對小，但如果走勢正在轉弱，也可能繼續破底。</span></div>
-            <div class="${a.posZone === '中段區' ? 'on' : ''}"><b>中段區　35～70%</b><span>價格在近期區間的中間，上下都有空間，方向還不明確。</span></div>
-            <div class="${a.posZone === '偏熱區' ? 'on' : ''}"><b>偏熱區　70～100%</b><span>價格靠近近期高點或壓力，短線已經漲了一段，這時追價買進的風險比較高。</span></div>
+            <div class="${a.posZone === '低檔區' ? 'on' : ''}"><b>低檔區　0～35%</b><span>接近近期低點與支撐，下檔空間相對有限；若走勢轉弱，仍可能續跌。</span></div>
+            <div class="${a.posZone === '中段區' ? 'on' : ''}"><b>中段區　35～70%</b><span>位於近期區間中段，方向尚不明確。</span></div>
+            <div class="${a.posZone === '偏熱區' ? 'on' : ''}"><b>偏熱區　70～100%</b><span>接近近期高點或壓力，短線已有一段漲幅，追價風險較高。</span></div>
           </div>
           <p class="note" style="margin:8px 0 0">位置僅描述股價所在區間，不代表買賣建議。</p>
           ${R1 ? `<p class="small" style="margin:14px 0 0">第一壓力 <b class="num" style="color:var(--res)">${pxd(R1.level)}</b> 的價位強度為<b>${R1.strength}</b>，由${R1.cats.map(x => x + '結構').join('、')}組成；價位強度越高，股價接近時越可能遇到賣壓。</p>` : ''}
@@ -182,9 +182,9 @@ function render(s) {
       ${levelCard('res', '第二壓力', R2 ? [R2] : [], '第一壓力之上沒有其他獨立的壓力結構。', a)}
     </div>
     <details class="rules"><summary>價位計算方式</summary>
-      <p>候選價位全部來自真實歷史成交結構：近 120 日的波段高低點（左 3 根、右側至少 1 根確認）、MA5／10／20／60、近 60 日未回補缺口、爆量 K（成交量達前 20 日均量 2 倍）的高點／收盤／低點、近 60 日成交量分布最大的 3 個價格帶、由最近兩個墊高低點（或降低高點）延伸的趨勢線。離現價不到 1% 的價位不列入。</p>
-      <p>相鄰價位落在同一波動容差內（取 0.9% 與 0.3 倍 ATR 的較大者，目前 ${fx(a.st.tol)} 元）就合併成價格帶，不硬拆兩道。價位強度看訊號分屬幾類（價格、均線、量能、籌碼）與訊號數：4 類或 5 個訊號以上為極強、3 類或 4 個為強、2 類或 2 個為中、其餘為弱。借券賣出餘額 5 日增加超過 3% 時，加註在第一壓力上。</p>
-      <p>支撐：現價下方 0～10% 標近端、10～20% 標中期，超過 20% 不列。壓力：第二道取第一壓力帶之上下一個獨立結構，超過 +10% 改標中期。價位依台股升降單位取整。創新高且上方沒有歷史結構時，改以 10% 漲跌幅限制推算明日漲停參考價。這些是觀察位置，不是目標價，也不是買賣建議。</p>
+      <p>候選價位皆取自實際成交結構，包括：近 120 個交易日的波段高低點、5／10／20／60 日均線、近 60 個交易日尚未回補的跳空缺口、爆量 K 棒（成交量達前 20 日均量 2 倍以上）的高點、收盤價與低點、近 60 個交易日成交量最集中的 3 個價格帶，以及由近期高低點延伸的趨勢線。距現價不到 1% 的價位不列入。</p>
+      <p>相鄰價位的差距小於波動容差（取現價 0.9% 與 0.3 倍 ATR 的較大者，目前為 ${fx(a.st.tol)} 元）時，合併為同一價格帶。價位強度依結構種類（價格、均線、量能、籌碼）與訊號數量判定：4 類或 5 個訊號以上為極強，3 類或 4 個訊號為強，2 類或 2 個訊號為中，其餘為弱。借券賣出餘額 5 日增加超過 3% 時，列為第一壓力的籌碼訊號。</p>
+      <p>支撐位於現價下方 0～10% 者標示為近端，10～20% 標示為中期，超過 20% 不列出；第二壓力為第一壓力上方的下一個獨立價位，距現價超過 10% 者標示為中期。價位依台股升降單位取整。股價創新高且上方無歷史成交結構時，以 10% 漲跌幅限制計算下一交易日的漲停參考價。以上價位為觀察參考，並非目標價或買賣建議。</p>
     </details>
   </section>
 
@@ -218,10 +218,10 @@ function render(s) {
       <div class="scroll" style="margin-top:12px"><table><thead><tr><th>日期</th><th>融資餘額</th><th>融券餘額</th><th>借券賣出餘額</th><th>借券賣出</th><th>還券</th></tr></thead><tbody>${days.map(dd => { const mm = m.find(x => x.d === dd) || {}, bb = b.find(x => x.d === dd) || {}; return `<tr><td class="num">${dd}</td><td class="num">${fi(mm.mb)}</td><td class="num">${fi(mm.sb)}</td><td class="num">${fi(bb.bal)}</td><td class="num">${fi(bb.sell)}</td><td class="num">${fi(bb.ret)}</td></tr>`; }).join('')}</tbody></table></div><p class="note">單位：張。借券賣出餘額下降代表空方回補，對股價壓力減輕。</p>`;
     },
     fund: () => { const f = s.fund || {}; return `<div class="kv"><div><span>本益比</span><b class="num">${fx(f.pe)}</b></div><div><span>殖利率</span><b class="num">${f.yld != null ? fx(f.yld) + '%' : '—'}</b></div><div><span>股價淨值比</span><b class="num">${fx(f.pb)}</b></div><div><span>${esc(f.revMonth || '最新')} 營收年增</span><b class="num ${cls(f.revYoY)}">${f.revYoY != null ? sg(f.revYoY) + '%' : '—'}</b></div><div><span>${esc(f.revMonth || '最新')} 營收月增</span><b class="num ${cls(f.revMoM)}">${f.revMoM != null ? sg(f.revMoM) + '%' : '—'}</b></div></div>`; },
-    score: () => `<p class="small muted" style="margin-top:0">強度分數 = 五面向加權平均（趨勢 25%、量價 20%、法人 20%、籌碼 15%、基本面 20%；缺資料的面向不計，權重重新分配）＋ 風險折減。趨勢、量價、法人、籌碼從 50 分起算，基本面從 40 分起算；量價的加減分以 0.35 倍、籌碼以 0.6 倍計入（這兩項單日變化大，避免分數忽高忽低），各自限制在 0～100。</p>
+    score: () => `<p class="small muted" style="margin-top:0">強度分數 = 五面向加權平均（趨勢 25%、量價 20%、法人 20%、籌碼 15%、基本面 20%；缺資料的面向不計，權重重新分配）＋ 風險折減。趨勢、量價、法人、籌碼從 50 分起算，基本面從 40 分起算；量價的加減分以 0.35 倍、籌碼以 0.6 倍計入，以降低單日波動對分數的影響；各面向分數限制在 0～100。</p>
       ${a.dims.map(x => `<div class="score-dim"><header><span>${x.name}（權重 ${x.w * 100}%）</span><span class="num" style="color:${scoreColor(x.s)}">${x.s ?? '資料不足'}</span></header><ul>${x.items.map(i => `<li><span>${esc(i.label)}</span><span class="num ${cls(i.pts)}">${sgi(i.pts)}</span></li>`).join('') || '<li><span>沒有資料</span></li>'}</ul></div>`).join('')}
       <div class="score-dim"><header><span>風險折減</span><span class="num">${a.pen.reduce((x, y) => x + y.pts, 0)}</span></header><ul>${a.pen.map(i => `<li><span>${esc(i.label)}</span><span class="num down">${i.pts}</span></li>`).join('') || '<li><span>無</span></li>'}</ul></div>
-      <p class="small muted">加權原始分 ${fx(a.raw, 1)}，即綜合評等（60 以上偏多、38～60 中性、38 以下偏空）；扣掉風險折減後為強度分數 ${a.index}。走勢標籤看趨勢面分數：70 以上多頭、55 偏多、42 整理、30 偏空、30 以下風險；趨勢偏強但股價離月線超過 15% 或 RSI 高於 80 時，改標「過熱」。</p>`
+      <p class="small muted">加權原始分 ${fx(a.raw, 1)}，即綜合評等（60 以上偏多、38～60 中性、38 以下偏空）；扣掉風險折減後為強度分數 ${a.index}。走勢依趨勢面分數判定：70 以上多頭、55 偏多、42 整理、30 偏空、30 以下風險；趨勢偏強但股價離月線超過 15% 或 RSI 高於 80 時，改標「過熱」。</p>`
   };
   const showTab = () => { $('#panel').innerHTML = panels[tab](); document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab)); };
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; showTab(); });

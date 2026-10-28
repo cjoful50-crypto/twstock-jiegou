@@ -42,7 +42,7 @@ async function loadIntraday() {
         <div><b>注意事項</b><span>名單每 3 分鐘更新，強勢股可能隨時轉弱。當沖須具備當沖交易資格且風險較高，本名單僅為篩選結果，不構成買賣建議。</span></div>
       </div>
       <div class="picks-grid">${cards}</div>
-      <details class="rules"><summary>篩選條件</summary><p>條件：漲幅 1.5%～9% 且未鎖漲停、今日振幅 2.5% 以上、價格位於今日高低區間 60% 以上、成交量達前一日依時間比例的 1.3 倍以上（例如 10:30 時，交易時間過了三分之一，就和前一日總量的三分之一相比）。依量能倍數、振幅、高檔位置與漲幅加權排名。開盤初期量能通常偏大，倍數會比較高。</p></details>`;
+      <details class="rules"><summary>篩選條件</summary><p>條件：漲幅 1.5%～9% 且未鎖漲停、今日振幅 2.5% 以上、價格位於今日高低區間 60% 以上、累計成交量達前一交易日同時段估計量的 1.3 倍以上（依交易時間比例估算，例如 10:30 以前一交易日總量的三分之一為基準）。依量能倍數、振幅、高檔位置與漲幅加權排名。開盤初期成交較集中，量能倍數通常偏高。</p></details>`;
     box.querySelectorAll('.pick, .pick-row').forEach(b => b.onclick = () => goTo(b.dataset.code));
     clearTimeout(intraTimer); if (open) intraTimer = setTimeout(loadIntraday, 180000);
   } catch (e) {
@@ -63,7 +63,7 @@ async function loadPicks(date) {
       let v = s[k], m = s['m' + k.slice(1)], l2 = lab; if (!v && cat === 'long') { v = s.r5; m = s.m5; l2 = '持有 5 個交易日'; }
       if (!v) return `<p class="track">成績單：紀錄不足，暫無法評估。</p>`;
       const ok = v.n >= 30 && v.avg > 0 && (!m || v.avg > m.avg);
-      return `<p class="track ${ok ? 'good' : 'weak'}"><b>過去表現</b>　${l2}平均 <span class="num ${cls(v.avg)}">${sg(v.avg)}%</span>、勝率 ${v.win}%${m && cat !== 'day' ? `、同期大盤 ${sg(m.avg)}%` : ''}（${v.n} 筆）。${ok ? '' : v.n < 30 ? '樣本數仍少，僅供參考。' : '目前未穩定優於大盤，請審慎參考。'} <a href="/scorecard">成績單</a></p>`; };
+      return `<p class="track ${ok ? 'good' : 'weak'}"><b>過去表現</b>　每日前 3 名${l2}平均 <span class="num ${cls(v.avg)}">${sg(v.avg)}%</span>、勝率 ${v.win}%${m && cat !== 'day' ? `、同期大盤 ${sg(m.avg)}%` : ''}（${v.n} 筆）。${ok ? '' : v.n < 30 ? '樣本數仍少，僅供參考。' : '目前未穩定優於大盤，請審慎參考。'} <a href="/scorecard">成績單</a></p>`; };
     const col = (title, sub, list, n, cat) => `<div class="pcol"><h3>${title}<small>${sub}・符合 ${n} 檔</small></h3>${track(cat)}${list.length ? list.slice(0, 3).map(x => `<button class="pick" type="button" data-code="${esc(x.code)}">
       <div class="top1"><span><span class="code num" style="color:var(--accent)">${esc(x.code)}</span> <span class="nm">${esc(x.name)}</span></span><span class="num ${cls(x.chg)}">${pxd(x.close)} ${sg(x.chg)}%</span></div>
       <div class="sigs">${x.why.map(w => `<span>${esc(w)}</span>`).join('') + moreRows(list.slice(3), 'close')}</div>
@@ -78,7 +78,7 @@ async function loadPicks(date) {
       <details class="rules"><summary>篩選條件</summary>
         <p>共同條件：上市櫃普通股（不含 ETF、權證），股價 10 元以上，近 20 日平均成交量 1,000 張以上；同一檔股票只會列入一類名單。</p>
         <p><b>隔日當沖觀察（量價突破）</b>：收盤創 20 日新高、當日量比 1.8 倍以上、收盤位於當日高低區間 70% 以上、漲幅 1.5%～7%、近 20 日漲幅不超過 25%、站上季線、日均成交值 3 億以上。依量能、收盤位置與法人買超排名。當沖的手續費與交易稅合計約 0.3%～0.4%，參考歷史表現時請一併考量。</p>
-        <p><b>短期觀察（剛轉強）</b>：上市櫃滿 60 個交易日，5 日線在近 3 個交易日內剛站上月線、收盤在月線之上、月線走平或向上、近 20 日漲幅在 −5%～12%（還沒漲多）、RSI 50～68、量比 1.2 倍以上、三大法人近 5 日合計買超。依法人買超占日均量比例、量能與投信是否同步買超排名。</p>
+        <p><b>短期觀察（剛轉強）</b>：上市櫃滿 60 個交易日，5 日線在近 3 個交易日內剛站上月線、收盤在月線之上、月線走平或向上、近 20 日漲幅介於 −5%～12%（漲幅尚小）、RSI 50～68、量比 1.2 倍以上、三大法人近 5 日合計買超。依法人買超占日均量比例、量能與投信是否同步買超排名。</p>
         <p><b>長期觀察</b>：最新月營收年增 15% 以上、本益比 0～25 倍、殖利率 1.5% 以上、收盤站上季線且月線在季線之上。依營收成長、本益比、殖利率與法人動向排名。</p>
         <p>篩選規則以歷史資料檢驗後訂定，實際表現每日更新於<a href="/scorecard">名單成績單</a>。資料來源為證交所與櫃買中心盤後公開資料。</p>
       </details>`;
