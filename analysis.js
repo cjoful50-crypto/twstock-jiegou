@@ -10,26 +10,56 @@ function ring(score) {
 }
 
 function ladder(a) {
-  const c = a.stock.bars.at(-1).c, S = a.st.sup, Rr = a.st.res;
-  const pts = [c, ...S.flatMap(b => [b.lo, b.level]), ...Rr.flatMap(b => [b.level, b.hi])];
+  // 價位地圖：左邊是近 20 日區間（低檔／中段／偏熱），右邊是支撐壓力，與現價連成一條線
+  const c = a.stock.bars.at(-1).c, S = a.st.sup, Rr = a.st.res, low = a.ind.low20, top = a.top;
+  const pts = [c, low, top, ...S.flatMap(b => [b.lo, b.level]), ...Rr.flatMap(b => [b.level, b.hi])];
   if (a.st.limitRef) pts.push(a.st.limitRef);
-  const lo = Math.min(...pts), hi = Math.max(...pts), pad = (hi - lo) * .12 || c * .02;
-  const H = 300, top = 16, bot = H - 16, y = p => top + (hi + pad - p) / ((hi + pad) - (lo - pad)) * (bot - top);
-  let g = `<line x1="88" x2="88" y1="${top}" y2="${bot}" stroke="var(--line)" stroke-width="2"/>`;
-  if (a.zone) g += `<rect x="70" y="${y(a.zone.hi)}" width="36" height="${Math.max(4, y(a.zone.lo) - y(a.zone.hi))}" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-dasharray="3 3"/>`;
-  const mark = (p, label, color, band) => {
-    let s = '';
-    if (band && band[0] !== band[1]) s += `<rect x="80" y="${y(band[1])}" width="16" height="${Math.max(3, y(band[0]) - y(band[1]))}" rx="3" fill="${color}" opacity=".25"/>`;
-    return s + `<line x1="74" x2="102" y1="${y(p)}" y2="${y(p)}" stroke="${color}" stroke-width="3" stroke-linecap="round"/>
-      <text x="64" y="${y(p) + 4}" text-anchor="end" font-size="12" fill="var(--muted)" font-family="var(--f-body)">${label}</text>
-      <text x="112" y="${y(p) + 5}" font-size="14" font-weight="600" fill="${color}" font-family="var(--f-num)">${pxd(p)}</text>`;
-  };
-  Rr.forEach((b, i) => g += mark(b.level, i ? '第二壓力' : '第一壓力', 'var(--res)', [b.level, b.hi]));
-  if (a.st.limitRef) g += mark(a.st.limitRef, '漲停參考', 'var(--res)');
-  S.forEach((b, i) => g += mark(b.level, i ? '第二支撐' : '近端支撐', 'var(--sup)', [b.lo, b.level]));
-  g += `<circle cx="88" cy="${y(c)}" r="7" fill="var(--ink)"/><text x="64" y="${y(c) + 4}" text-anchor="end" font-size="12" font-weight="700" fill="var(--ink)" font-family="var(--f-body)">現在</text>
-    <text x="112" y="${y(c) + 5}" font-size="15" font-weight="700" fill="var(--ink)" font-family="var(--f-num)">${pxd(c)}</text>`;
-  return `<svg viewBox="0 0 220 ${H}" role="img" aria-label="價位地圖">${g}</svg>`;
+  const lo = Math.min(...pts), hi = Math.max(...pts), pad = (hi - lo) * .06 || c * .02;
+  const W = 340, H = 360, t0 = 22, b0 = H - 22, y = p => t0 + (hi + pad - p) / ((hi + pad) - (lo - pad)) * (b0 - t0);
+  const BX = 14, BW = 16, AX = 132;
+  let g = '';
+  // 近 20 日區間色帶
+  const z1 = low + (top - low) * .35, z2 = low + (top - low) * .70;
+  [[low, z1, 'var(--accent-soft)'], [z1, z2, 'var(--warn-soft)'], [z2, top, 'var(--up-soft)']].forEach(([p0, p1, col]) => g += `<rect x="${BX}" y="${y(p1)}" width="${BW}" height="${Math.max(1, y(p0) - y(p1))}" fill="${col}"/>`);
+  g += `<rect x="${BX}" y="${y(top)}" width="${BW}" height="${y(low) - y(top)}" fill="none" stroke="var(--line)" rx="3"/>`;
+  g += `<text x="${BX - 4}" y="${y(top) - 7}" font-size="10" fill="var(--faint)" font-family="var(--f-num)">${top === a.ind.high20 ? '20日高' : '區間頂'} ${pxd(top)}</text>`;
+  g += `<text x="${BX - 4}" y="${y(low) + 15}" font-size="10" fill="var(--faint)" font-family="var(--f-num)">20日低 ${pxd(low)}</text>`;
+  // 主軸
+  g += `<line x1="${AX}" x2="${AX}" y1="${t0}" y2="${b0}" stroke="var(--line)" stroke-width="2"/>`;
+  if (a.zone) g += `<rect x="${AX - 20}" y="${y(a.zone.hi)}" width="40" height="${Math.max(4, y(a.zone.lo) - y(a.zone.hi))}" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-dasharray="3 3"/>`;
+  // 價位與標籤（避免文字重疊）
+  const marks = [];
+  Rr.forEach((b, i) => marks.push({ p: b.level, band: [b.level, b.hi], label: i ? '第二壓力' : '第一壓力', col: 'var(--res)', rank: b.rank }));
+  if (a.st.limitRef) marks.push({ p: a.st.limitRef, label: '漲停參考', col: 'var(--res)' });
+  S.forEach((b, i) => marks.push({ p: b.level, band: [b.lo, b.level], label: i ? '第二支撐' : '近端支撐', col: 'var(--sup)', rank: b.rank }));
+  marks.push({ p: c, label: '現在', col: 'var(--ink)', now: true });
+  marks.forEach(m => m.ly = y(m.p));
+  marks.sort((p, q) => p.ly - q.ly);
+  for (let i = 1; i < marks.length; i++) if (marks[i].ly - marks[i - 1].ly < 30) marks[i].ly = marks[i - 1].ly + 30;
+  const over = marks.at(-1).ly - (H - 8); if (over > 0) marks.forEach(m => m.ly -= over);
+  for (const m of marks) {
+    const py = y(m.p), dist = (m.p / c - 1) * 100;
+    if (m.band && m.band[0] !== m.band[1]) g += `<rect x="${AX - 9}" y="${y(m.band[1])}" width="18" height="${Math.max(3, y(m.band[0]) - y(m.band[1]))}" rx="3" fill="${m.col}" opacity=".22"/>`;
+    if (m.now) {
+      g += `<line x1="${BX}" x2="${AX}" y1="${py}" y2="${py}" stroke="var(--ink)" stroke-width="1.2" stroke-dasharray="3 3"/><circle cx="${AX}" cy="${py}" r="7" fill="var(--ink)"/>`;
+    } else g += `<line x1="${AX - 14}" x2="${AX + 14}" y1="${py}" y2="${py}" stroke="${m.col}" stroke-width="3" stroke-linecap="round"/>`;
+    if (Math.abs(m.ly - py) > 2) g += `<path d="M${AX + 16} ${py} L${AX + 24} ${m.ly - 4}" stroke="var(--line)" fill="none"/>`;
+    const dots = m.rank ? ' ' + '●'.repeat(m.rank) + '○'.repeat(4 - m.rank) : '';
+    g += `<text x="${AX + 26}" y="${m.ly - 6}" font-size="11" font-weight="700" fill="${m.now ? 'var(--ink)' : m.col}" font-family="var(--f-body)">${m.label}<tspan fill="var(--faint)" font-size="9" font-family="var(--f-num)">${dots}</tspan></text>
+      <text x="${AX + 26}" y="${m.ly + 10}" font-size="${m.now ? 16 : 14}" font-weight="700" fill="${m.now ? 'var(--ink)' : m.col}" font-family="var(--f-num)">${pxd(m.p)}${m.now ? '' : `<tspan font-size="11" font-weight="500" fill="var(--muted)"> ${dist > 0 ? '+' : ''}${dist.toFixed(1)}%</tspan>`}</text>`;
+  }
+  const legend = `<div class="map-legend"><span><i style="background:var(--up-soft)"></i>偏熱區</span><span><i style="background:var(--warn-soft)"></i>中段區</span><span><i style="background:var(--accent-soft)"></i>低檔區</span><span><i style="background:var(--res)"></i>壓力</span><span><i style="background:var(--sup)"></i>支撐</span><span class="num">●●●● 強度</span></div>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="價位地圖：現價 ${pxd(c)}">${g}</svg>${legend}`;
+}
+function spaceSummary(a) {
+  const c = a.stock.bars.at(-1).c, R1 = a.st.res[0], S1 = a.st.sup[0];
+  const up = R1 ? (R1.level / c - 1) * 100 : a.st.limitRef ? (a.st.limitRef / c - 1) * 100 : null, dn = S1 ? (1 - S1.level / c) * 100 : null;
+  let msg;
+  if (up == null && dn == null) msg = '上下都找不到明確的結構價位。';
+  else if (up == null) msg = '上方沒有壓力結構（可能在創高），往下到近端支撐 −' + dn.toFixed(1) + '%。';
+  else if (dn == null) msg = '下方 20% 內沒有支撐結構，跌下去不容易判斷停損位置，要特別小心。';
+  else { const r = up / dn; msg = r >= 2 ? '往上的空間是往下的 2 倍以上，以位置來看相對有利。' : r >= 1 ? '往上和往下的空間差不多。' : '往上的空間比往下小，這時追價買進比較不划算。'; }
+  return `<div class="space"><div><span>往上到${R1 ? '第一壓力' : '漲停參考'}</span><b class="num up">${up == null ? '—' : '+' + up.toFixed(1) + '%'}</b></div><div><span>往下到近端支撐</span><b class="num down">${dn == null ? '—' : '−' + dn.toFixed(1) + '%'}</b></div><div><span>上下空間比</span><b class="num">${up != null && dn ? (up / dn).toFixed(1) : '—'}</b></div></div><p class="small" style="margin:6px 0 0">${msg}</p>`;
 }
 
 function candles(a) {
@@ -117,9 +147,9 @@ function render(s) {
         <p class="small muted" style="margin:0">${a.zone ? '近端兩道支撐聚集成同一區間，而且走勢沒有轉入「風險」。價格回到這個區間時，下方有多種結構同時支撐。' : esc(a.zoneWhy) + '下方僅列出真實價格結構中的重要價位。'}</p>
         ${R1 ? `<p class="small" style="margin:12px 0 0">第一壓力 <b class="num" style="color:var(--res)">${pxd(R1.level)}</b>　壓力強度：<b class="str s${R1.rank}">${R1.strength}</b>｜${R1.cats.length} 類共振：${R1.cats.map(x => x + '結構').join('、')}</p>` : ''}
         <div class="pos">
-          <div class="small" style="font-weight:700">現在的位置</div>
-          <div class="track"><span></span><span></span><span></span><div class="marker num" style="left:${a.posPct}%">NOW ${Math.round(a.posPct)}%</div></div>
-          <div class="legend"><span>低檔區</span><span>中段區</span><span>偏熱區</span></div>
+          <div class="small" style="font-weight:700">上下空間</div>
+          ${spaceSummary(a)}
+          <div class="small" style="font-weight:700;margin-top:16px">現在的位置</div>
           <p class="small" style="margin:10px 0 0">目前位於區間約 <b class="num">${Math.round(a.posPct)}%</b>，屬「<b>${a.posZone}</b>」。區間從近 20 日最低 <span class="num">${pxd(ind.low20)}</span> 到${R1 && R1.level > ind.high20 ? '第一壓力' : '近 20 日最高'} <span class="num">${pxd(a.top)}</span>。</p>
           <div class="zones">
             <div class="${a.posZone === '低檔區' ? 'on' : ''}"><b>低檔區　0～35%</b><span>價格靠近近期低點與支撐。往下的空間相對小，但如果走勢正在轉弱，也可能繼續破底。</span></div>
