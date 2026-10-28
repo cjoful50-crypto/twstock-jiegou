@@ -1,6 +1,29 @@
 {
-  "regions": ["hnd1"],
-  "rewrites": [{ "source": "/analysis/:code", "destination": "/analysis.html" }],
-  "functions": { "api/stock.js": { "maxDuration": 60 }, "api/picks.js": { "maxDuration": 60 }, "api/intraday.js": { "maxDuration": 30 } },
-  "crons": [{ "path": "/api/picks", "schedule": "40 8 * * 1-5" }]
+  "regions": [
+    "hnd1"
+  ],
+  "rewrites": [
+    {
+      "source": "/analysis/:code",
+      "destination": "/analysis"
+    }
+  ],
+  "functions": {
+    "api/stock.js": {
+      "maxDuration": 60
+    },
+    "api/picks.js": {
+      "maxDuration": 60
+    },
+    "api/intraday.js": {
+      "maxDuration": 30
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/picks",
+      "schedule": "40 8 * * 1-5"
+    }
+  ],
+  "cleanUrls": true
 }

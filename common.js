@@ -87,3 +87,16 @@ function bindStars(root, after) {
     if (after) after();
   });
 }
+
+/* 共用導覽列：每一頁開頭放 <header class="nav" id="nav" data-page="..."></header> */
+const PAGES = [['/', '首頁', 'home'], ['/watch', '我的選股', 'watch'], ['/sectors', '產業分類', 'sectors'], ['/intraday', '盤中當沖', 'intraday'], ['/picks', '盤後名單', 'picks'], ['/guide', '使用教學', 'guide']];
+(function renderNav() {
+  const nav = document.getElementById('nav'); if (!nav) return;
+  const page = nav.dataset.page, withSearch = page !== 'home';
+  nav.innerHTML = `<div class="nav-in">
+    <div class="brand"><a href="/">盤後結構室</a></div>
+    ${withSearch ? `<div class="search-wrap"><form class="search" id="navSearch" role="search" autocomplete="off"><input id="navQ" inputmode="search" placeholder="代號或名稱" aria-label="搜尋股票" role="combobox" aria-controls="navSuggest" aria-expanded="false" aria-autocomplete="list"><button class="btn" type="submit">查詢</button></form><ul class="suggest" id="navSuggest" role="listbox" hidden></ul><p class="search-msg" hidden></p></div>` : ''}
+    <nav class="nav-links" aria-label="主要頁面">${PAGES.map(([href, label, key]) => `<a href="${href}"${key === page ? ' aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
+  </div>`;
+  if (withSearch) attachSearch(document.getElementById('navSearch'), document.getElementById('navQ'), document.getElementById('navSuggest'));
+})();

@@ -240,5 +240,4 @@ async function loadStock(code) {
   }
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && base) refreshQuote(); });
-attachSearch($('#searchForm'), $('#q'), $('#suggest'));
 loadStock(codeFromPath());

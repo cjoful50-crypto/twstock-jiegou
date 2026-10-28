@@ -10,16 +10,12 @@
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+<header class="nav" id="nav" data-page="home"></header>
 <div class="wrap">
-  <header class="top">
-    <div class="brand"><a href="/"><b>盤後結構室</b></a><span>收盤資料・結構價位・五面向評分</span></div>
-    <nav class="chips" aria-label="頁面導覽"><a class="chip" href="#watch" style="text-decoration:none">我的選股</a><a class="chip" href="#browse" style="text-decoration:none">依類型找股票</a><a class="chip" href="#intraday" style="text-decoration:none">盤中觀察</a><a class="chip" href="#picks" style="text-decoration:none">今日名單</a><a class="chip" href="#guide" style="text-decoration:none">使用教學</a></nav>
-  </header>
-
   <section class="hero-home" aria-labelledby="heroTitle">
     <span class="eyebrow">台股個股結構分析</span>
     <h1 id="heroTitle">今天想看<em>哪一檔</em>？</h1>
-    <p class="lead">輸入股票代號或名稱，幫你把技術、量價、法人、籌碼、基本面整理成一頁：漲停指數、真實結構的支撐與壓力，以及現在價格站在哪個位置。</p>
+    <p class="lead">輸入股票代號或名稱，把技術、量價、法人、籌碼、基本面整理成一頁：漲停指數、支撐與壓力，以及現在價格站在哪個位置。</p>
     <div class="search-big">
       <form class="search" id="searchForm" role="search" autocomplete="off">
         <input id="q" inputmode="search" placeholder="輸入代號或名稱，例如 2330、台積電" aria-label="搜尋股票" role="combobox" aria-controls="suggest" aria-expanded="false" aria-autocomplete="list">
@@ -31,43 +27,21 @@
     <div class="quick" id="quick"></div>
   </section>
 
-  <section class="card" id="watch" aria-labelledby="watchTitle"></section>
+  <div class="entry-grid">
+    <section class="card entry" aria-labelledby="pvWatchT"><header><h2 id="pvWatchT">我的選股</h2><a class="more" href="/watch">全部 →</a></header><div id="pvWatch"></div></section>
+    <section class="card entry" aria-labelledby="pvIntraT"><header><h2 id="pvIntraT">盤中當沖觀察</h2><a class="more" href="/intraday">看說明與全部 →</a></header><div id="pvIntra"></div></section>
+    <section class="card entry" aria-labelledby="pvPicksT"><header><h2 id="pvPicksT">盤後篩選名單</h2><a class="more" href="/picks">看說明與全部 →</a></header><div id="pvPicks"></div></section>
+    <section class="card entry" aria-labelledby="pvSecT"><header><h2 id="pvSecT">產業分類</h2><a class="more" href="/sectors">全部產業 →</a></header><div id="pvSectors"></div></section>
+  </div>
 
-  <section class="card" id="browse" aria-labelledby="browseTitle">
-    <div class="section-head"><h2 id="browseTitle">依類型找股票</h2><span class="small muted" id="browseDate"></span></div>
-    <p class="small muted" style="margin:4px 0 0">選一個產業，看這個類別裡的股票今天的收盤價、漲跌和成交量。點股票名稱看完整分析，按 ☆ 加入我的選股。</p>
-    <div class="sector-tabs" id="sectorTabs" role="tablist" aria-label="產業類別"></div>
-    <div class="sort-row" id="sortRow"></div>
-    <div class="scroll" id="sectorTable"><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">載入股票清單…</span></div></div>
-  </section>
-
-  <section class="card" id="intraday" aria-labelledby="intraTitle"></section>
-
-  <section class="card" id="picks" aria-labelledby="picksTitle"></section>
-
-  <section class="card" id="guide" aria-labelledby="guideTitle">
-    <h2 id="guideTitle">使用教學</h2>
-    <ol class="steps">
-      <li><b>搜尋股票</b><span class="small muted">在上方輸入代號或名稱，上市、上櫃都可以查，選單會邊打邊提示。</span></li>
-      <li><b>先看漲停指數</b><span class="small muted">0～100 分的綜合分數，下方五個面向告訴你強在哪、弱在哪。</span></li>
-      <li><b>再看價位地圖</b><span class="small muted">現價下方的支撐、上方的壓力，以及價格在近 20 日區間的位置。</span></li>
-      <li><b>展開研究室</b><span class="small muted">K 線、法人、融資借券、本益比與營收，以及每一分是怎麼算的。</span></li>
-    </ol>
-    <div class="glossary">
-      <details open><summary>漲停指數<span>綜合分數</span></summary><p>把趨勢面（25%）、量價（20%）、法人（20%）、籌碼（15%）、基本面（20%）五個分數加權平均，再扣掉風險折減（例如緊貼強壓力、走勢轉弱、RSI 過熱）。分數只代表資料整理後的強弱，不代表未來漲跌。</p></details>
-      <details><summary>走勢標籤<span>多頭／偏多／整理／偏空／風險</span></summary><p>依趨勢面分數分級：70 分以上多頭、55 分以上偏多、42 分以上整理、30 分以上偏空，30 分以下為風險，代表均線與動能同步轉弱。</p></details>
-      <details open><summary>支撐與壓力<span>來自真實成交結構</span></summary><p>支撐是股價往下時比較可能止跌的價位，跌破代表轉弱；壓力是股價往上時比較可能遇到賣壓的價位，站上代表轉強。候選價位包括波段高低點、均線、未回補缺口、爆量 K 棒的高低點、成交量最集中的價格帶與趨勢線。相近的價位合併成價格帶；離現價不到 1% 的不列。支撐取現價下方 20% 內、壓力取現價上方最近的兩道。</p></details>
-      <details><summary>共振強度<span>弱／中／強／極強</span></summary><p>同一個價格帶上同時出現幾種結構：分屬價格、均線、量能、籌碼四類。類別越多、訊號越多，這個價位越可能有反應。</p></details>
-      <details open><summary>結構觀察區<span>好幾種支撐疊在一起的價格帶</span></summary><p>當均線、前波低點、大量成交區等不同的支撐剛好落在同一個價格帶，就形成比較紮實的承接區，股價回到這裡時比較有機會止跌。近端兩道支撐聚在一起、合計三類以上訊號，而且走勢不在「風險」時才會列出。走勢轉弱時支撐容易失效，所以這時會顯示「尚未形成」。</p></details>
-      <details open><summary>現在的位置<span>低檔區／中段區／偏熱區</span></summary><p>把近 20 日最低點到最高點（或第一壓力，取較高者）當成一把尺，看現價落在第幾 %。<b>低檔區（0～35%）</b>：靠近近期低點和支撐，往下空間相對小，但走勢轉弱時也可能繼續破底。<b>中段區（35～70%）</b>：在區間中間，方向還不明確。<b>偏熱區（70% 以上）</b>：靠近近期高點，短線漲了一段，追價風險較高。</p></details>
-      <details><summary>盤中即時<span>開盤時間會自動更新</span></summary><p>交易日 9:00～13:30 打開個股頁，價格每 15 秒更新一次，漲停指數與位置會用即時價格重算。法人、融資、借券、本益比只在盤後公布，盤中沿用前一交易日的資料。</p></details>
-      <details><summary>資料來源與時間<span>證交所、櫃買中心、公開資訊觀測站</span></summary><p>日K與籌碼為收盤後公開資料：行情約下午 2 點後、三大法人約下午 3 點後、融資融券與借券約晚上更新；月營收每月 10 日前公布。盤中價格取自證交所即時行情，約延遲數秒。</p></details>
-    </div>
+  <section class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <div><b>第一次用？</b><span class="small muted">　四個步驟看懂漲停指數、支撐壓力和價格位置。</span></div>
+    <a class="btn ghost" href="/guide">看使用教學</a>
   </section>
 
   <footer class="note">本站為資料整理與研究工具，不構成投資建議。資料來自臺灣證券交易所、證券櫃檯買賣中心與公開資訊觀測站的公開資料；盤中價格取自證交所即時行情，約延遲數秒，法人、融資、借券為前一交易日盤後資料。上櫃股票目前只有行情與量價。評分與價位邏輯為自行實作，僅供參考。</footer>
 </div>
 <script src="/common.js"></script>
-<script src="/home.js"></script>
+<script src="/pages.js"></script>
 </body>
 </html>

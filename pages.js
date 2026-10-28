@@ -1,9 +1,10 @@
-/* 首頁：搜尋、快速選股、盤中當沖觀察、盤後名單 */
-attachSearch($('#searchForm'), $('#q'), $('#suggest'));
-loadStocks().then(() => { renderBrowse(); });
+/* 各分頁共用：依頁面上有哪些區塊決定要載入什麼 */
+if ($('#searchForm')) attachSearch($('#searchForm'), $('#q'), $('#suggest'));
+loadStocks().then(() => { if ($('#browse')) renderBrowse(); if ($('#pvSectors')) renderPvSectors(); });
 
 
 (function quick() {
+  if (!$('#quick')) return;
   const rec = Recent.get();
   const list = rec.length ? rec.slice(0, 6) : [{ code: '2330', name: '台積電' }, { code: '2317', name: '鴻海' }, { code: '2454', name: '聯發科' }, { code: '2303', name: '聯電' }];
   $('#quick').innerHTML = `<span class="lab">${rec.length ? '最近查詢' : '試試看'}</span>` + list.map(s => `<a class="chip" href="/analysis/${esc(s.code)}" style="text-decoration:none"><span class="num" style="color:var(--accent)">${esc(s.code)}</span> ${esc(s.name || '')}</a>`).join('');
@@ -11,7 +12,7 @@ loadStocks().then(() => { renderBrowse(); });
 
 let intraTimer = null;
 async function loadIntraday() {
-  const box = $('#intraday');
+  const box = $('#intraday'); if (!box) return;
   if (!box.innerHTML) box.innerHTML = `<h2 id="intraTitle">盤中當沖觀察</h2><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">正在掃描成交值前 150 大上市股票的即時行情…</span></div>`;
   try {
     const r = await fetch('/api/intraday'); const j = await r.json().catch(() => ({ error: '伺服器回應格式錯誤。' }));
@@ -38,10 +39,10 @@ async function loadIntraday() {
     $('#retryIntra').onclick = loadIntraday;
   }
 }
-document.addEventListener('visibilitychange', () => { if (!document.hidden) loadIntraday(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && $('#intraday')) loadIntraday(); });
 
 async function loadPicks() {
-  const box = $('#picks');
+  const box = $('#picks'); if (!box) return;
   box.innerHTML = `<h2 id="picksTitle">盤後篩選名單</h2><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">正在從證交所整理全市場近 3 個月資料，第一次約需 30～60 秒。</span></div>`;
   try {
     const r = await fetch('/api/picks'); const j = await r.json().catch(() => ({ error: '伺服器回應格式錯誤。' }));
@@ -77,10 +78,10 @@ loadPicks();
 /* 我的選股 */
 let watchTimer = null;
 async function renderWatch() {
-  const box = $('#watch'), list = Watch.get();
+  const box = $('#watch'); if (!box) return; const list = Watch.get();
   const head = `<div class="section-head"><h2 id="watchTitle">我的選股</h2><span class="small muted" id="watchState"></span></div>`;
   if (!list.length) {
-    box.innerHTML = head + `<p class="small muted" style="margin:6px 0 0">還沒有加入任何股票。在個股頁按「☆ 加入我的選股」，或在下方「依類型找股票」點 ☆，就會出現在這裡。清單存在這台裝置的瀏覽器裡。</p>`;
+    box.innerHTML = head + `<p class="small muted" style="margin:6px 0 0">還沒有加入任何股票。在個股頁按「☆ 加入我的選股」，或到<a href="/sectors">產業分類</a>點 ☆，就會出現在這裡。清單存在這台裝置的瀏覽器裡。</p>`;
     return;
   }
   const rowsHtml = (q = {}) => list.map(w => { const x = q[w.code] || {}; const chg = x.price && x.prev ? (x.price / x.prev - 1) * 100 : null;
@@ -108,9 +109,9 @@ let curSector = null, sortBy = 'vol', showAll = false;
 function renderBrowse() {
   if (!STOCKS) { $('#sectorTable').innerHTML = '<p class="err">股票清單暫時載不到，請重新整理頁面。</p>'; return; }
   const secs = SECTORS.length ? SECTORS : [];
-  if (!curSector) curSector = (secs.find(s => s.id === '24') || secs[0] || {}).id;
+  if (!curSector) { const hs = decodeURIComponent(location.hash.slice(1)); curSector = (secs.find(s => s.id === hs) || secs.find(s => s.id === '24') || secs[0] || {}).id; }
   $('#sectorTabs').innerHTML = secs.map(s => `<button class="chip" type="button" role="tab" data-sec="${esc(s.id)}" aria-selected="${s.id === curSector}" aria-pressed="${s.id === curSector}">${esc(s.name)} <span class="small muted num">${s.n}</span></button>`).join('');
-  $('#sectorTabs').querySelectorAll('[data-sec]').forEach(b => b.onclick = () => { curSector = b.dataset.sec; showAll = false; renderBrowse(); });
+  $('#sectorTabs').querySelectorAll('[data-sec]').forEach(b => b.onclick = () => { curSector = b.dataset.sec; showAll = false; history.replaceState(null, '', '#' + curSector); renderBrowse(); });
   const sorts = [['vol', '成交量'], ['up', '漲幅'], ['down', '跌幅']];
   $('#sortRow').innerHTML = '排序：' + sorts.map(([k, l]) => `<button type="button" data-sort="${k}" aria-pressed="${sortBy === k}">${l}</button>`).join('');
   $('#sortRow').querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { sortBy = b.dataset.sort; renderBrowse(); });
@@ -126,3 +127,42 @@ function renderBrowse() {
   const more = $('#moreRows'); if (more) more.onclick = () => { showAll = true; renderBrowse(); };
 }
 window.addEventListener('pageshow', e => { if (e.persisted) renderWatch(); });
+
+/* 首頁摘要卡 */
+const miniRow = (code, name, right, tag) => `<li><a href="/analysis/${esc(code)}"><span class="num code">${esc(code)}</span><span class="nm">${esc(name || '')}${tag ? `<span class="tag">${esc(tag)}</span>` : ''}</span>${right}</a></li>`;
+async function renderPvWatch() {
+  const box = $('#pvWatch'); if (!box) return;
+  const list = Watch.get();
+  if (!list.length) { box.innerHTML = `<p class="small muted" style="margin:0">還沒有加入股票。在個股頁按「☆ 加入我的選股」，或到<a href="/sectors">產業分類</a>點 ☆。</p>`; return; }
+  const items = list.slice(0, 5);
+  const draw = (q = {}) => { box.innerHTML = `<ul class="mini">${items.map(w => { const x = q[w.code] || {}; const chg = x.price && x.prev ? (x.price / x.prev - 1) * 100 : null; return miniRow(w.code, w.name, `<span class="num ${cls(chg)}">${x.price ? pxd(x.price) : '—'}　${chg == null ? '' : sg(chg) + '%'}</span>`); }).join('')}</ul>${list.length > 5 ? `<p class="note" style="margin:0">還有 ${list.length - 5} 檔，到「我的選股」看全部。</p>` : ''}`; };
+  draw();
+  try { const j = await fetch('/api/quote?codes=' + items.map(w => w.code).join(',')).then(r => r.json()); const q = {}; (j.quotes || []).forEach(x => { if (x.price) q[x.code] = x; }); draw(q); } catch (e) {}
+}
+async function renderPvIntra() {
+  const box = $('#pvIntra'); if (!box) return;
+  box.innerHTML = '<p class="small muted" style="margin:0">掃描中…</p>';
+  try {
+    const j = await fetch('/api/intraday').then(r => r.json()); if (j.error) throw new Error(j.error);
+    const open = j.session && j.session.open;
+    box.innerHTML = `<p class="small muted" style="margin:0">${open ? `<span class="live-badge"><span class="dot on"></span>盤中 ${esc((j.time || '').slice(0, 5))}</span>` : `${j.date ? esc(j.date.replace(/-/g, '/')) + ' ' : ''}收盤時的結果，開盤後自動更新`}</p>` +
+      (j.picks.length ? `<ul class="mini">${j.picks.map(x => miniRow(x.code, x.name, `<span class="num ${cls(x.chg)}">${pxd(x.price)}　${sg(x.chg)}%</span>`)).join('')}</ul>` : '<p class="small muted" style="margin:0">目前沒有股票符合條件。</p>');
+    if (open) setTimeout(renderPvIntra, 180000);
+  } catch (e) { box.innerHTML = `<p class="small err" style="margin:0">${esc(e.message)}</p>`; }
+}
+async function renderPvPicks() {
+  const box = $('#pvPicks'); if (!box) return;
+  box.innerHTML = '<p class="small muted" style="margin:0">整理中，第一次約需 30～60 秒…</p>';
+  try {
+    const j = await fetch('/api/picks').then(r => r.json()); if (j.error) throw new Error(j.error);
+    const rows = [['當沖', j.day], ['短期', j.swing], ['長期', j.long]].flatMap(([t, l]) => l.slice(0, 1).map(x => miniRow(x.code, x.name, `<span class="num ${cls(x.chg)}">${pxd(x.close)}　${sg(x.chg)}%</span>`, t)));
+    box.innerHTML = `<p class="small muted" style="margin:0">${esc(j.date)} 收盤後篩選，各類第一名：</p>${rows.length ? `<ul class="mini">${rows.join('')}</ul>` : '<p class="small muted">今天沒有股票符合條件。</p>'}`;
+  } catch (e) { box.innerHTML = `<p class="small err" style="margin:0">${esc(e.message)}</p>`; }
+}
+function renderPvSectors() {
+  const box = $('#pvSectors'); if (!box) return;
+  const want = ['24', '28', '25', '26', '27', '17', '15', '22', '35', '10', '12', 'ETF'];
+  const secs = want.map(id => SECTORS.find(s => s.id === id)).filter(Boolean);
+  box.innerHTML = `<p class="small muted" style="margin:0">點一個產業，看這類股票今天的漲跌和成交量。</p><div class="chips">${secs.map(s => `<a class="chip" href="/sectors#${esc(s.id)}" style="text-decoration:none">${esc(s.name)} <span class="small muted num">${s.n}</span></a>`).join('')}</div>`;
+}
+renderPvWatch(); renderPvIntra(); renderPvPicks();

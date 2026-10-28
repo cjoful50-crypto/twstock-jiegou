@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>產業分類｜盤後結構室</title>
+<meta name="description" content="依產業瀏覽上市櫃股票的收盤價、漲跌與成交量。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;800&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="nav" id="nav" data-page="sectors"></header>
+<div class="wrap">
+  <div class="page-head"><h1>產業分類</h1><p>選一個產業，看這類股票最近一個交易日的收盤價、漲跌和成交量。</p></div>
+  <section class="card" id="browse" aria-labelledby="browseTitle">
+    <div class="section-head"><h2 id="browseTitle">股票列表</h2><span class="small muted" id="browseDate"></span></div>
+    <p class="small muted" style="margin:4px 0 0">選一個產業，看這個類別裡的股票今天的收盤價、漲跌和成交量。點股票名稱看完整分析，按 ☆ 加入我的選股。</p>
+    <div class="sector-tabs" id="sectorTabs" role="tablist" aria-label="產業類別"></div>
+    <div class="sort-row" id="sortRow"></div>
+    <div class="scroll" id="sectorTable"><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">載入股票清單…</span></div></div>
+  </section>
+
+  <footer class="note">本站為資料整理與研究工具，不構成投資建議。資料來自臺灣證券交易所、證券櫃檯買賣中心與公開資訊觀測站的公開資料；盤中價格取自證交所即時行情，約延遲數秒，法人、融資、借券為前一交易日盤後資料。上櫃股票目前只有行情與量價。評分與價位邏輯為自行實作，僅供參考。</footer>
+</div>
+<script src="/common.js"></script>
+<script src="/pages.js"></script>
+</body>
+</html>
