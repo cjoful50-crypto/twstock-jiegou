@@ -218,7 +218,7 @@ const Engine = (() => {
       zone = { lo: s2.lo, hi: s1.level };
     else if (s1 && s1.rank >= 4 && s1.tier === '近端' && trendLabel !== '風險') zone = { lo: s1.lo, hi: s1.level };
     let zoneWhy = '';
-    if (!zone) zoneWhy = !s1 ? '現價下方 20% 內找不到有效支撐結構。' : trendLabel === '風險' ? '支撐雖在，但目前走勢屬「風險」，均線與動能同步轉弱時支撐容易失效，因此不列支撐密集區。' : '目前價格結構中的支撐尚未聚集成明確區間，因此不列支撐密集區。';
+    if (!zone) zoneWhy = !s1 ? '現價下方 20% 內沒有有效的支撐結構。' : trendLabel === '風險' ? '雖有支撐，但目前走勢屬「風險」，均線與動能同步轉弱時支撐較容易失效，因此不列出支撐密集區。' : '支撐尚未集中在同一價格帶，因此不列出支撐密集區。';
 
     // 位置量表：近 20 日低點到近 20 日高點（或第一壓力，取高者）
     const top = Math.max(ind.high20, R1 ? R1.level : 0), posPct = clamp((c - ind.low20) / (top - ind.low20) * 100, 0, 100);

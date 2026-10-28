@@ -13,13 +13,13 @@
 <header class="nav" id="nav" data-page="home"></header>
 <div class="wrap">
   <section class="hero-home" aria-labelledby="heroTitle">
-    <span class="eyebrow">台股個股結構分析</span>
+    <span class="eyebrow">台股個股分析</span>
     <h1 id="heroTitle">今天想看<em>哪一檔</em>？</h1>
-    <p class="lead">輸入股票代號或名稱，把技術、量價、法人、籌碼、基本面整理成一頁：強度分數、支撐與壓力，以及現在價格站在哪個位置。</p>
+    <p class="lead">輸入股票代號或名稱，即可查看強度分數、支撐與壓力價位，以及技術、量價、法人、籌碼、基本面的重點整理。</p>
     <div class="search-big">
       <form class="search" id="searchForm" role="search" autocomplete="off">
         <input id="q" inputmode="search" placeholder="輸入代號或名稱，例如 2330、台積電" aria-label="搜尋股票" role="combobox" aria-controls="suggest" aria-expanded="false" aria-autocomplete="list">
-        <button class="btn" type="submit">幫我看看</button>
+        <button class="btn" type="submit">查詢</button>
       </form>
       <ul class="suggest" id="suggest" role="listbox" hidden></ul>
       <p class="search-msg" hidden></p>
@@ -31,16 +31,16 @@
 
   <div class="entry-grid">
     <section class="card entry" aria-labelledby="pvWatchT"><header><h2 id="pvWatchT">我的選股</h2><a class="more" href="/watch">全部 →</a></header><div id="pvWatch"></div></section>
-    <section class="card entry" aria-labelledby="pvIntraT"><header><h2 id="pvIntraT">盤中當沖觀察</h2><a class="more" href="/intraday">看說明與全部 →</a></header><div id="pvIntra"></div></section>
-    <section class="card entry" aria-labelledby="pvPicksT"><header><h2 id="pvPicksT">盤後篩選名單</h2><a class="more" href="/picks">看說明與全部 →</a></header><div id="pvPicks"></div></section>
+    <section class="card entry" aria-labelledby="pvIntraT"><header><h2 id="pvIntraT">盤中當沖觀察</h2><a class="more" href="/intraday">查看全部 →</a></header><div id="pvIntra"></div></section>
+    <section class="card entry" aria-labelledby="pvPicksT"><header><h2 id="pvPicksT">盤後篩選名單</h2><a class="more" href="/picks">查看全部 →</a></header><div id="pvPicks"></div></section>
   </div>
 
   <section class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-    <div><b>第一次用？</b><span class="small muted">　四個步驟看懂強度分數、支撐壓力和價格位置。</span></div>
-    <a class="btn ghost" href="/guide">看使用教學</a>
+    <div><b>第一次使用？</b><span class="small muted">　了解強度分數、價位地圖與各項名單的看法。</span></div>
+    <a class="btn ghost" href="/guide">使用說明</a>
   </section>
 
-  <footer class="note">本站為資料整理與研究工具，不構成投資建議。資料來自臺灣證券交易所、證券櫃檯買賣中心與公開資訊觀測站的公開資料；盤中價格取自證交所即時行情，約延遲數秒，法人、融資、借券為前一交易日盤後資料。評分與價位邏輯為自行實作，僅供參考。</footer>
+  <footer class="note">本站內容為公開資料的整理與統計，不構成任何投資建議，投資前請自行判斷並承擔風險。資料來源：臺灣證券交易所、證券櫃檯買賣中心、公開資訊觀測站。收盤資料於交易日盤後更新，盤中價格約有數秒延遲。</footer>
 </div>
 <script src="/common.js"></script>
 <script src="/pages.js"></script>

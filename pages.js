@@ -8,7 +8,7 @@ async function getPicks(date) {
   if (date) { const r = await fetch(`/data/daily/${date}.json`); if (r.ok) return r.json(); }
   const s = await fetch('/data/latest.json').then(r => r.ok ? r.json() : null).catch(() => null);
   if (s && s.day) return s;
-  throw new Error('名單還沒產生。每個交易日 16:50 收盤資料公布後會自動更新。');
+  throw new Error('名單尚未產生，每個交易日約 17:00 更新。');
 }
 if ($('#searchForm')) attachSearch($('#searchForm'), $('#q'), $('#suggest'));
 loadStocks().then(() => { if ($('#browse')) renderBrowse(); if ($('#pvSectors')) renderPvSectors(); });
@@ -24,25 +24,25 @@ loadStocks().then(() => { if ($('#browse')) renderBrowse(); if ($('#pvSectors'))
 let intraTimer = null;
 async function loadIntraday() {
   const box = $('#intraday'); if (!box) return;
-  if (!box.innerHTML) box.innerHTML = `<h2 id="intraTitle">盤中當沖觀察</h2><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">正在掃描成交值前 150 大上市股票的即時行情…</span></div>`;
+  if (!box.innerHTML) box.innerHTML = `<h2 id="intraTitle">盤中當沖觀察</h2><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">正在掃描即時行情…</span></div>`;
   try {
     const r = await fetch('/api/intraday'); const j = await r.json().catch(() => ({ error: '伺服器回應格式錯誤。' }));
     if (!r.ok || j.error) throw new Error(j.error || 'HTTP ' + r.status);
     const open = j.session && j.session.open;
-    const state = open ? `<span class="live-badge"><span class="dot on"></span>盤中 ${esc((j.time || '').slice(0, 5))}・每 3 分鐘重新掃描</span>` : `<span class="live-badge"><span class="dot"></span>${j.date ? esc(j.date.replace(/-/g, '/')) + ' ' : ''}收盤後結果・下個交易日 9:00 開盤後自動更新</span>`;
+    const state = open ? `<span class="live-badge"><span class="dot on"></span>盤中 ${esc((j.time || '').slice(0, 5))}・每 3 分鐘更新</span>` : `<span class="live-badge"><span class="dot"></span>${j.date ? esc(j.date.replace(/-/g, '/')) + ' ' : ''}收盤結果・下個交易日 9:00 起即時更新</span>`;
     const cards = j.picks.length ? j.picks.slice(0, 3).map(x => `<button class="pick" type="button" data-code="${esc(x.code)}">
         <div class="top1"><span><span class="code num" style="color:var(--accent)">${esc(x.code)}</span> <span class="nm">${esc(x.name)}</span></span><span class="num ${cls(x.chg)}">${pxd(x.price)} ${sg(x.chg)}%</span></div>
         <div class="sigs">${x.why.map(w => `<span>${esc(w)}</span>`).join('') + moreRows(j.picks.slice(3), 'price')}</div>
         <div class="lv num"><span>成交 ${fi(x.vol)} 張</span><span>更新 ${esc((x.time || '').slice(0, 5))}</span></div></button>`).join('')
-      : `<div class="empty">${open ? '目前沒有股票同時符合量能放大、振幅夠大、價格在高檔的條件，3 分鐘後會再掃一次。' : '今天收盤時沒有股票符合條件。'}</div>`;
+      : `<div class="empty">${open ? '目前沒有符合條件的股票，3 分鐘後將重新掃描。' : '今日收盤時沒有符合條件的股票。'}</div>`;
     box.innerHTML = `<div class="section-head"><h2 id="intraTitle">盤中當沖觀察</h2>${state}</div>
       <div class="howto">
-        <div><b>這是什麼</b><span>開盤時間即時掃描（和「盤後名單」的隔日當沖不同，那是前一天收盤後算好的），從交易最熱絡的 150 檔上市股票裡，找出「現在」成交量明顯放大、上下波動大、價格又在今天高點附近的股票。</span></div>
-        <div><b>可以怎麼用</b><span>給有在做當沖的人當盯盤清單：點進個股看支撐和壓力，價格守在支撐上方代表還強，跌破支撐通常代表轉弱。</span></div>
-        <div><b>要注意</b><span>名單每 3 分鐘變一次，強勢股也可能隨時翻黑。當沖需要開立當沖資格、風險高，這裡只是篩選結果，不是買進建議。</span></div>
+        <div><b>內容</b><span>交易時間即時掃描前一交易日成交值最大的 150 檔上市股票，列出成交量放大、振幅較大、股價位於當日高檔的個股。與盤後名單中的「隔日當沖觀察」不同，後者為前一交易日收盤後的篩選結果。</span></div>
+        <div><b>使用方式</b><span>可作為盤中觀察清單。點選個股查看支撐與壓力：股價守在支撐之上代表仍偏強，跌破支撐通常代表轉弱。</span></div>
+        <div><b>注意事項</b><span>名單每 3 分鐘更新，強勢股可能隨時轉弱。當沖須具備當沖交易資格且風險較高，本名單僅為篩選結果，不構成買賣建議。</span></div>
       </div>
       <div class="picks-grid">${cards}</div>
-      <details class="rules"><summary>盤中名單怎麼選出來的</summary><p>條件：漲幅 1.5%～9% 且未鎖漲停、今日振幅 2.5% 以上、價格位於今日高低區間 60% 以上、成交量達前一日依時間比例的 1.3 倍以上（例如 10:30 時，交易時間過了三分之一，就和前一日總量的三分之一相比）。依量能倍數、振幅、高檔位置與漲幅加權排名。開盤初期量能通常偏大，倍數會比較高。</p></details>`;
+      <details class="rules"><summary>篩選條件</summary><p>條件：漲幅 1.5%～9% 且未鎖漲停、今日振幅 2.5% 以上、價格位於今日高低區間 60% 以上、成交量達前一日依時間比例的 1.3 倍以上（例如 10:30 時，交易時間過了三分之一，就和前一日總量的三分之一相比）。依量能倍數、振幅、高檔位置與漲幅加權排名。開盤初期量能通常偏大，倍數會比較高。</p></details>`;
     box.querySelectorAll('.pick, .pick-row').forEach(b => b.onclick = () => goTo(b.dataset.code));
     clearTimeout(intraTimer); if (open) intraTimer = setTimeout(loadIntraday, 180000);
   } catch (e) {
@@ -61,26 +61,26 @@ async function loadPicks(date) {
     const track = cat => { const s = sc && sc.summary && sc.summary[cat]; if (!s) return '';
       const [k, lab] = { day: ['oc', '隔日開盤買、收盤賣'], swing: ['r10', '持有 10 個交易日'], long: ['r20', '持有 20 個交易日'] }[cat];
       let v = s[k], m = s['m' + k.slice(1)], l2 = lab; if (!v && cat === 'long') { v = s.r5; m = s.m5; l2 = '持有 5 個交易日'; }
-      if (!v) return `<p class="track">成績單：紀錄還不夠，暫時無法評估。</p>`;
+      if (!v) return `<p class="track">成績單：紀錄不足，暫無法評估。</p>`;
       const ok = v.n >= 30 && v.avg > 0 && (!m || v.avg > m.avg);
-      return `<p class="track ${ok ? 'good' : 'weak'}"><b>過去表現</b>　${l2}平均 <span class="num ${cls(v.avg)}">${sg(v.avg)}%</span>、勝率 ${v.win}%${m && cat !== 'day' ? `、同期大盤 ${sg(m.avg)}%` : ''}（${v.n} 筆）。${ok ? '' : v.n < 30 ? '筆數還少，參考價值有限。' : '目前沒有穩定勝過大盤，請保守看待。'} <a href="/scorecard">成績單</a></p>`; };
+      return `<p class="track ${ok ? 'good' : 'weak'}"><b>過去表現</b>　${l2}平均 <span class="num ${cls(v.avg)}">${sg(v.avg)}%</span>、勝率 ${v.win}%${m && cat !== 'day' ? `、同期大盤 ${sg(m.avg)}%` : ''}（${v.n} 筆）。${ok ? '' : v.n < 30 ? '樣本數仍少，僅供參考。' : '目前未穩定優於大盤，請審慎參考。'} <a href="/scorecard">成績單</a></p>`; };
     const col = (title, sub, list, n, cat) => `<div class="pcol"><h3>${title}<small>${sub}・符合 ${n} 檔</small></h3>${track(cat)}${list.length ? list.slice(0, 3).map(x => `<button class="pick" type="button" data-code="${esc(x.code)}">
       <div class="top1"><span><span class="code num" style="color:var(--accent)">${esc(x.code)}</span> <span class="nm">${esc(x.name)}</span></span><span class="num ${cls(x.chg)}">${pxd(x.close)} ${sg(x.chg)}%</span></div>
       <div class="sigs">${x.why.map(w => `<span>${esc(w)}</span>`).join('') + moreRows(list.slice(3), 'close')}</div>
       <div class="lv num"><span>強度分數 <b style="color:${scoreColor(x.index)}">${x.index ?? '—'}</b></span><span>支撐 <b style="color:var(--sup)">${x.sup != null ? pxd(x.sup) : '—'}</b></span><span>壓力 <b style="color:var(--res)">${x.res != null ? pxd(x.res) : '—'}</b></span></div></button>`).join('') : '<div class="empty">今天沒有股票符合條件。</div>'}</div>`;
     box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h2 id="picksTitle">盤後篩選名單</h2><span class="small muted num">${idx && idx.dates.length > 1 ? `<label for="pickDate">查看日期 </label><select id="pickDate">${idx.dates.slice().reverse().map(d => `<option value="${d}"${d.replace(/-/g, '/') === j.date ? ' selected' : ''}>${d.replace(/-/g, '/')}</option>`).join('')}</select>　` : esc(j.date) + ' 收盤・'}掃描 ${j.universe} 檔上市櫃股票</span></div>
       <div class="howto">
-        <div><b>這是什麼</b><span>每天收盤後，用當天的收盤資料篩出的觀察名單，適合在下一個交易日開盤前看。三欄對應不同的持有時間：隔日當沖是隔天開盤後當天進出（和「盤中當沖」頁不同，那是開盤時即時掃描的），短期大約持有 1～2 週，長期是持有幾個月以上。</span></div>
-        <div><b>可以怎麼用</b><span>先點進個股看強度分數、支撐和壓力。例如明天開盤後價格守住支撐、或站上壓力，代表結構延續；開低跌破支撐，就代表條件已經變了。</span></div>
-        <div><b>要注意</b><span>名單只代表「今天收盤時符合條件」，不是預測明天會漲，也不是買進建議。下單前請自己判斷，並設好停損。</span></div>
+        <div><b>內容</b><span>每個交易日收盤後，依公開規則從上市櫃股票中篩選，每類列出前 10 名。隔日當沖觀察供下一個交易日盤中參考（與交易時間即時掃描的「盤中當沖觀察」不同）；短期觀察適合約 1～2 週的持有期間；長期觀察以基本面為主，適合數月以上。</span></div>
+        <div><b>使用方式</b><span>點選個股查看強度分數與支撐壓力。開盤後若股價守住支撐或站上壓力，代表原本的結構延續；若跌破支撐，代表入選條件已經改變。</span></div>
+        <div><b>注意事項</b><span>入選代表該股在收盤時符合篩選條件，並非對未來漲跌的預測，也不構成買賣建議。各類名單的歷史表現請參考名單成績單。</span></div>
       </div>
       <div class="picks-grid">${col('隔日當沖觀察', '隔天開盤後當天進出', j.day, j.counts.day, 'day')}${col('短期觀察', '持有約 1～2 週', j.swing, j.counts.swing, 'swing')}${col('長期觀察', '持有數月以上', j.long, j.counts.long, 'long')}</div>
-      <details class="rules"><summary>名單怎麼選出來的</summary>
-        <p>共同條件：一般上市股票（排除 ETF、權證），股價 10 元以上，近 20 日平均成交量 1,000 張以上。同一檔只會出現在一個名單。</p>
-        <p><b>隔日當沖觀察（量價突破）</b>：收盤創 20 日新高、當日量比 1.8 倍以上、收盤位於當日高低區間 70% 以上、漲幅 1.5%～7%、近 20 日漲幅不超過 25%、站上季線、日均成交值 3 億以上。依量能、收盤位置與法人買超排名。回測中隔天開盤買、收盤賣平均約 +0.4%，但當沖手續費加交易稅約 0.3%～0.4%，扣掉後接近打平，請把它當成觀察清單。</p>
+      <details class="rules"><summary>篩選條件</summary>
+        <p>共同條件：上市櫃普通股（不含 ETF、權證），股價 10 元以上，近 20 日平均成交量 1,000 張以上；同一檔股票只會列入一類名單。</p>
+        <p><b>隔日當沖觀察（量價突破）</b>：收盤創 20 日新高、當日量比 1.8 倍以上、收盤位於當日高低區間 70% 以上、漲幅 1.5%～7%、近 20 日漲幅不超過 25%、站上季線、日均成交值 3 億以上。依量能、收盤位置與法人買超排名。當沖的手續費與交易稅合計約 0.3%～0.4%，參考歷史表現時請一併考量。</p>
         <p><b>短期觀察（剛轉強）</b>：上市櫃滿 60 個交易日，5 日線在近 3 個交易日內剛站上月線、收盤在月線之上、月線走平或向上、近 20 日漲幅在 −5%～12%（還沒漲多）、RSI 50～68、量比 1.2 倍以上、三大法人近 5 日合計買超。依法人買超占日均量比例、量能與投信是否同步買超排名。</p>
         <p><b>長期觀察</b>：最新月營收年增 15% 以上、本益比 0～25 倍、殖利率 1.5% 以上、收盤站上季線且月線在季線之上。依營收成長、本益比、殖利率與法人動向排名。</p>
-        <p>規則經過歷史回測挑選，實際表現每天更新在<a href="/scorecard">名單成績單</a>。資料為證交所與櫃買中心盤後公開資料。法人資料約下午 3 點後公布，盤後早些時候查看時法人條件可能用前一日資料。</p>
+        <p>篩選規則以歷史資料檢驗後訂定，實際表現每日更新於<a href="/scorecard">名單成績單</a>。資料來源為證交所與櫃買中心盤後公開資料。</p>
       </details>`;
     box.querySelectorAll('.pick, .pick-row').forEach(b => b.onclick = () => goTo(b.dataset.code));
     const sel = $('#pickDate'); if (sel) sel.onchange = () => loadPicks(sel.value);
@@ -100,7 +100,7 @@ async function renderWatch() {
   const box = $('#watch'); if (!box) return; const list = Watch.get();
   const head = `<div class="section-head"><h2 id="watchTitle">我的選股</h2><span class="small muted" id="watchState"></span></div>`;
   if (!list.length) {
-    box.innerHTML = head + `<p class="small muted" style="margin:6px 0 0">還沒有加入任何股票。在個股頁按「☆ 加入我的選股」，或到<a href="/sectors">產業分類</a>點 ☆，就會出現在這裡。清單存在這台裝置的瀏覽器裡。</p>`;
+    box.innerHTML = head + `<p class="small muted" style="margin:6px 0 0">尚未加入股票。可在個股分析頁點選「☆ 加入我的選股」，或在<a href="/sectors">產業分類</a>中點選 ☆。清單儲存在目前使用的瀏覽器中。</p>`;
     return;
   }
   const rowsHtml = (q = {}) => list.map(w => { const x = q[w.code] || {}; const chg = x.price && x.prev ? (x.price / x.prev - 1) * 100 : null;
@@ -108,7 +108,7 @@ async function renderWatch() {
       <td class="num">${x.price ? pxd(x.price) : '—'}</td><td class="num ${cls(chg)}">${chg == null ? '—' : sg(chg) + '%'}</td><td class="num">${x.vol != null ? fi(x.vol) : '—'}</td>
       <td class="num" style="color:${scoreColor(w.index)}">${w.index ?? '—'}${w.trend ? `<span class="small muted">・${esc(w.trend)}</span>` : ''}</td><td>${starBtn(w.code, w.name)}</td></tr>`; }).join('');
   const table = q => `<div class="scroll"><table class="stock-table"><thead><tr><th>股票</th><th>價格</th><th>漲跌</th><th>成交量（張）</th><th>強度分數</th><th></th></tr></thead><tbody>${rowsHtml(q)}</tbody></table></div>
-    <p class="note" style="margin:6px 0 0">強度分數是你上次打開該檔個股頁時算出的分數；點進去會用最新資料重算。清單存在這台裝置的瀏覽器裡，換手機或電腦不會同步。</p>`;
+    <p class="note" style="margin:6px 0 0">強度分數為最近一次開啟該股分析頁時的結果，點選個股即可依最新資料重新計算。清單儲存在目前使用的瀏覽器中，不會同步至其他裝置。</p>`;
   box.innerHTML = head + table();
   const bind = () => { bindStars(box, renderWatch); box.querySelectorAll('tr[data-code]').forEach(tr => tr.onclick = e => { if (!e.target.closest('a,button')) goTo(tr.dataset.code); }); };
   bind();
@@ -126,7 +126,7 @@ renderWatch();
 /* 依類型找股票 */
 let curSector = null, sortBy = 'vol', showAll = false;
 function renderBrowse() {
-  if (!STOCKS) { $('#sectorTable').innerHTML = '<p class="err">股票清單暫時載不到，請重新整理頁面。</p>'; return; }
+  if (!STOCKS) { $('#sectorTable').innerHTML = '<p class="err">股票清單暫時無法載入，請重新整理頁面。</p>'; return; }
   const secs = SECTORS.length ? SECTORS : [];
   if (!curSector) { const hs = decodeURIComponent(location.hash.slice(1)); curSector = (secs.find(s => s.id === hs) || secs.find(s => s.id === '24') || secs[0] || {}).id; }
   $('#sectorTabs').innerHTML = secs.map(s => `<button class="chip" type="button" role="tab" data-sec="${esc(s.id)}" aria-selected="${s.id === curSector}" aria-pressed="${s.id === curSector}">${esc(s.name)} <span class="small muted num">${s.n}</span></button>`).join('');
@@ -153,9 +153,9 @@ const miniRow = (code, name, right, tag) => `<li><a href="/analysis/${esc(code)}
 async function renderPvWatch() {
   const box = $('#pvWatch'); if (!box) return;
   const list = Watch.get();
-  if (!list.length) { box.innerHTML = `<p class="small muted" style="margin:0">還沒有加入股票。在個股頁按「☆ 加入我的選股」，或到<a href="/sectors">產業分類</a>點 ☆。</p>`; return; }
+  if (!list.length) { box.innerHTML = `<p class="small muted" style="margin:0">尚未加入股票。可在個股分析頁點選「☆ 加入我的選股」，或在<a href="/sectors">產業分類</a>中點選 ☆。</p>`; return; }
   const items = list.slice(0, 5);
-  const draw = (q = {}) => { box.innerHTML = `<ul class="mini">${items.map(w => { const x = q[w.code] || {}; const chg = x.price && x.prev ? (x.price / x.prev - 1) * 100 : null; return miniRow(w.code, w.name, `<span class="num ${cls(chg)}">${x.price ? pxd(x.price) : '—'}　${chg == null ? '' : sg(chg) + '%'}</span>`); }).join('')}</ul>${list.length > 5 ? `<p class="note" style="margin:0">還有 ${list.length - 5} 檔，到「我的選股」看全部。</p>` : ''}`; };
+  const draw = (q = {}) => { box.innerHTML = `<ul class="mini">${items.map(w => { const x = q[w.code] || {}; const chg = x.price && x.prev ? (x.price / x.prev - 1) * 100 : null; return miniRow(w.code, w.name, `<span class="num ${cls(chg)}">${x.price ? pxd(x.price) : '—'}　${chg == null ? '' : sg(chg) + '%'}</span>`); }).join('')}</ul>${list.length > 5 ? `<p class="note" style="margin:0">另有 ${list.length - 5} 檔，請至「我的選股」查看。</p>` : ''}`; };
   draw();
   try { const j = await fetch('/api/quote?codes=' + items.map(w => w.code).join(',')).then(r => r.json()); const q = {}; (j.quotes || []).forEach(x => { if (x.price) q[x.code] = x; }); draw(q); } catch (e) {}
 }
@@ -165,7 +165,7 @@ async function renderPvIntra() {
   try {
     const j = await fetch('/api/intraday').then(r => r.json()); if (j.error) throw new Error(j.error);
     const open = j.session && j.session.open;
-    box.innerHTML = `<p class="small muted" style="margin:0">${open ? `<span class="live-badge"><span class="dot on"></span>盤中 ${esc((j.time || '').slice(0, 5))}</span>` : `${j.date ? esc(j.date.replace(/-/g, '/')) + ' ' : ''}收盤時的結果，開盤後自動更新`}</p>` +
+    box.innerHTML = `<p class="small muted" style="margin:0">${open ? `<span class="live-badge"><span class="dot on"></span>盤中 ${esc((j.time || '').slice(0, 5))}</span>` : `${j.date ? esc(j.date.replace(/-/g, '/')) + ' ' : ''}收盤結果，開盤後即時更新`}</p>` +
       (j.picks.length ? `<ul class="mini">${j.picks.slice(0, 3).map(x => miniRow(x.code, x.name, `<span class="num ${cls(x.chg)}">${pxd(x.price)}　${sg(x.chg)}%</span>`)).join('')}</ul>` : '<p class="small muted" style="margin:0">目前沒有股票符合條件。</p>');
     if (open) setTimeout(renderPvIntra, 180000);
   } catch (e) { box.innerHTML = `<p class="small err" style="margin:0">${esc(e.message)}</p>`; }
@@ -178,7 +178,7 @@ async function renderPvPicks() {
     const cats = [['day', '隔日當沖'], ['swing', '短期'], ['long', '長期']];
     let cur = 'day';
     const draw = () => { const l = j[cur] || [];
-      box.innerHTML = `<p class="small muted" style="margin:0">${esc(j.date)} 收盤後篩選，各類前 3 名</p><div class="mini-tabs" role="tablist">${cats.map(([k, t]) => `<button type="button" role="tab" data-k="${k}" aria-selected="${k === cur}">${t}</button>`).join('')}</div>${l.length ? `<ul class="mini">${l.slice(0, 3).map(x => miniRow(x.code, x.name, `<span class="num ${cls(x.chg)}">${pxd(x.close)}　${sg(x.chg)}%</span>`)).join('')}</ul>` : '<p class="small muted" style="margin:0">這一類今天沒有股票符合條件。</p>'}`;
+      box.innerHTML = `<p class="small muted" style="margin:0">${esc(j.date)} 收盤後篩選，各類前 3 名</p><div class="mini-tabs" role="tablist">${cats.map(([k, t]) => `<button type="button" role="tab" data-k="${k}" aria-selected="${k === cur}">${t}</button>`).join('')}</div>${l.length ? `<ul class="mini">${l.slice(0, 3).map(x => miniRow(x.code, x.name, `<span class="num ${cls(x.chg)}">${pxd(x.close)}　${sg(x.chg)}%</span>`)).join('')}</ul>` : '<p class="small muted" style="margin:0">此類別今日沒有符合條件的股票。</p>'}`;
       box.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { cur = b.dataset.k; draw(); }); };
     draw();
   } catch (e) { box.innerHTML = `<p class="small err" style="margin:0">${esc(e.message)}</p>`; }
@@ -187,7 +187,7 @@ function renderPvSectors() {
   const box = $('#pvSectors'); if (!box) return;
   const want = ['24', '28', '25', '26', '27', '17', '15', '22', '35', '10', '12', 'ETF'];
   const secs = want.map(id => SECTORS.find(s => s.id === id)).filter(Boolean);
-  box.innerHTML = `<p class="small muted" style="margin:0">點一個產業，看這類股票今天的漲跌和成交量。</p><div class="chips">${secs.map(s => `<a class="chip" href="/sectors#${esc(s.id)}" style="text-decoration:none">${esc(s.name)} <span class="small muted num">${s.n}</span></a>`).join('')}</div>`;
+  box.innerHTML = `<p class="small muted" style="margin:0">點選產業查看個股漲跌與成交量。</p><div class="chips">${secs.map(s => `<a class="chip" href="/sectors#${esc(s.id)}" style="text-decoration:none">${esc(s.name)} <span class="small muted num">${s.n}</span></a>`).join('')}</div>`;
 }
 renderPvWatch(); renderPvIntra(); renderPvPicks();
 
@@ -212,6 +212,6 @@ function renderHeat(box, limit) {
   if (limit) st = st.slice(0, limit);
   st.sort((a, b) => b.chg - a.chg);
   box.innerHTML = `<div class="heat">${st.map(s => `<a href="/sectors#${esc(s.id)}" style="${heatColor(s.chg)}" title="${esc(s.name)}：上漲 ${s.up} 家、下跌 ${s.dn} 家"><b>${esc(s.name)}</b><span class="num">${sg(s.chg)}%</span><small class="num">漲 ${s.up}・跌 ${s.dn}</small></a>`).join('')}</div>
-    <p class="note" style="margin:8px 0 0">${window.LIST_DATE ? esc(window.LIST_DATE) + ' 收盤。' : ''}每格的漲跌幅以成交值加權（成交越大的股票影響越大），紅色代表上漲、綠色代表下跌，顏色越深漲跌越多。點一格看該產業的股票。</p>`;
+    <p class="note" style="margin:8px 0 0">${window.LIST_DATE ? esc(window.LIST_DATE) + ' 收盤。' : ''}各格漲跌幅以成交值加權計算；紅色為上漲、綠色為下跌，顏色越深代表幅度越大。點選可查看該產業個股。</p>`;
 }
 loadStocks().then(() => { renderHeat($('#pvHeat'), 12); renderHeat($('#heatAll')); });
