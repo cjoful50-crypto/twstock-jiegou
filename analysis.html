@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;800&display=swap">
+<link rel="stylesheet" href="/style.css">
+<title>個股分析｜盤後結構室</title>
+<meta name="description" content="個股漲停指數、結構支撐壓力、法人籌碼與基本面整理。">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><a href="/"><b>盤後結構室</b></a><a href="/" class="small" style="color:var(--muted)">← 回首頁</a></div>
+    <div class="search-wrap">
+      <form class="search" id="searchForm" role="search" autocomplete="off">
+        <input id="q" inputmode="search" placeholder="代號或名稱，例如 2330、台積電" aria-label="搜尋股票" role="combobox" aria-controls="suggest" aria-expanded="false" aria-autocomplete="list">
+        <button class="btn" type="submit">查詢</button>
+      </form>
+      <ul class="suggest" id="suggest" role="listbox" hidden></ul>
+      <p class="search-msg" hidden></p>
+    </div>
+  </header>
+  <main id="app" style="display:grid;gap:18px"></main>
+  <footer class="note">本站為資料整理與研究工具，不構成投資建議。資料來自臺灣證券交易所、證券櫃檯買賣中心與公開資訊觀測站的公開資料；盤中價格取自證交所即時行情，約延遲數秒，法人、融資、借券為前一交易日盤後資料。上櫃股票目前只有行情與量價。評分與價位邏輯為自行實作，僅供參考。</footer>
+</div>
+<script src="/engine.js"></script>
+<script src="/common.js"></script>
+<script src="/analysis.js"></script>
+</body>
+</html>
