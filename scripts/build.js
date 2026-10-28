@@ -12,7 +12,7 @@ const isoOf = d => d.toISOString().slice(0, 10);
 (async () => {
   const now = tpeNow(), today = isoOf(now), afterClose = now.getUTCHours() * 60 + now.getUTCMinutes() >= 14 * 60 + 30;
   // 1. 交易日行情（快取在 data/cache/daily）
-  const weekdays = []; for (const d = new Date(now); weekdays.length < Math.round(HISTORY * 1.15) + 10; d.setUTCDate(d.getUTCDate() - 1)) { const w = d.getUTCDay(); if (w && w < 6) weekdays.push(isoOf(d)); }
+  const weekdays = []; for (const d = new Date(now); weekdays.length < 90; d.setUTCDate(d.getUTCDate() - 1)) { const w = d.getUTCDay(); if (w && w < 6) weekdays.push(isoOf(d)); }
   weekdays.reverse();
   const days = [], names = rd(path.join(CACHE, 'names.json')) || {}, taiex = rd(path.join(CACHE, 'taiex.json')) || {};
   for (const d of weekdays) {
@@ -29,8 +29,11 @@ const isoOf = d => d.toISOString().slice(0, 10);
     if (!c.holiday) days.push({ d, q: c });
   }
   wr(path.join(CACHE, 'names.json'), names); wr(path.join(CACHE, 'taiex.json'), taiex);
+  // 名單與成績單用快取裡所有交易日（含研究用回補的歷史）
+  days.length = 0;
+  for (const n of fs.readdirSync(path.join(CACHE, 'daily')).sort()) { const d = n.slice(0, 10); if (d === today && !afterClose) continue; const c = rd(path.join(CACHE, 'daily', n)); if (c && !c.holiday) days.push({ d, q: c }); }
   if (days.length < 45) throw new Error('交易日資料不足：' + days.length);
-  const last = days.length - 1, from = Math.max(61, last - BACKFILL + 1);
+  const last = days.length - 1, from = Math.max(70, last - BACKFILL + 1);
 
   // 2. 法人、本益比（只抓需要的日期）
   const instByDay = {}, valByDay = {};
@@ -67,27 +70,41 @@ const isoOf = d => d.toISOString().slice(0, 10);
   const allDates = fs.readdirSync(path.join(DATA, 'daily')).map(n => n.replace('.json', '')).sort();
   wr(path.join(DATA, 'index.json'), { dates: allDates, latest: days[last].d });
 
-  // 5. 名單成績單：入選後第 1、5、20 個交易日的報酬，與加權指數比較
+  // 5. 名單成績單：訊號隔天開盤買進，短線持有 5 日、波段 20 日、長線 60 日後以收盤賣出，扣交易成本（約 0.47%）
+  //    同時算「同一天隨便買全市場（日均成交值 2 億以上）」的平均，當作比較基準
+  const COST = 0.47, HOLD = { day: 5, swing: 20, long: 60 };
   const idx = new Map(days.map((x, i) => [x.d, i]));
-  const H = [1, 5, 10, 20], picks = [];
+  const benchCache = {};
+  const bench = (i, h) => { const k = i + ':' + h; if (k in benchCache) return benchCache[k]; let s = 0, n = 0;
+    if (i + h <= last) for (const [code, b] of Object.entries(days[i].q)) { const nb = days[i + 1].q[code], eb = days[i + h].q[code]; if (!nb || !nb[0] || !eb || !eb[3] || !b[3]) continue;
+      // 成交值門檻用當日成交量近似
+      if (b[3] * (b[4] || 0) * 1000 < 2e8) continue; s += (eb[3] / nb[0] - 1) * 100; n++; }
+    return benchCache[k] = n ? +(s / n - COST).toFixed(2) : null; };
+  const picks = [];
   for (const d of allDates) {
     const i = idx.get(d); if (i == null) continue; const L = rd(path.join(DATA, 'daily', d + '.json'));
     for (const cat of ['day', 'swing', 'long']) (L[cat] || []).forEach((p, rank) => {
       const c0 = (days[i].q[p.code] || [])[3]; if (!c0) return;
-      const row = { date: d, cat, rank: rank + 1, code: p.code, name: p.name, close: c0 };
-      for (const h of H) { const j = i + h; if (j <= last) { const c1 = (days[j].q[p.code] || [])[3]; if (c1) row['r' + h] = +((c1 / c0 - 1) * 100).toFixed(2); const t0 = taiex[d], t1 = taiex[days[j].d]; if (t0 && t1) row['m' + h] = +((t1 / t0 - 1) * 100).toFixed(2); } }
-      if (i + 1 <= last) { const nb = days[i + 1].q[p.code]; if (nb && nb[0]) { row.oc = +((nb[3] / nb[0] - 1) * 100).toFixed(2); row.oh = +((nb[1] / nb[0] - 1) * 100).toFixed(2); } }
+      const row = { date: d, cat, rank: rank + 1, code: p.code, name: p.name, close: c0 }, h = HOLD[cat];
+      const nb = i + 1 <= last ? days[i + 1].q[p.code] : null;
+      if (nb && nb[0]) { row.entry = nb[0];
+        // 持有期間若停牌，取最後一個有收盤價的日子
+        let ex = null; for (let j = i + 1; j <= Math.min(last, i + h); j++) { const b = days[j].q[p.code]; if (b && b[3]) ex = b[3]; }
+        row.now = ex != null ? +((ex / nb[0] - 1) * 100 - COST).toFixed(2) : null;
+        if (i + h <= last && ex != null) { row.ret = row.now; row.bench = bench(i, h); }
+      }
       picks.push(row);
     });
   }
-  const stat = (rows, k) => { const v = rows.map(r => r[k]).filter(x => x != null); if (!v.length) return null; const s = v.slice().sort((a, b) => a - b);
-    return { n: v.length, avg: +(v.reduce((a, b) => a + b, 0) / v.length).toFixed(2), median: +s[Math.floor(s.length / 2)].toFixed(2), win: +(v.filter(x => x > 0).length / v.length * 100).toFixed(0) }; };
-  // 兩種統計：每天前 3 名、每天全部（最多 10 檔）
+  const stat = rows => { const v = rows.filter(r => r.ret != null); if (!v.length) return null; const s = v.map(r => r.ret).sort((a, b) => a - b), b = v.filter(r => r.bench != null);
+    const avg = s.reduce((a, x) => a + x, 0) / s.length, bAvg = b.length ? b.reduce((a, r) => a + r.bench, 0) / b.length : null;
+    return { n: v.length, avg: +avg.toFixed(2), median: +s[Math.floor(s.length / 2)].toFixed(2), win: +(s.filter(x => x > 0).length / s.length * 100).toFixed(0), worst: +s[0].toFixed(2), bench: bAvg == null ? null : +bAvg.toFixed(2), excess: bAvg == null ? null : +(avg - bAvg).toFixed(2) }; };
+  const halves = [...new Set(picks.map(p => p.date.slice(0, 4) + (p.date.slice(5, 7) <= '06' ? '上' : '下')))].sort();
   const summarize = sel => { const out = {}; for (const cat of ['day', 'swing', 'long']) {
-    const rows = picks.filter(p => p.cat === cat && sel(p)); out[cat] = { picks: rows.length, from: rows.length ? rows[0].date : null };
-    for (const h of H) { out[cat]['r' + h] = stat(rows, 'r' + h); out[cat]['m' + h] = stat(rows, 'm' + h); }
-    out[cat].oc = stat(rows, 'oc'); out[cat].oh = stat(rows, 'oh'); } return out; };
+    const rows = picks.filter(p => p.cat === cat && sel(p)); out[cat] = Object.assign({ hold: HOLD[cat], picks: rows.length, from: rows.length ? rows[0].date : null }, { all: stat(rows) });
+    out[cat].periods = halves.map(hf => ({ label: hf.slice(0, 4) + (hf.endsWith('上') ? ' 上半年' : ' 下半年'), s: stat(rows.filter(p => p.date.slice(0, 4) + (p.date.slice(5, 7) <= '06' ? '上' : '下') === hf)) })).filter(x => x.s);
+  } return out; };
   const summary = summarize(p => p.rank <= 3), summaryAll = summarize(() => true);
-  wr(path.join(DATA, 'scorecard.json'), { updated: new Date().toISOString(), through: days[last].d, horizons: H, summary, summaryAll, picks: picks.slice().reverse() });
+  wr(path.join(DATA, 'scorecard.json'), { updated: new Date().toISOString(), through: days[last].d, cost: COST, hold: HOLD, summary, summaryAll, picks: picks.slice(-3000).reverse() });
   console.log(`::notice::完成 ${days[last].d}：名單 ${allDates.length} 天、成績單 ${picks.length} 筆、交易日 ${days.length}；最新名單 ${JSON.stringify(latest.counts)}`);
 })().catch(e => { console.log('::error::' + String(e && e.stack || e).replace(/\n/g, ' | ')); process.exit(1); });

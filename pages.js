@@ -37,7 +37,7 @@ async function loadIntraday() {
       : `<div class="empty">${open ? '目前沒有符合條件的股票，3 分鐘後將重新掃描。' : '今日收盤時沒有符合條件的股票。'}</div>`;
     box.innerHTML = `<div class="section-head"><h2 id="intraTitle">盤中當沖觀察</h2>${state}</div>
       <div class="howto">
-        <div><b>內容</b><span>交易時間即時掃描前一交易日成交值最大的 150 檔上市股票，列出成交量放大、振幅較大、股價位於當日高檔的個股。與盤後名單中的「隔日當沖觀察」不同，後者為前一交易日收盤後的篩選結果。</span></div>
+        <div><b>內容</b><span>交易時間即時掃描前一交易日成交值最大的 150 檔上市股票，列出成交量放大、振幅較大、股價位於當日高檔的個股。此清單只反映當下盤勢、尚未經過回測；歷史資料顯示台股平均「開盤買、收盤賣」扣除成本後為負報酬，請特別留意風險。</span></div>
         <div><b>使用方式</b><span>可作為盤中觀察清單。點選個股查看支撐與壓力：股價守在支撐之上代表仍偏強，跌破支撐通常代表轉弱。</span></div>
         <div><b>注意事項</b><span>名單每 3 分鐘更新，強勢股可能隨時轉弱。當沖須具備當沖交易資格且風險較高，本名單僅為篩選結果，不構成買賣建議。</span></div>
       </div>
@@ -58,29 +58,27 @@ async function loadPicks(date) {
   try {
     const j = await getPicks(date); const idx = await getIndex();
     const sc = await fetch('/data/scorecard.json').then(r => r.ok ? r.json() : null).catch(() => null);
-    const track = cat => { const s = sc && sc.summary && sc.summary[cat]; if (!s) return '';
-      const [k, lab] = { day: ['oc', '隔日開盤買、收盤賣'], swing: ['r10', '持有 10 個交易日'], long: ['r20', '持有 20 個交易日'] }[cat];
-      let v = s[k], m = s['m' + k.slice(1)], l2 = lab; if (!v && cat === 'long') { v = s.r5; m = s.m5; l2 = '持有 5 個交易日'; }
-      if (!v) return `<p class="track">成績單：紀錄不足，暫無法評估。</p>`;
-      const ok = v.n >= 30 && v.avg > 0 && (!m || v.avg > m.avg);
-      return `<p class="track ${ok ? 'good' : 'weak'}"><b>過去表現</b>　每日前 3 名${l2}平均 <span class="num ${cls(v.avg)}">${sg(v.avg)}%</span>、勝率 ${v.win}%${m && cat !== 'day' ? `、同期大盤 ${sg(m.avg)}%` : ''}（${v.n} 筆）。${ok ? '' : v.n < 30 ? '樣本數仍少，僅供參考。' : '目前未穩定優於大盤，請審慎參考。'} <a href="/scorecard">成績單</a></p>`; };
+    const track = cat => { const s = sc && sc.summary && sc.summary[cat]; const v = s && s.all; if (!v) return `<p class="track">成績單：紀錄不足，暫無法評估。</p>`;
+      const ok = v.n >= 30 && v.excess > 0;
+      return `<p class="track ${ok ? 'good' : 'weak'}"><b>歷史表現</b>　每日前 3 名隔天開盤買進、持有 ${s.hold} 個交易日，扣交易成本後平均 <span class="num ${cls(v.avg)}">${sg(v.avg)}%</span>、勝率 ${v.win}%；同期間隨機買進全市場平均 ${sg(v.bench)}%（${v.n} 筆）。${ok ? '' : v.n < 30 ? '樣本數仍少，僅供參考。' : '目前未優於全市場平均，請審慎參考。'} <a href="/scorecard">成績單</a></p>`; };
     const col = (title, sub, list, n, cat) => `<div class="pcol"><h3>${title}<small>${sub}・符合 ${n} 檔</small></h3>${track(cat)}${list.length ? list.slice(0, 3).map(x => `<button class="pick" type="button" data-code="${esc(x.code)}">
       <div class="top1"><span><span class="code num" style="color:var(--accent)">${esc(x.code)}</span> <span class="nm">${esc(x.name)}</span></span><span class="num ${cls(x.chg)}">${pxd(x.close)} ${sg(x.chg)}%</span></div>
       <div class="sigs">${x.why.map(w => `<span>${esc(w)}</span>`).join('') + moreRows(list.slice(3), 'close')}</div>
       <div class="lv num"><span>強度分數 <b style="color:${scoreColor(x.index)}">${x.index ?? '—'}</b></span><span>支撐 <b style="color:var(--sup)">${x.sup != null ? pxd(x.sup) : '—'}</b></span><span>壓力 <b style="color:var(--res)">${x.res != null ? pxd(x.res) : '—'}</b></span></div></button>`).join('') : '<div class="empty">今天沒有股票符合條件。</div>'}</div>`;
     box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h2 id="picksTitle">盤後篩選名單</h2><span class="small muted num">${idx && idx.dates.length > 1 ? `<label for="pickDate">查看日期 </label><select id="pickDate">${idx.dates.slice().reverse().map(d => `<option value="${d}"${d.replace(/-/g, '/') === j.date ? ' selected' : ''}>${d.replace(/-/g, '/')}</option>`).join('')}</select>　` : esc(j.date) + ' 收盤・'}掃描 ${j.universe} 檔上市櫃股票</span></div>
       <div class="howto">
-        <div><b>內容</b><span>每個交易日收盤後，依公開規則從上市櫃股票中篩選，每類列出前 10 名。隔日當沖觀察供下一個交易日盤中參考（與交易時間即時掃描的「盤中當沖觀察」不同）；短期觀察適合約 1～2 週的持有期間；長期觀察以基本面為主，適合數月以上。</span></div>
-        <div><b>使用方式</b><span>點選個股查看強度分數與支撐壓力。開盤後若股價守住支撐或站上壓力，代表原本的結構延續；若跌破支撐，代表入選條件已經改變。</span></div>
-        <div><b>注意事項</b><span>入選代表該股在收盤時符合篩選條件，並非對未來漲跌的預測，也不構成買賣建議。各類名單的歷史表現請參考名單成績單。</span></div>
+        <div><b>內容</b><span>每個交易日收盤後，依固定規則從上市櫃股票中篩選，分為短線（約 1 週）、波段（約 1 個月）、長線（約 3 個月）三類，每類列出前 10 名。規則以 2025 年起的歷史資料回測選出，同一檔股票可能同時出現在多類名單。</span></div>
+        <div><b>使用方式</b><span>名單的歷史表現以「隔天開盤買進、持有到期後賣出」計算，請依各類的持有期間參考。點選個股可查看強度分數與支撐壓力；若入選後跌破主要支撐，代表入選時的條件已經改變。</span></div>
+        <div><b>注意事項</b><span>入選代表該股在收盤時符合篩選條件，並非對未來漲跌的預測，也不構成買賣建議。回測期間以多頭行情為主，行情轉弱時表現可能明顯變差。</span></div>
       </div>
-      <div class="picks-grid">${col('隔日當沖觀察', '隔天開盤後當天進出', j.day, j.counts.day, 'day')}${col('短期觀察', '持有約 1～2 週', j.swing, j.counts.swing, 'swing')}${col('長期觀察', '持有數月以上', j.long, j.counts.long, 'long')}</div>
+      <div class="picks-grid">${col('短線觀察', '持有約 1 週', j.day, j.counts.day, 'day')}${col('波段觀察', '持有約 1 個月', j.swing, j.counts.swing, 'swing')}${col('長線觀察', '持有約 3 個月', j.long, j.counts.long, 'long')}</div>
       <details class="rules"><summary>篩選條件</summary>
-        <p>共同條件：上市櫃普通股（不含 ETF、權證），股價 10 元以上，近 20 日平均成交量 1,000 張以上；同一檔股票只會列入一類名單。</p>
-        <p><b>隔日當沖觀察（量價突破）</b>：收盤創 20 日新高、當日量比 1.8 倍以上、收盤位於當日高低區間 70% 以上、漲幅 1.5%～7%、近 20 日漲幅不超過 25%、站上季線、日均成交值 3 億以上。依量能、收盤位置與法人買超排名。當沖的手續費與交易稅合計約 0.3%～0.4%，參考歷史表現時請一併考量。</p>
-        <p><b>短期觀察（剛轉強）</b>：上市櫃滿 60 個交易日，5 日線在近 3 個交易日內剛站上月線、收盤在月線之上、月線走平或向上、近 20 日漲幅介於 −5%～12%（漲幅尚小）、RSI 50～68、量比 1.2 倍以上、三大法人近 5 日合計買超。依法人買超占日均量比例、量能與投信是否同步買超排名。</p>
-        <p><b>長期觀察</b>：最新月營收年增 15% 以上、本益比 0～25 倍、殖利率 1.5% 以上、收盤站上季線且月線在季線之上。依營收成長、本益比、殖利率與法人動向排名。</p>
-        <p>篩選規則以歷史資料檢驗後訂定，實際表現每日更新於<a href="/scorecard">名單成績單</a>。資料來源為證交所與櫃買中心盤後公開資料。</p>
+        <p>共同條件：上市櫃普通股，近 20 日平均每日成交值 10 億元以上，三大法人近 5 個交易日中多數日子為合計買超。</p>
+        <p><b>短線觀察</b>：均線多頭排列（收盤在月線之上、月線在季線之上，且月線與季線都向上）、收盤距離 60 日最高點 5% 以內、近 5 日至少 3 天法人買超。依法人買超占日均量的比例排名。</p>
+        <p><b>波段觀察</b>：均線多頭排列、股價拉回到月線附近（高於月線 0%～8%）、近 5 日至少 4 天法人買超。依成交值與法人買超比例排名。</p>
+        <p><b>長線觀察</b>：收盤站上季線且季線向上、本益比 12～40 倍、近 5 日至少 3 天法人買超。依成交值與法人買超比例排名。</p>
+        <p><b>規則怎麼來的</b>：以 2025 年 1 月至 2026 年 10 月的上市櫃資料回測，比較多組條件，只保留在每個半年期間都優於「同一天隨機買進全市場股票」的規則。報酬以隔天開盤價買進、扣除手續費與證交稅（約 0.47%）計算。我們也測試過隔日當沖（隔天開盤買、收盤賣）的各種條件，扣除成本後都沒有穩定獲利，因此不提供隔日當沖名單。</p>
+        <p>實際表現每日更新於<a href="/scorecard">名單成績單</a>。資料來源為證交所與櫃買中心盤後公開資料。</p>
       </details>`;
     box.querySelectorAll('.pick, .pick-row').forEach(b => b.onclick = () => goTo(b.dataset.code));
     const sel = $('#pickDate'); if (sel) sel.onchange = () => loadPicks(sel.value);
@@ -175,7 +173,7 @@ async function renderPvPicks() {
   box.innerHTML = '<p class="small muted" style="margin:0">載入中…</p>';
   try {
     const j = await getPicks();
-    const cats = [['day', '隔日當沖'], ['swing', '短期'], ['long', '長期']];
+    const cats = [['day', '短線'], ['swing', '波段'], ['long', '長線']];
     let cur = 'day';
     const draw = () => { const l = j[cur] || [];
       box.innerHTML = `<p class="small muted" style="margin:0">${esc(j.date)} 收盤後篩選，各類前 3 名</p><div class="mini-tabs" role="tablist">${cats.map(([k, t]) => `<button type="button" role="tab" data-k="${k}" aria-selected="${k === cur}">${t}</button>`).join('')}</div>${l.length ? `<ul class="mini">${l.slice(0, 3).map(x => miniRow(x.code, x.name, `<span class="num ${cls(x.chg)}">${pxd(x.close)}　${sg(x.chg)}%</span>`)).join('')}</ul>` : '<p class="small muted" style="margin:0">此類別今日沒有符合條件的股票。</p>'}`;
