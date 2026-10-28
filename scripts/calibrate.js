@@ -6,7 +6,8 @@ const dir = path.join(__dirname, '..', 'data', 'calib');
 const S = {}; for (const c of Object.keys(T)) { const f = path.join(dir, c + '.json'); if (fs.existsSync(f)) S[c] = JSON.parse(fs.readFileSync(f, 'utf8')); }
 const codes = Object.keys(S).sort();
 // 固定方式分組：每 3 檔取 1 檔當驗證組
-const test = codes.filter((_, i) => i % 3 === 2), train = codes.filter((_, i) => i % 3 !== 2);
+const FOLD = +(process.env.FOLD ?? 2);
+const test = codes.filter((_, i) => i % 3 === FOLD), train = codes.filter((_, i) => i % 3 !== FOLD);
 const key = { t: 0, v: 1, i: 2, c: 3, f: 4 };
 function evalSet(P, set, dimW = 0.35) {
   let e = 0, n = 0, de = 0, dn = 0;
@@ -28,7 +29,9 @@ const SPACE = {
 };
 let best = Object.assign({}, D), bestL = evalSet(best, train).loss;
 const rnd = (() => { let x = 20261029; return () => (x = (x * 1103515245 + 12345) % 2147483648) / 2147483648; })();
-const keys = Object.keys(SPACE);
+const keys = process.env.KEYS ? process.env.KEYS.split(',') : Object.keys(SPACE);
+const LAMBDA = +(process.env.LAMBDA || 0);
+const reg = P => keys.reduce((a, k) => a + Math.abs(P[k] - D[k]) / (SPACE[k][1] - SPACE[k][0]), 0) * LAMBDA;
 // 座標下降＋隨機擾動
 for (let round = 0; round < 40; round++) {
   let improved = false;
@@ -36,12 +39,12 @@ for (let round = 0; round < 40; round++) {
     const [lo, hi] = SPACE[k];
     for (const frac of [-0.25, -0.1, 0.1, 0.25]) {
       const cand = Object.assign({}, best); cand[k] = Math.min(hi, Math.max(lo, best[k] + frac * (hi - lo)));
-      const L = evalSet(cand, train).loss; if (L < bestL - 1e-6) { best = cand; bestL = L; improved = true; }
+      const L = evalSet(cand, train).loss + reg(cand); if (L < bestL - 1e-6) { best = cand; bestL = L; improved = true; }
     }
   }
   if (!improved) { // 隨機跳一下，避免卡在局部
     const cand = Object.assign({}, best); for (const k of keys) if (rnd() < 0.3) { const [lo, hi] = SPACE[k]; cand[k] = Math.min(hi, Math.max(lo, best[k] + (rnd() - 0.5) * 0.3 * (hi - lo))); }
-    const L = evalSet(cand, train).loss; if (L < bestL) { best = cand; bestL = L; } else if (round > 30) break;
+    const L = evalSet(cand, train).loss + reg(cand); if (L < bestL) { best = cand; bestL = L; } else if (round > 30) break;
   }
 }
 const r = x => Math.round(x * 100) / 100;

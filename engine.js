@@ -128,9 +128,9 @@ const Engine = (() => {
   const DEFAULTS = {
     t_m5: 5, t_m20: 16, t_m60: 8, t_slope: 6, t_align: 8, t_hist: 5, t_chgK: 0.5, t_chgLo: -8, t_chgHi: 3, t_rsiLow: 4,
     v_up: 12, v_upLow: -4, v_dnHigh: -12, v_dnLow: 4, v_obv: 10, v_share: 40, v_v5: 4, v_scale: 0.35,
-    i_k: 60, i_cap: 30, i_trust: 6, i_streak: 2, i_streakCap: 8, i_today: 5,
+    i_k: 60, i_cap: 40, i_trust: 6, i_streak: 2, i_streakCap: 8, i_today: 5,
     c_scale: 0.6, c_mK: 1.5, c_mKdown: 3, c_sbl: 1.5,
-    f_base: 40, f_yoyK: 0.6, f_yoyLo: -15, f_yoyHi: 25, f_momK: 0.5, f_peLo: 10, f_peMid: 5, f_peBad: -8, f_y5: 8, f_y3: 4, f_yLow: -2,
+    f_base: 45, f_yoyK: 0.6, f_yoyLo: -15, f_yoyHi: 25, f_momK: 0.5, f_peLo: 10, f_peMid: 5, f_peBad: -8, f_y5: 8, f_y3: 4, f_yLow: -2,
     w_t: 0.25, w_v: 0.20, w_i: 0.20, w_c: 0.15, w_f: 0.20,
     p_r1dist: 3, p_r1s: -8, p_r1: -5, p_risk: -8, p_bt: 12, p_bk: 0.8, p_bmax: 20, p_rsiT: 80, p_rsi: -6, p_blk: -6
   };
@@ -216,7 +216,7 @@ const Engine = (() => {
     if (trendLabel === '風險') pen.push({ label: '走勢屬「風險」：均線與動能同步轉弱', pts: P.p_risk });
     const bias = (c / m20 - 1) * 100;
     if (bias > P.p_bt) pen.push({ label: '股價離月線 +' + bias.toFixed(0) + '%，短線乖離過大', pts: -Math.min(P.p_bmax, Math.round((bias - P.p_bt) * P.p_bk)) });
-    if (ind.rsi > P.p_rsiT) pen.push({ label: 'RSI 高於 ' + P.p_rsiT + '，短線過熱', pts: P.p_rsi });
+    if (ind.rsi > P.p_rsiT && !(bias > P.p_bt)) pen.push({ label: 'RSI 高於 ' + P.p_rsiT + '，短線過熱', pts: P.p_rsi });
     if (volRatio > 3 && !up) pen.push({ label: '爆量收黑', pts: P.p_blk });
     const index = clamp(Math.round(raw + sum(pen.map(x => x.pts))), 0, 100);
     const legacy = raw >= 60 ? '偏多' : raw >= 38 ? '中性' : '偏空';
