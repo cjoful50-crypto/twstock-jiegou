@@ -118,7 +118,7 @@ function render(s) {
   if (R1) pts.push(`第一壓力共振強度「${R1.strength}」，訊號：${R1.labels.join('、')}`);
 
   const why = [];
-  why.push([`今日收${t.c >= s.bars.at(-2).c ? '紅' : '黑'}`, `收盤 ${pxd(c)}，${sg(ind.chgPct)}%。`, cls(ind.chg)]);
+  why.push([`收${t.c >= s.bars.at(-2).c ? '紅' : '黑'}`, `收盤 ${pxd(c)}，${sg(ind.chgPct)}%。`, cls(ind.chg)]);
   why.push([ind.volRatio >= 1.2 ? '成交量放大' : ind.volRatio <= 0.8 ? '成交量縮小' : '成交量持平', `成交量約為近 20 日均量的 ${fx(ind.volRatio)} 倍。`, '']);
   if (fl.inst && fl.inst.fToday != null) why.push([`外資${fl.inst.fToday >= 0 ? '買超' : '賣超'}`, `外資（含陸資）${fi(Math.abs(fl.inst.fToday))} 張；投信 ${sgi(fl.inst.tToday)} 張、自營商 ${sgi(fl.inst.dToday)} 張。`, cls(fl.inst.fToday)]);
   else if (fl.inst) why.push([`法人近 5 日${fl.inst.f5 + fl.inst.t5 + fl.inst.d5 >= 0 ? '買超' : '賣超'}`, `三大法人合計 ${sgi(fl.inst.f5 + fl.inst.t5 + fl.inst.d5)} 張。`, '']);
@@ -131,23 +131,20 @@ function render(s) {
         <div class="id"><span class="code">${esc(s.code)}</span><span class="name">${esc(s.name || '')}</span><button class="watch-btn" type="button" id="watchBtn" aria-pressed="${Watch.has(s.code)}">${Watch.has(s.code) ? '★ 已加入我的選股' : '☆ 加入我的選股'}</button></div>
         ${s.live ? `<div class="live-badge"><span class="dot${s.live.open ? ' on' : ''}"></span>${s.live.open ? '盤中即時' : '今日收盤'} ${esc(s.live.time || '')}<span class="muted">・證交所即時行情，約延遲數秒；法人與籌碼為前一交易日</span></div>` : `<div class="small muted">資料更新至 ${esc(t.d.replace(/-/g, '/'))} 收盤</div>`}
         <div class="price"><span class="px num">${pxd(c)}</span><span class="ch num ${cls(ind.chg)}">${sg(ind.chg)}（${sg(ind.chgPct)}%）</span></div>
-        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="small muted">走勢</span><span class="pill ${trendCls(a.trendLabel)}">${a.trendLabel}</span></div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="small muted">走勢（只看均線與動能）</span><span class="pill ${trendCls(a.trendLabel)}">${a.trendLabel}</span></div>
       </div>
-      <div class="gauge">${ring(a.index)}<div style="display:grid;gap:6px;justify-items:center"><span class="pill ${legacyCls(a.legacy)}">舊版綜合評等：${a.legacy}</span><span class="small muted num">加權原始分 ${fx(a.raw, 1)}${a.pen.length ? '，風險折減 ' + a.pen.reduce((x, y) => x + y.pts, 0) : ''}</span></div></div>
+      <div class="gauge">${ring(a.index)}<div style="display:grid;gap:6px;justify-items:center"><span class="pill ${legacyCls(a.legacy)}">綜合評等：${a.legacy}</span><span class="small muted num" style="text-align:center">五面向平均 ${fx(a.raw, 1)}${a.pen.length ? `<br>風險扣分 ${a.pen.reduce((x, y) => x + y.pts, 0)} → 漲停指數 ${a.index}` : ''}</span></div></div>
     </div>
-    <p class="note" style="margin:14px 0 0">漲停指數是下面五個面向的綜合分數（0～100）。分數越高，代表趨勢、量能、法人、籌碼、基本面整體越強；分數低代表目前偏弱。它是整理現況，不保證之後會漲。</p>
+    <p class="note" style="margin:14px 0 0"><b>三個標示各看什麼：</b>「走勢」只看均線與動能；「綜合評等」是下面五個面向的平均；「漲停指數」是綜合評等再扣掉風險（例如緊貼強壓力、走勢轉弱、短線過熱），0～100 分，越高代表整體越強。名稱沿用原站的叫法，不是漲停的機率，也不保證之後會漲。</p>
     <div class="dims">${dimsHtml}</div>
     <div class="dates num"><span>行情：${esc(d.price || t.d)}</span>${d.inst ? `<span>法人：${esc(d.inst)}</span>` : ''}${d.chip ? `<span>籌碼：${esc(d.chip)}</span>` : ''}${d.val ? `<span>基本面：${esc(d.val)}</span>` : ''}${d.rev ? `<span>營收：${esc(d.rev)}</span>` : ''}</div>
   </section>
 
   <section class="card">
-    <div class="eyebrow">價位地圖</div>
-    <div class="map" style="margin-top:8px">
+    <h2>價位地圖</h2><p class="small muted" style="margin:4px 0 0">現價上下有哪些支撐和壓力、離多遠，以及價格在近 20 日區間的哪個位置。</p>
+    <div class="map" style="margin-top:12px">
       <div class="ladder">${ladder(a)}</div>
       <div style="min-width:0">
-        <div class="zone-state">${a.zone ? `結構觀察區 <span class="num" style="color:var(--accent)">${pxd(a.zone.lo)}–${pxd(a.zone.hi)}</span>` : '目前結構觀察區尚未形成'}</div>
-        <p class="small muted" style="margin:0">${a.zone ? '近端兩道支撐聚集成同一區間，而且走勢沒有轉入「風險」。價格回到這個區間時，下方有多種結構同時支撐。' : esc(a.zoneWhy) + '下方僅列出真實價格結構中的重要價位。'}</p>
-        ${R1 ? `<p class="small" style="margin:12px 0 0">第一壓力 <b class="num" style="color:var(--res)">${pxd(R1.level)}</b>　壓力強度：<b class="str s${R1.rank}">${R1.strength}</b>｜${R1.cats.length} 類共振：${R1.cats.map(x => x + '結構').join('、')}</p>` : ''}
         <div class="pos">
           <div class="small" style="font-weight:700">上下空間</div>
           ${spaceSummary(a)}
@@ -159,6 +156,8 @@ function render(s) {
             <div class="${a.posZone === '偏熱區' ? 'on' : ''}"><b>偏熱區　70～100%</b><span>價格靠近近期高點或壓力，短線已經漲了一段，這時追價買進的風險比較高。</span></div>
           </div>
           <p class="note" style="margin:8px 0 0">這只描述價格現在的位置，不代表買賣建議。</p>
+          ${R1 ? `<p class="small" style="margin:14px 0 0">第一壓力 <b class="num" style="color:var(--res)">${pxd(R1.level)}</b> 的強度是<b>${R1.strength}</b>，有 ${R1.cats.map(x => x + '結構').join('、')}疊在一起；越強代表股價到這裡越容易遇到賣壓。</p>` : ''}
+          <div class="zone-box"><b>${a.zone ? `支撐密集區 <span class="num" style="color:var(--accent)">${pxd(a.zone.lo)}–${pxd(a.zone.hi)}</span>` : '支撐密集區：目前沒有'}</b><span>${a.zone ? '近端兩道支撐疊在同一個價格帶，而且走勢沒有轉入「風險」。股價回到這裡時，下方有多種結構同時承接。' : esc(a.zoneWhy)}</span><span class="note">支撐密集區是指好幾種支撐（均線、前波低點、大量成交區等）剛好疊在同一個價格帶，形成比較紮實的承接區。</span></div>
 
         </div>
       </div>
@@ -171,7 +170,7 @@ function render(s) {
   </section>
 
   <section class="card">
-    <h2>今天為什麼動？</h2><p class="small muted" style="margin:4px 0 0">今天漲跌背後的價格、成交量與法人動向。</p>
+    <h2>${esc(t.d.slice(5).replace('-', '/'))} 為什麼動？</h2><p class="small muted" style="margin:4px 0 0">最近一個交易日漲跌背後的價格、成交量與法人動向。</p>
     <div class="why">${why.map(([h, b, k]) => `<div><b class="${k}">${h}</b><span class="small muted">${b}</span></div>`).join('')}</div>
   </section>
 
@@ -222,7 +221,7 @@ function render(s) {
     score: () => `<p class="small muted" style="margin-top:0">漲停指數 = 五面向加權平均（趨勢 25%、量價 20%、法人 20%、籌碼 15%、基本面 20%；缺資料的面向不計，權重重新分配）＋ 風險折減。趨勢、量價、法人、籌碼從 50 分起算，基本面從 40 分起算，各自加減後限制在 0～100。</p>
       ${a.dims.map(x => `<div class="score-dim"><header><span>${x.name}（權重 ${x.w * 100}%）</span><span class="num" style="color:${scoreColor(x.s)}">${x.s ?? '資料不足'}</span></header><ul>${x.items.map(i => `<li><span>${esc(i.label)}</span><span class="num ${cls(i.pts)}">${sgi(i.pts)}</span></li>`).join('') || '<li><span>沒有資料</span></li>'}</ul></div>`).join('')}
       <div class="score-dim"><header><span>風險折減</span><span class="num">${a.pen.reduce((x, y) => x + y.pts, 0)}</span></header><ul>${a.pen.map(i => `<li><span>${esc(i.label)}</span><span class="num down">${i.pts}</span></li>`).join('') || '<li><span>無</span></li>'}</ul></div>
-      <p class="small muted">加權原始分 ${fx(a.raw, 1)}，即舊版綜合評等（60 以上偏多、38～60 中性、38 以下偏空）；扣掉風險折減後為漲停指數 ${a.index}。走勢標籤看趨勢面分數：70 以上多頭、55 偏多、42 整理、30 偏空、30 以下風險。</p>`
+      <p class="small muted">加權原始分 ${fx(a.raw, 1)}，即綜合評等（60 以上偏多、38～60 中性、38 以下偏空）；扣掉風險折減後為漲停指數 ${a.index}。走勢標籤看趨勢面分數：70 以上多頭、55 偏多、42 整理、30 偏空、30 以下風險。</p>`
   };
   const showTab = () => { $('#panel').innerHTML = panels[tab](); document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab)); };
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; showTab(); });

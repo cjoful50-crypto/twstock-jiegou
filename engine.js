@@ -208,14 +208,14 @@ const Engine = (() => {
     const index = clamp(Math.round(raw + sum(pen.map(x => x.pts))), 0, 100);
     const legacy = raw >= 60 ? '偏多' : raw >= 38 ? '中性' : '偏空';
 
-    // 結構觀察區：至少兩道近端支撐、相距不超過 1.5 倍 ATR、合計 3 類以上訊號，且走勢不在「風險」
+    // 支撐密集區：至少兩道近端支撐、相距不超過 1.5 倍 ATR、合計 3 類以上訊號，且走勢不在「風險」
     let zone = null;
     const [s1, s2] = st.sup;
     if (s1 && s2 && s1.tier === '近端' && s2.tier === '近端' && (s1.lo - s2.level) <= ind.atr * 1.5 && new Set([...s1.cats, ...s2.cats]).size >= 3 && trendLabel !== '風險')
       zone = { lo: s2.lo, hi: s1.level };
     else if (s1 && s1.rank >= 4 && s1.tier === '近端' && trendLabel !== '風險') zone = { lo: s1.lo, hi: s1.level };
     let zoneWhy = '';
-    if (!zone) zoneWhy = !s1 ? '現價下方 20% 內找不到有效支撐結構。' : trendLabel === '風險' ? '支撐雖在，但目前走勢屬「風險」，均線與動能同步轉弱時支撐容易失效，因此不列結構觀察區。' : '目前價格結構中的支撐尚未聚集成明確區間，因此不列結構觀察區。';
+    if (!zone) zoneWhy = !s1 ? '現價下方 20% 內找不到有效支撐結構。' : trendLabel === '風險' ? '支撐雖在，但目前走勢屬「風險」，均線與動能同步轉弱時支撐容易失效，因此不列支撐密集區。' : '目前價格結構中的支撐尚未聚集成明確區間，因此不列支撐密集區。';
 
     // 位置量表：近 20 日低點到近 20 日高點（或第一壓力，取高者）
     const top = Math.max(ind.high20, R1 ? R1.level : 0), posPct = clamp((c - ind.low20) / (top - ind.low20) * 100, 0, 100);

@@ -35,7 +35,7 @@ async function loadIntraday() {
       : `<div class="empty">${open ? '目前沒有股票同時符合量能放大、振幅夠大、價格在高檔的條件，3 分鐘後會再掃一次。' : '今天收盤時沒有股票符合條件。'}</div>`;
     box.innerHTML = `<div class="section-head"><h2 id="intraTitle">盤中當沖觀察</h2>${state}</div>
       <div class="howto">
-        <div><b>這是什麼</b><span>開盤時間，從交易最熱絡的 150 檔上市股票裡，找出「現在」成交量明顯放大、上下波動大、價格又在今天高點附近的股票。</span></div>
+        <div><b>這是什麼</b><span>開盤時間即時掃描（和「盤後名單」的隔日當沖不同，那是前一天收盤後算好的），從交易最熱絡的 150 檔上市股票裡，找出「現在」成交量明顯放大、上下波動大、價格又在今天高點附近的股票。</span></div>
         <div><b>可以怎麼用</b><span>給有在做當沖的人當盯盤清單：點進個股看支撐和壓力，價格守在支撐上方代表還強，跌破支撐通常代表轉弱。</span></div>
         <div><b>要注意</b><span>名單每 3 分鐘變一次，強勢股也可能隨時翻黑。當沖需要開立當沖資格、風險高，這裡只是篩選結果，不是買進建議。</span></div>
       </div>
@@ -61,7 +61,7 @@ async function loadPicks(date) {
       <div class="lv num"><span>漲停指數 <b style="color:${scoreColor(x.index)}">${x.index ?? '—'}</b></span><span>支撐 <b style="color:var(--sup)">${x.sup != null ? pxd(x.sup) : '—'}</b></span><span>壓力 <b style="color:var(--res)">${x.res != null ? pxd(x.res) : '—'}</b></span></div></button>`).join('') : '<div class="empty">今天沒有股票符合條件。</div>'}</div>`;
     box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h2 id="picksTitle">盤後篩選名單</h2><span class="small muted num">${idx && idx.dates.length > 1 ? `<label for="pickDate">查看日期 </label><select id="pickDate">${idx.dates.slice().reverse().map(d => `<option value="${d}"${d.replace(/-/g, '/') === j.date ? ' selected' : ''}>${d.replace(/-/g, '/')}</option>`).join('')}</select>　` : esc(j.date) + ' 收盤・'}掃描 ${j.universe} 檔上市櫃股票</span></div>
       <div class="howto">
-        <div><b>這是什麼</b><span>每天收盤後，用當天的收盤資料篩出的觀察名單，適合在下一個交易日開盤前看。三欄對應不同的持有時間：隔日當沖是隔天開盤後當天進出，短期大約持有 1～2 週，長期是持有幾個月以上。</span></div>
+        <div><b>這是什麼</b><span>每天收盤後，用當天的收盤資料篩出的觀察名單，適合在下一個交易日開盤前看。三欄對應不同的持有時間：隔日當沖是隔天開盤後當天進出（和「盤中當沖」頁不同，那是開盤時即時掃描的），短期大約持有 1～2 週，長期是持有幾個月以上。</span></div>
         <div><b>可以怎麼用</b><span>先點進個股看漲停指數、支撐和壓力。例如明天開盤後價格守住支撐、或站上壓力，代表結構延續；開低跌破支撐，就代表條件已經變了。</span></div>
         <div><b>要注意</b><span>名單只代表「今天收盤時符合條件」，不是預測明天會漲，也不是買進建議。下單前請自己判斷，並設好停損。</span></div>
       </div>

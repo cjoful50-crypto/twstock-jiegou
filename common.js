@@ -9,7 +9,7 @@ const cls = x => x > 0 ? 'up' : x < 0 ? 'down' : '';
 const pxd = p => p == null ? '—' : (+p).toFixed(2);
 const trendCls = t => ({ 風險: 'risk', 偏空: 'bear', 整理: 'flat', 偏多: 'bull', 多頭: 'bull' }[t]);
 const legacyCls = t => ({ 偏空: 'bear', 中性: 'flat', 偏多: 'bull' }[t]);
-const scoreColor = s => s == null ? 'var(--faint)' : s >= 60 ? 'var(--down)' : s >= 40 ? 'var(--warn)' : 'var(--up)';
+const scoreColor = s => s == null ? 'var(--faint)' : s >= 60 ? 'var(--accent)' : s >= 40 ? 'var(--muted)' : 'var(--warn)';
 const goTo = code => { location.href = '/analysis/' + encodeURIComponent(code); };
 
 const Recent = {
