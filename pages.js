@@ -1,4 +1,14 @@
 /* 各分頁共用：依頁面上有哪些區塊決定要載入什麼 */
+// 盤後名單：優先讀每日排程存好的檔案（秒開），沒有才即時計算
+let pickIndex;
+async function getIndex() { if (pickIndex === undefined) pickIndex = await fetch('/data/index.json').then(r => r.ok ? r.json() : null).catch(() => null); return pickIndex; }
+async function getPicks(date) {
+  if (date) { const r = await fetch(`/data/daily/${date}.json`); if (r.ok) return r.json(); }
+  const s = await fetch('/data/latest.json').then(r => r.ok ? r.json() : null).catch(() => null);
+  if (s && s.day) return s;
+  const r = await fetch('/api/picks'); const j = await r.json().catch(() => ({ error: '伺服器回應格式錯誤。' }));
+  if (!r.ok || j.error) throw new Error(j.error || 'HTTP ' + r.status); return j;
+}
 if ($('#searchForm')) attachSearch($('#searchForm'), $('#q'), $('#suggest'));
 loadStocks().then(() => { if ($('#browse')) renderBrowse(); if ($('#pvSectors')) renderPvSectors(); });
 
@@ -41,17 +51,16 @@ async function loadIntraday() {
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && $('#intraday')) loadIntraday(); });
 
-async function loadPicks() {
+async function loadPicks(date) {
   const box = $('#picks'); if (!box) return;
-  box.innerHTML = `<h2 id="picksTitle">盤後篩選名單</h2><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">正在從證交所整理全市場近 3 個月資料，第一次約需 30～60 秒。</span></div>`;
+  box.innerHTML = `<h2 id="picksTitle">盤後篩選名單</h2><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">載入名單中…</span></div>`;
   try {
-    const r = await fetch('/api/picks'); const j = await r.json().catch(() => ({ error: '伺服器回應格式錯誤。' }));
-    if (!r.ok || j.error) throw new Error(j.error || 'HTTP ' + r.status);
+    const j = await getPicks(date); const idx = await getIndex();
     const col = (title, sub, list, n) => `<div class="pcol"><h3>${title}<small>${sub}・符合 ${n} 檔</small></h3>${list.length ? list.map(x => `<button class="pick" type="button" data-code="${esc(x.code)}">
       <div class="top1"><span><span class="code num" style="color:var(--accent)">${esc(x.code)}</span> <span class="nm">${esc(x.name)}</span></span><span class="num ${cls(x.chg)}">${pxd(x.close)} ${sg(x.chg)}%</span></div>
       <div class="sigs">${x.why.map(w => `<span>${esc(w)}</span>`).join('')}</div>
       <div class="lv num"><span>漲停指數 <b style="color:${scoreColor(x.index)}">${x.index ?? '—'}</b></span><span>支撐 <b style="color:var(--sup)">${x.sup != null ? pxd(x.sup) : '—'}</b></span><span>壓力 <b style="color:var(--res)">${x.res != null ? pxd(x.res) : '—'}</b></span></div></button>`).join('') : '<div class="empty">今天沒有股票符合條件。</div>'}</div>`;
-    box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h2 id="picksTitle">盤後篩選名單</h2><span class="small muted num">${esc(j.date)} 收盤・掃描 ${j.universe} 檔上市股票</span></div>
+    box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h2 id="picksTitle">盤後篩選名單</h2><span class="small muted num">${idx && idx.dates.length > 1 ? `<label for="pickDate">查看日期 </label><select id="pickDate">${idx.dates.slice().reverse().map(d => `<option value="${d}"${d.replace(/-/g, '/') === j.date ? ' selected' : ''}>${d.replace(/-/g, '/')}</option>`).join('')}</select>　` : esc(j.date) + ' 收盤・'}掃描 ${j.universe} 檔上市櫃股票</span></div>
       <div class="howto">
         <div><b>這是什麼</b><span>每天收盤後，用當天的收盤資料篩出的觀察名單，適合在下一個交易日開盤前看。三欄對應不同的持有時間：當沖是當天買當天賣，短期是持有幾天到幾週，長期是持有幾個月以上。</span></div>
         <div><b>可以怎麼用</b><span>先點進個股看漲停指數、支撐和壓力。例如明天開盤後價格守住支撐、或站上壓力，代表結構延續；開低跌破支撐，就代表條件已經變了。</span></div>
@@ -66,6 +75,8 @@ async function loadPicks() {
         <p>資料為證交所盤後公開資料。法人資料約下午 3 點後公布，盤後早些時候查看時法人條件可能用前一日資料。</p>
       </details>`;
     box.querySelectorAll('.pick').forEach(b => b.onclick = () => goTo(b.dataset.code));
+    const sel = $('#pickDate'); if (sel) sel.onchange = () => loadPicks(sel.value);
+    if (j.longNote) { const lc = box.querySelectorAll('.pcol')[2]; if (lc) lc.insertAdjacentHTML('beforeend', `<p class="note">${esc(j.longNote)}</p>`); }
   } catch (e) {
     box.innerHTML = `<h2 id="picksTitle">盤後篩選名單</h2><p class="err">${esc(e.message)}</p><button class="btn ghost" type="button" id="retryPicks">再試一次</button>`;
     $('#retryPicks').onclick = loadPicks;
@@ -153,9 +164,9 @@ async function renderPvIntra() {
 }
 async function renderPvPicks() {
   const box = $('#pvPicks'); if (!box) return;
-  box.innerHTML = '<p class="small muted" style="margin:0">整理中，第一次約需 30～60 秒…</p>';
+  box.innerHTML = '<p class="small muted" style="margin:0">載入中…</p>';
   try {
-    const j = await fetch('/api/picks').then(r => r.json()); if (j.error) throw new Error(j.error);
+    const j = await getPicks();
     const rows = [['當沖', j.day], ['短期', j.swing], ['長期', j.long]].flatMap(([t, l]) => l.slice(0, 1).map(x => miniRow(x.code, x.name, `<span class="num ${cls(x.chg)}">${pxd(x.close)}　${sg(x.chg)}%</span>`, t)));
     box.innerHTML = `<p class="small muted" style="margin:0">${esc(j.date)} 收盤後篩選，各類第一名：</p>${rows.length ? `<ul class="mini">${rows.join('')}</ul>` : '<p class="small muted">今天沒有股票符合條件。</p>'}`;
   } catch (e) { box.innerHTML = `<p class="small err" style="margin:0">${esc(e.message)}</p>`; }

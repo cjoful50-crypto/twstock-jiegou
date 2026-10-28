@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>名單成績單｜盤後結構室</title>
+<meta name="description" content="盤後篩選名單入選後的實際報酬與勝率。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;800&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="nav" id="nav" data-page="scorecard"></header>
+<div class="wrap">
+  <div class="page-head"><h1>名單成績單</h1><p>盤後名單選出來之後，股價實際漲跌如何？用歷史紀錄檢查名單有沒有參考價值。</p></div>
+  <section class="card" id="score" aria-labelledby="scoreT"><h2 id="scoreT">整理中</h2><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">載入成績單…</span></div></section>
+  <section class="card" id="scoreList" aria-labelledby="listT"></section>
+  <footer class="note">本站為資料整理與研究工具，不構成投資建議。資料來自臺灣證券交易所、證券櫃檯買賣中心與公開資訊觀測站的公開資料；盤中價格取自證交所即時行情，約延遲數秒，法人、融資、借券為前一交易日盤後資料。評分與價位邏輯為自行實作，僅供參考。</footer>
+</div>
+<script src="/common.js"></script>
+<script src="/scorecard.js"></script>
+</body>
+</html>
