@@ -21,7 +21,7 @@ let filter = 'all', scope = 'top';
       <div class="howto">
         <div><b>計算方式</b><span>入選隔天以開盤價買進，持有到期（短線 5 日、波段 20 日、長線 60 個交易日）後以收盤價賣出，並扣除手續費與證交稅約 ${j.cost}%。勝率為扣除成本後仍獲利的比例。</span></div>
         <div><b>比較基準</b><span>「隨機買進」是同一天、同樣持有期間，買進全市場股票（日均成交值 2 億元以上）的平均報酬，同樣扣除成本。超額報酬為名單平均報酬減去隨機買進，大於 0 代表名單比隨便買好。</span></div>
-        <div><b>注意事項</b><span>2026 年 10 月以前的紀錄是用目前規則回推的歷史結果，之後為每日實際產生的名單。回測期間以多頭行情為主，過去表現不代表未來結果。</span></div>
+        <div><b>注意事項</b><span>2026 年 10 月以前的紀錄是用目前規則回推的歷史結果，之後為每日實際產生的名單。報酬未計入股利；持有期間遇到除權息、減資或股票分割造成價格斷層的交易不列入統計。回測期間以多頭行情為主，過去表現不代表未來結果。</span></div>
       </div>
       <div class="sort-row" style="margin-top:14px">統計範圍：${[['top', '每日前 3 名'], ['all', '每日全部（最多 10 檔）']].map(([k, l]) => `<button type="button" data-scope="${k}" aria-pressed="${scope === k}">${l}</button>`).join('')}</div>
       <div class="score-grid">${['day', 'swing', 'long'].map(block).join('')}</div>`;
@@ -31,7 +31,7 @@ let filter = 'all', scope = 'top';
   const list = () => {
     const rows = j.picks.filter(p => filter === 'all' || p.cat === filter).slice(0, 80);
     $('#scoreList').innerHTML = `<div class="section-head"><h2 id="listT">歷史紀錄</h2><div class="sort-row" style="margin:0">${[['all', '全部'], ['day', '短線'], ['swing', '波段'], ['long', '長線']].map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${filter === k}">${l}</button>`).join('')}</div></div>
-      <div class="scroll"><table class="stock-table"><thead><tr><th>入選日</th><th>類別</th><th>名次</th><th>股票</th><th>入選收盤</th><th>隔天開盤</th><th>報酬（扣成本）</th></tr></thead><tbody>${rows.map(p => `<tr data-code="${esc(p.code)}"><td class="num">${esc(p.date.replace(/-/g, '/'))}</td><td>${CATS[p.cat]}</td><td class="num">${p.rank ?? '—'}</td><td class="nm"><a href="/analysis/${esc(p.code)}"><span class="num">${esc(p.code)}</span>${esc(p.name)}</a></td><td class="num">${pxd(p.close)}</td><td class="num">${p.entry != null ? pxd(p.entry) : '—'}</td><td class="num ${cls(p.ret ?? p.now)}">${p.ret != null ? sg(p.ret) + '%' : p.now != null ? `持有中 ${sg(p.now)}%` : '尚未進場'}</td></tr>`).join('')}</tbody></table></div>
+      <div class="scroll"><table class="stock-table"><thead><tr><th>入選日</th><th>類別</th><th>名次</th><th>股票</th><th>入選收盤</th><th>隔天開盤</th><th>報酬（扣成本）</th></tr></thead><tbody>${rows.map(p => `<tr data-code="${esc(p.code)}"><td class="num">${esc(p.date.replace(/-/g, '/'))}</td><td>${CATS[p.cat]}</td><td class="num">${p.rank ?? '—'}</td><td class="nm"><a href="/analysis/${esc(p.code)}"><span class="num">${esc(p.code)}</span>${esc(p.name)}</a></td><td class="num">${pxd(p.close)}</td><td class="num">${p.entry != null ? pxd(p.entry) : '—'}</td><td class="num ${cls(p.ret ?? p.now)}">${p.ret != null ? sg(p.ret) + '%' : p.now != null ? `持有中 ${sg(p.now)}%` : p.note ? '不列入（除權息等）' : '尚未進場'}</td></tr>`).join('')}</tbody></table></div>
       <p class="note">顯示最近 80 筆。「持有中」為到目前為止的報酬，持有到期後才列入統計。</p>`;
     $('#scoreList').querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filter = b.dataset.f; list(); });
   };

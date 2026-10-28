@@ -75,10 +75,12 @@ const isoOf = d => d.toISOString().slice(0, 10);
   const COST = 0.47, HOLD = { day: 5, swing: 20, long: 60 };
   const idx = new Map(days.map((x, i) => [x.d, i]));
   const benchCache = {};
+  // 除權息、減資、分割會讓價格出現超過漲跌幅限制的斷層，持有期間碰到這種情況的交易不列入統計
+  const jumpFree = (code, i, j) => { for (let k = i + 1; k <= j; k++) { const a = days[k - 1].q[code], b = days[k].q[code]; if (!a || !b || !a[3]) continue; const r = (b[0] || b[3]) / a[3]; if (r < 0.895 || r > 1.105) return false; } return true; };
   const bench = (i, h) => { const k = i + ':' + h; if (k in benchCache) return benchCache[k]; let s = 0, n = 0;
     if (i + h <= last) for (const [code, b] of Object.entries(days[i].q)) { const nb = days[i + 1].q[code], eb = days[i + h].q[code]; if (!nb || !nb[0] || !eb || !eb[3] || !b[3]) continue;
       // 成交值門檻用當日成交量近似
-      if (b[3] * (b[4] || 0) * 1000 < 2e8) continue; s += (eb[3] / nb[0] - 1) * 100; n++; }
+      if (b[3] * (b[4] || 0) * 1000 < 2e8 || !jumpFree(code, i, i + h)) continue; s += (eb[3] / nb[0] - 1) * 100; n++; }
     return benchCache[k] = n ? +(s / n - COST).toFixed(2) : null; };
   const picks = [];
   for (const d of allDates) {
@@ -90,7 +92,8 @@ const isoOf = d => d.toISOString().slice(0, 10);
       if (nb && nb[0]) { row.entry = nb[0];
         // 持有期間若停牌，取最後一個有收盤價的日子
         let ex = null; for (let j = i + 1; j <= Math.min(last, i + h); j++) { const b = days[j].q[p.code]; if (b && b[3]) ex = b[3]; }
-        row.now = ex != null ? +((ex / nb[0] - 1) * 100 - COST).toFixed(2) : null;
+        const clean = jumpFree(p.code, i, Math.min(last, i + h));
+        row.now = ex != null && clean ? +((ex / nb[0] - 1) * 100 - COST).toFixed(2) : null; if (!clean) row.note = '持有期間有除權息、減資或分割，不列入統計';
         if (i + h <= last && ex != null) { row.ret = row.now; row.bench = bench(i, h); }
       }
       picks.push(row);
