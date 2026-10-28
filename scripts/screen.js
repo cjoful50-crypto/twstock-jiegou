@@ -34,7 +34,7 @@ function screenAt(days, i, instByDay, valByDay, rev, names) {
     .map(r => Object.assign(r, { score: Math.min(r.volRatio, 5) * 8 + r.closePos * 10 + Math.min(Math.max(r.inst5, 0) / r.avgV20 * 100, 30),
       why: ['收盤創 20 日新高', `量比 ${r.volRatio.toFixed(1)} 倍`, `收在當日高檔（${Math.round(r.closePos * 100)}%）`, `日均成交值 ${(r.turnover / 1e8).toFixed(0)} 億`] }));
   // 短期觀察（剛轉強）：5 日線在近 3 天內剛站上月線，月線走平或向上，漲幅還不大，法人在買
-  const swing = rows.filter(r => r.ma5p3 != null && r.ma5 > r.ma20 && r.ma5p3 <= r.ma20p3 && r.c > r.ma20 && r.ma20 >= r.ma20p && r.ret20 >= -5 && r.ret20 <= 12 && r.rsi >= 50 && r.rsi <= 68 && r.volRatio >= 1.2 && r.inst5 > 0)
+  const swing = rows.filter(r => r.ma60 && r.ma5p3 != null && r.ma5 > r.ma20 && r.ma5p3 <= r.ma20p3 && r.c > r.ma20 && r.ma20 >= r.ma20p && r.ret20 >= -5 && r.ret20 <= 12 && r.rsi >= 50 && r.rsi <= 68 && r.volRatio >= 1.2 && r.inst5 > 0)
     .map(r => Object.assign(r, { score: Math.min(r.inst5 / r.avgV20 * 100, 50) + Math.min(r.volRatio, 3) * 5 + (r.trust5 > 0 ? 10 : 0),
       why: ['5 日線剛站上月線', `近 20 日 ${fmt(r.ret20)}%`, `法人近 5 日買超 ${Math.round(r.inst5).toLocaleString('en-US')} 張`, r.trust5 > 0 ? '投信同步買超' : `量比 ${r.volRatio.toFixed(1)} 倍`] }));
   const longT = rev ? rows.filter(r => r.ma60 && r.fund.revYoY != null && r.fund.revYoY >= 15 && r.fund.pe > 0 && r.fund.pe <= 25 && r.fund.yld >= 1.5 && r.c > r.ma60 && r.ma20 > r.ma60 && r.avgV20 >= 500)
