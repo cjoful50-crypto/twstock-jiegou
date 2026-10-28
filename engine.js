@@ -147,12 +147,12 @@ const Engine = (() => {
     // 趨勢
     const T = mk();
     T.add(c > m5 ? '收盤站上 MA5' : '收盤跌破 MA5', c > m5 ? 5 : -5);
-    T.add(c > m20 ? '收盤站上 MA20' : '收盤低於 MA20', c > m20 ? 10 : -10);
+    T.add(c > m20 ? '收盤站上 MA20' : '收盤低於 MA20', c > m20 ? 16 : -16);
     if (m60 != null) T.add(c > m60 ? '收盤站上 MA60（季線）' : '收盤低於 MA60（季線）', c > m60 ? 8 : -8);
     T.add(ind.ma20Slope > 0 ? 'MA20 上彎' : 'MA20 下彎', ind.ma20Slope > 0 ? 6 : -6);
     if (m60 != null && m5 > m20 && m20 > m60) T.add('均線多頭排列', 8); else if (m60 != null && m5 < m20 && m20 < m60) T.add('均線空頭排列', -8);
     T.add(ind.hist > 0 ? 'MACD 柱狀體翻正' : (ind.hist > ind.histPrev ? 'MACD 柱狀體為負但收斂' : 'MACD 柱狀體擴大為負'), ind.hist > 0 ? 5 : ind.hist > ind.histPrev ? 0 : -5);
-    T.add('近 20 日漲跌 ' + ind.chg20.toFixed(1) + '%', clamp(ind.chg20 * 0.5, -8, 8));
+    T.add('近 20 日漲跌 ' + ind.chg20.toFixed(1) + '%', clamp(ind.chg20 * 0.5, -8, 3));
     if (ind.rsi < 25) T.add('RSI 低於 25，短線超賣', 4);
     // 量價
     const VP = mk(); const up = t.c >= p.c;
@@ -167,7 +167,7 @@ const Engine = (() => {
     const I = mk(), fi = flows.inst; let instOk = !!fi;
     if (fi) {
       const tot5 = fi.f5 + fi.t5 + fi.d5, ratio = tot5 / avgV20;
-      I.add('三大法人近 5 日合計 ' + fmtInt(tot5) + ' 張（約 ' + (ratio * 100).toFixed(0) + '% 日均量）', clamp(ratio * 100, -35, 35));
+      I.add('三大法人近 5 日合計 ' + fmtInt(tot5) + ' 張（約 ' + (ratio * 100).toFixed(0) + '% 日均量）', clamp(ratio * 60, -30, 30));
       if (fi.t5) I.add(fi.t5 > 0 ? '投信近 5 日買超' : '投信近 5 日賣超', fi.t5 > 0 ? 6 : -6);
       if (fi.streak) I.add('外資連續' + (fi.streak > 0 ? '買超 ' : '賣超 ') + Math.abs(fi.streak) + ' 日', clamp(fi.streak * 2, -8, 8));
       if (fi.fToday != null) I.add(fi.fToday > 0 ? '最新一日外資買超' : '最新一日外資賣超', fi.fToday > 0 ? 5 : -5);
@@ -189,9 +189,9 @@ const Engine = (() => {
     const score = (o, base) => clamp(Math.round(base + sum(o.items.map(x => x.pts))), 0, 100);
     const dims = [
       { key: 'trend', name: '趨勢面', w: .25, ok: true, s: score(T, 50), items: T.items },
-      { key: 'vp', name: '量價', w: .20, ok: true, s: score(VP, 50), items: VP.items },
+      { key: 'vp', name: '量價', w: .20, ok: true, s: clamp(Math.round(50 + sum(VP.items.map(x => x.pts)) * 0.35), 0, 100), items: VP.items },
       { key: 'inst', name: '法人', w: .20, ok: instOk, s: instOk ? score(I, 50) : null, items: I.items },
-      { key: 'chip', name: '籌碼', w: .15, ok: chipOk, s: chipOk ? score(CH, 50) : null, items: CH.items },
+      { key: 'chip', name: '籌碼', w: .15, ok: chipOk, s: chipOk ? clamp(Math.round(50 + sum(CH.items.map(x => x.pts)) * 0.6), 0, 100) : null, items: CH.items },
       { key: 'fund', name: '基本面', w: .20, ok: fundOk, s: fundOk ? score(F, 40) : null, items: F.items }
     ];
     const used = dims.filter(d => d.ok), wsum = sum(used.map(d => d.w));
@@ -199,10 +199,13 @@ const Engine = (() => {
     // 風險折減
     const pen = [];
     const trendS = dims[0].s;
-    const trendLabel = trendS >= 70 ? '多頭' : trendS >= 55 ? '偏多' : trendS >= 42 ? '整理' : trendS >= 30 ? '偏空' : '風險';
+    let trendLabel = trendS >= 70 ? '多頭' : trendS >= 55 ? '偏多' : trendS >= 42 ? '整理' : trendS >= 30 ? '偏空' : '風險';
+    if (trendS >= 55 && ((c / m20 - 1) * 100 > 15 || ind.rsi > 80)) trendLabel = '過熱';
     const R1 = st.res[0];
     if (R1 && R1.dist < 3 && R1.rank >= 3) pen.push({ label: '距第一壓力不到 3%，且壓力強度「' + R1.strength + '」', pts: R1.rank === 4 ? -8 : -5 });
     if (trendLabel === '風險') pen.push({ label: '走勢屬「風險」：均線與動能同步轉弱', pts: -8 });
+    const bias = (c / m20 - 1) * 100;
+    if (bias > 12) pen.push({ label: '股價離月線 +' + bias.toFixed(0) + '%，短線乖離過大', pts: -Math.min(20, Math.round((bias - 12) * 0.8)) });
     if (ind.rsi > 80) pen.push({ label: 'RSI 高於 80，短線過熱', pts: -6 });
     if (volRatio > 3 && !up) pen.push({ label: '爆量收黑', pts: -6 });
     const index = clamp(Math.round(raw + sum(pen.map(x => x.pts))), 0, 100);
