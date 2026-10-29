@@ -113,12 +113,19 @@ const Engine = (() => {
     const ch = flows.chip, ins = flows.inst;
     if (R[0] && ch) { if (ch.sblChg != null && ch.sblChg > 3) { R[0].labels.push('借券賣出壓力'); R[0].cats.push('籌碼'); } if (ch.marginChg != null && ch.marginChg > 3 && ind.chg20 < 0) { R[0].labels.push('融資套牢壓力'); R[0].cats.push('籌碼'); } }
     if (S[0] && ins && ins.f5 + ins.t5 > 0) { S[0].labels.push('法人承接'); S[0].cats.push('籌碼'); }
-    bands.forEach(b => { b.cats = [...new Set(b.cats)]; const k = b.cats.length, s = b.labels.length; b.strength = (k >= 4 || s >= 5) ? '極強' : (k >= 3 || s >= 4) ? '強' : (k >= 2 || s >= 2) ? '中' : '弱'; b.rank = { 弱: 1, 中: 2, 強: 3, 極強: 4 }[b.strength]; });
+    // 強度依「幾種依據疊在一起」：2025-01～2026-10 回測，只有 1～2 種依據的價位守住率比隨機價位還低，3 種以上才明顯有效
+    bands.forEach(b => { b.cats = [...new Set(b.cats)]; b.labels = [...new Set(b.labels)]; const s = b.labels.length; b.strength = s >= 5 ? '極強' : s >= 4 ? '強' : s >= 3 ? '中' : '弱'; b.rank = { 弱: 1, 中: 2, 強: 3, 極強: 4 }[b.strength]; });
 
-    // 支撐：0–10% 近端，10–20% 中期，超過 20% 不列
-    const sup = S.filter(b => -b.dist <= 20).slice(0, 2).map(b => Object.assign(b, { tier: -b.dist <= 10 ? '近端' : '中期' }));
-    // 壓力：第一道最近；第二道取下一個獨立結構；超過 +10% 標中期
-    let res = R.slice(0, 2).map(b => Object.assign(b, { tier: b.dist <= 10 ? '近端' : '中期' }));
+    // 顯示哪兩道：第一道優先取最近、依據 4 種以上的價位，其次 3 種以上，都沒有才取 10% 內依據最多的；第二道取更遠一層、依據 3 種以上
+    const pick2 = (list, maxD) => {
+      const d = b => Math.abs(b.dist), inR = list.filter(b => d(b) <= maxD), near = m => inR.filter(b => b.labels.length >= m && d(b) <= 15).sort((x, y) => d(x) - d(y))[0];
+      const first = near(4) || near(3) || inR.filter(b => d(b) <= 10).sort((x, y) => y.labels.length - x.labels.length || d(x) - d(y))[0] || inR.sort((x, y) => d(x) - d(y))[0];
+      if (!first) return [];
+      const second = inR.filter(b => b !== first && d(b) > d(first) && b.labels.length >= 3).sort((x, y) => d(x) - d(y))[0];
+      return second ? [first, second] : [first];
+    };
+    const sup = pick2(S, 20).map(b => Object.assign(b, { tier: -b.dist <= 10 ? '近端' : '中期' }));
+    let res = pick2(R, 30).map(b => Object.assign(b, { tier: b.dist <= 10 ? '近端' : '中期' }));
     let limitRef = null;
     const allHigh = Math.max(...B.map(b => b.h));
     if (!res.length && c >= allHigh * 0.995) limitRef = rt(B.at(-1).c * 1.1, 'd');

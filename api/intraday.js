@@ -1,4 +1,4 @@
-// 盤中當沖觀察：前一日成交值前 150 大的上市股票，用即時行情找量能放大、振幅大、價格在高檔的股票
+// 盤中強勢股觀察：前一日成交值前 150 大的上市股票，用即時行情找量能放大、振幅大、價格在高檔的股票
 const { quotes, session } = require('../lib/mis.js');
 let base = null;
 async function baseline() {

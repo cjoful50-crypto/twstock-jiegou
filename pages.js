@@ -24,7 +24,7 @@ loadStocks().then(() => { if ($('#browse')) renderBrowse(); if ($('#pvSectors'))
 let intraTimer = null;
 async function loadIntraday() {
   const box = $('#intraday'); if (!box) return;
-  if (!box.innerHTML) box.innerHTML = `<h2 id="intraTitle">盤中當沖觀察</h2><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">正在掃描即時行情…</span></div>`;
+  if (!box.innerHTML) box.innerHTML = `<h2 id="intraTitle">盤中強勢股觀察</h2><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">正在掃描即時行情…</span></div>`;
   try {
     const r = await fetch('/api/intraday'); const j = await r.json().catch(() => ({ error: '伺服器回應格式錯誤。' }));
     if (!r.ok || j.error) throw new Error(j.error || 'HTTP ' + r.status);
@@ -35,18 +35,18 @@ async function loadIntraday() {
         <div class="sigs">${x.why.map(w => `<span>${esc(w)}</span>`).join('')}</div>
         <div class="lv num"><span>成交 ${fi(x.vol)} 張</span><span>更新 ${esc((x.time || '').slice(0, 5))}</span></div></button>`).join('') + moreRows(j.picks.slice(3), 'price')
       : `<div class="empty">${open ? '目前沒有符合條件的股票，3 分鐘後將重新掃描。' : '今日收盤時沒有符合條件的股票。'}</div>`;
-    box.innerHTML = `<div class="section-head"><h2 id="intraTitle">盤中當沖觀察</h2>${state}</div>
+    box.innerHTML = `<div class="section-head"><h2 id="intraTitle">盤中強勢股觀察</h2>${state}</div>
       <div class="howto">
-        <div><b>內容</b><span>交易時間即時掃描前一交易日成交值最大的 150 檔上市股票，列出成交量放大、振幅較大、股價位於當日高檔的個股。此清單只反映當下盤勢、尚未經過回測；歷史資料顯示台股平均「開盤買、收盤賣」扣除成本後為負報酬，請特別留意風險。</span></div>
+        <div><b>內容</b><span>交易時間即時掃描前一交易日成交值最大的 150 檔上市股票，列出成交量放大、振幅較大、股價位於當日高檔的個股。此清單只反映當下盤勢，尚未經過歷史資料驗證。</span></div>
         <div><b>使用方式</b><span>可作為盤中觀察清單。點選個股查看支撐與壓力：股價守在支撐之上代表仍偏強，跌破支撐通常代表轉弱。</span></div>
-        <div><b>注意事項</b><span>名單每 3 分鐘更新，強勢股可能隨時轉弱。當沖須具備當沖交易資格且風險較高，本名單僅為篩選結果，不構成買賣建議。</span></div>
+        <div><b>注意事項</b><span>名單每 3 分鐘更新，強勢股可能隨時轉弱。本名單僅為即時篩選結果，不構成買賣建議。</span></div>
       </div>
       <div class="picks-grid">${cards}</div>
       <details class="rules"><summary>篩選條件</summary><p>條件：漲幅 1.5%～9% 且未鎖漲停、今日振幅 2.5% 以上、價格位於今日高低區間 60% 以上、累計成交量達前一交易日同時段估計量的 1.3 倍以上（依交易時間比例估算，例如 10:30 以前一交易日總量的三分之一為基準）。依量能倍數、振幅、高檔位置與漲幅加權排名。開盤初期成交較集中，量能倍數通常偏高。</p></details>`;
     box.querySelectorAll('.pick, .pick-row').forEach(b => b.onclick = () => goTo(b.dataset.code));
     clearTimeout(intraTimer); if (open) intraTimer = setTimeout(loadIntraday, 180000);
   } catch (e) {
-    box.innerHTML = `<h2 id="intraTitle">盤中當沖觀察</h2><p class="err">${esc(e.message)}</p><button class="btn ghost" type="button" id="retryIntra">再試一次</button>`;
+    box.innerHTML = `<h2 id="intraTitle">盤中強勢股觀察</h2><p class="err">${esc(e.message)}</p><button class="btn ghost" type="button" id="retryIntra">再試一次</button>`;
     $('#retryIntra').onclick = loadIntraday;
   }
 }
