@@ -212,4 +212,4 @@ function renderHeat(box, limit) {
   box.innerHTML = `<div class="heat">${st.map(s => `<a href="/sectors#${esc(s.id)}" style="${heatColor(s.chg)}" title="${esc(s.name)}：上漲 ${s.up} 家、下跌 ${s.dn} 家"><b>${esc(s.name)}</b><span class="num">${sg(s.chg)}%</span><small class="num">漲 ${s.up}・跌 ${s.dn}</small></a>`).join('')}</div>
     <p class="note" style="margin:8px 0 0">${window.LIST_DATE ? esc(window.LIST_DATE) + ' 收盤。' : ''}各格漲跌幅以成交值加權計算；紅色為上漲、綠色為下跌，顏色越深代表幅度越大。點選可查看該產業個股。</p>`;
 }
-loadStocks().then(() => { renderHeat($('#pvHeat'), 12); renderHeat($('#heatAll')); });
+loadStocks().then(() => { renderHeat($('#pvHeat'), 6); renderHeat($('#heatAll')); });
