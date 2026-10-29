@@ -300,3 +300,5 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 
 .score-grid table{min-width:560px}
 #scoreList .stock-table{min-width:640px}
+.stag{display:inline-block;margin-left:6px;padding:0 6px;border-radius:4px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:11px;font-weight:500;line-height:18px;vertical-align:middle;white-space:nowrap}
+.stag:empty{display:none}

@@ -1,6 +1,6 @@
 /* 各分頁共用：依頁面上有哪些區塊決定要載入什麼 */
 // 第 4 名以後用精簡列表顯示
-const moreRows = (list, pk) => list.length ? `<ol class="rank-more" start="4">${list.map(x => `<li><button type="button" class="pick-row" data-code="${esc(x.code)}"><span class="num" style="color:var(--accent)">${esc(x.code)}</span><span class="nm">${esc(x.name)}</span><span class="num ${cls(x.chg)}">${pxd(x[pk])} ${sg(x.chg)}%</span>${x.index != null ? `<span class="num small" style="color:${scoreColor(x.index)}">${x.index}</span>` : ''}</button></li>`).join('')}</ol>` : '';
+const moreRows = (list, pk) => list.length ? `<ol class="rank-more" start="4">${list.map(x => `<li><button type="button" class="pick-row" data-code="${esc(x.code)}"><span class="num" style="color:var(--accent)">${esc(x.code)}</span><span class="nm">${esc(x.name)}${secTag(x.code)}</span><span class="num ${cls(x.chg)}">${pxd(x[pk])} ${sg(x.chg)}%</span>${x.index != null ? `<span class="num small" style="color:${scoreColor(x.index)}">${x.index}</span>` : ''}</button></li>`).join('')}</ol>` : '';
 // 盤後名單：讀每日排程（GitHub Actions）存好的檔案
 let pickIndex;
 async function getIndex() { if (pickIndex === undefined) pickIndex = await fetch('/data/index.json').then(r => r.ok ? r.json() : null).catch(() => null); return pickIndex; }
@@ -31,7 +31,7 @@ async function loadIntraday() {
     const open = j.session && j.session.open;
     const state = open ? `<span class="live-badge"><span class="dot on"></span>盤中 ${esc((j.time || '').slice(0, 5))}・每 3 分鐘更新</span>` : `<span class="live-badge"><span class="dot"></span>${j.date ? esc(j.date.replace(/-/g, '/')) + ' ' : ''}收盤結果・下個交易日 9:00 起即時更新</span>`;
     const cards = j.picks.length ? j.picks.slice(0, 3).map(x => `<button class="pick" type="button" data-code="${esc(x.code)}">
-        <div class="top1"><span><span class="code num" style="color:var(--accent)">${esc(x.code)}</span> <span class="nm">${esc(x.name)}</span></span><span class="num ${cls(x.chg)}">${pxd(x.price)} ${sg(x.chg)}%</span></div>
+        <div class="top1"><span><span class="code num" style="color:var(--accent)">${esc(x.code)}</span> <span class="nm">${esc(x.name)}</span>${secTag(x.code)}</span><span class="num ${cls(x.chg)}">${pxd(x.price)} ${sg(x.chg)}%</span></div>
         <div class="sigs">${x.why.map(w => `<span>${esc(w)}</span>`).join('')}</div>
         <div class="lv num"><span>成交 ${fi(x.vol)} 張</span><span>更新 ${esc((x.time || '').slice(0, 5))}</span></div></button>`).join('') + moreRows(j.picks.slice(3), 'price')
       : `<div class="empty">${open ? '目前沒有符合條件的股票，3 分鐘後將重新掃描。' : '今日收盤時沒有符合條件的股票。'}</div>`;
@@ -62,7 +62,7 @@ async function loadPicks(date) {
       const ok = v.n >= 30 && v.excess > 0;
       return `<p class="track ${ok ? 'good' : 'weak'}"><b>歷史表現</b>　每日前 3 名隔天開盤買進、持有 ${s.hold} 個交易日，扣交易成本後平均 <span class="num ${cls(v.avg)}">${sg(v.avg)}%</span>、勝率 ${v.win}%；同期間隨機買進全市場平均 ${sg(v.bench)}%（${v.n} 筆）。${ok ? '' : v.n < 30 ? '樣本數仍少，僅供參考。' : '目前未優於全市場平均，請審慎參考。'} <a href="/scorecard">成績單</a></p>`; };
     const col = (title, sub, list, n, cat) => `<div class="pcol"><h3>${title}<small>${sub}・符合 ${n} 檔</small></h3>${track(cat)}${list.length ? list.slice(0, 3).map(x => `<button class="pick" type="button" data-code="${esc(x.code)}">
-      <div class="top1"><span><span class="code num" style="color:var(--accent)">${esc(x.code)}</span> <span class="nm">${esc(x.name)}</span></span><span class="num ${cls(x.chg)}">${pxd(x.close)} ${sg(x.chg)}%</span></div>
+      <div class="top1"><span><span class="code num" style="color:var(--accent)">${esc(x.code)}</span> <span class="nm">${esc(x.name)}</span>${secTag(x.code)}</span><span class="num ${cls(x.chg)}">${pxd(x.close)} ${sg(x.chg)}%</span></div>
       <div class="sigs">${x.why.map(w => `<span>${esc(w)}</span>`).join('')}</div>
       <div class="lv num"><span>強度分數 <b style="color:${scoreColor(x.index)}">${x.index ?? '—'}</b></span><span>支撐 <b style="color:var(--sup)">${x.sup != null ? pxd(x.sup) : '—'}</b></span><span>壓力 <b style="color:var(--res)">${x.res != null ? pxd(x.res) : '—'}</b></span></div></button>`).join('') + moreRows(list.slice(3), 'close') : '<div class="empty">今天沒有股票符合條件。</div>'}</div>`;
     box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h2 id="picksTitle">盤後篩選名單</h2><span class="small muted num">${idx && idx.dates.length > 1 ? `<label for="pickDate">查看日期 </label><select id="pickDate">${idx.dates.slice().reverse().map(d => `<option value="${d}"${d.replace(/-/g, '/') === j.date ? ' selected' : ''}>${d.replace(/-/g, '/')}</option>`).join('')}</select>　` : esc(j.date) + ' 收盤・'}掃描 ${j.universe} 檔上市櫃股票</span></div>
@@ -77,7 +77,7 @@ async function loadPicks(date) {
         <p><b>短線觀察</b>：均線多頭排列（收盤在月線之上、月線在季線之上，且月線與季線都向上）、收盤距離 60 日最高點 5% 以內、近 5 日至少 3 天法人買超。依法人買超占日均量的比例排名。</p>
         <p><b>波段觀察</b>：均線多頭排列、股價拉回到月線附近（高於月線 0%～8%）、近 5 日至少 4 天法人買超。依成交值與法人買超比例排名。</p>
         <p><b>長線觀察</b>：收盤站上季線且季線向上、本益比 12～40 倍、近 5 日至少 3 天法人買超。依成交值與法人買超比例排名。</p>
-        <p><b>規則怎麼來的</b>：以 2025 年 1 月至 2026 年 10 月的上市櫃資料回測，比較多組條件，只保留在每個半年期間都優於「同一天隨機買進全市場股票」的規則。報酬以隔天開盤價買進、扣除手續費與證交稅（約 0.47%）計算。我們也測試過隔日當沖（隔天開盤買、收盤賣）的各種條件，扣除成本後都沒有穩定獲利，因此不提供隔日當沖名單。</p>
+        <p><b>規則怎麼來的</b>：以 2025 年 1 月至 2026 年 10 月的上市櫃資料回測，比較多組條件，只保留在每個半年期間都優於「同一天隨機買進全市場股票」的規則。報酬以隔天開盤價買進、扣除手續費與證交稅（約 0.47%）計算。</p>
         <p>實際表現每日更新於<a href="/scorecard">名單成績單</a>。資料來源為證交所與櫃買中心盤後公開資料。</p>
       </details>`;
     box.querySelectorAll('.pick, .pick-row').forEach(b => b.onclick = () => goTo(b.dataset.code));
@@ -102,7 +102,7 @@ async function renderWatch() {
     return;
   }
   const rowsHtml = (q = {}) => list.map(w => { const x = q[w.code] || {}; const chg = x.price && x.prev ? (x.price / x.prev - 1) * 100 : null;
-    return `<tr data-code="${esc(w.code)}"><td class="nm"><a href="/analysis/${esc(w.code)}"><span class="num">${esc(w.code)}</span>${esc(w.name || x.name || '')}</a></td>
+    return `<tr data-code="${esc(w.code)}"><td class="nm"><a href="/analysis/${esc(w.code)}"><span class="num">${esc(w.code)}</span>${esc(w.name || x.name || '')}</a>${secTag(w.code)}</td>
       <td class="num">${x.price ? pxd(x.price) : '—'}</td><td class="num ${cls(chg)}">${chg == null ? '—' : sg(chg) + '%'}</td><td class="num">${x.vol != null ? fi(x.vol) : '—'}</td>
       <td class="num" style="color:${scoreColor(w.index)}">${w.index ?? '—'}${w.trend ? `<span class="small muted">・${esc(w.trend)}</span>` : ''}</td><td>${starBtn(w.code, w.name)}</td></tr>`; }).join('');
   const table = q => `<div class="scroll"><table class="stock-table"><thead><tr><th>股票</th><th>價格</th><th>漲跌</th><th>成交量（張）</th><th>強度分數</th><th></th></tr></thead><tbody>${rowsHtml(q)}</tbody></table></div>
@@ -147,7 +147,7 @@ function renderBrowse() {
 window.addEventListener('pageshow', e => { if (e.persisted) renderWatch(); });
 
 /* 首頁摘要卡 */
-const miniRow = (code, name, right, tag) => `<li><a href="/analysis/${esc(code)}"><span class="num code">${esc(code)}</span><span class="nm">${esc(name || '')}${tag ? `<span class="tag">${esc(tag)}</span>` : ''}</span>${right}</a></li>`;
+const miniRow = (code, name, right, tag) => `<li><a href="/analysis/${esc(code)}"><span class="num code">${esc(code)}</span><span class="nm">${esc(name || '')}${secTag(code)}${tag ? `<span class="tag">${esc(tag)}</span>` : ''}</span>${right}</a></li>`;
 async function renderPvWatch() {
   const box = $('#pvWatch'); if (!box) return;
   const list = Watch.get();

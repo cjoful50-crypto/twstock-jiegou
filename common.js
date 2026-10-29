@@ -22,6 +22,15 @@ function loadStocks() {
   if (!stocksP) stocksP = fetch('/api/list').then(r => r.json()).then(j => { if (Array.isArray(j)) STOCKS = j; else if (j && Array.isArray(j.stocks)) { STOCKS = j.stocks; SECTORS = j.sectors || []; window.LIST_DATE = j.date || null; } return STOCKS; }).catch(() => null);
   return stocksP;
 }
+/* 產業小標籤：先放空的 <span data-sec="代號">，股票清單載入後自動補上產業名稱 */
+const secTag = code => `<span class="stag" data-sec="${esc(code)}"></span>`;
+let SEC_OF = null;
+function fillSec(root = document) {
+  if (!STOCKS) return;
+  if (!SEC_OF) { const nm = new Map(SECTORS.map(s => [s.id, s.name])); SEC_OF = new Map(STOCKS.map(x => [x[0], (nm.get(x[3]) || '').replace(/業$/, '')])); }
+  root.querySelectorAll('.stag[data-sec]:empty').forEach(el => { const t = SEC_OF.get(el.dataset.sec); if (t) el.textContent = t; else el.remove(); });
+}
+loadStocks().then(() => { fillSec(); new MutationObserver(() => fillSec()).observe(document.body, { childList: true, subtree: true }); });
 function findStocks(q, n = 8) {
   q = q.trim().toUpperCase(); if (!q || !STOCKS) return [];
   const a = [], b = [], c = [];
