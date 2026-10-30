@@ -135,7 +135,7 @@ function render(s) {
       </div>
       <div class="gauge">${ring(a.index)}<div style="display:grid;gap:6px;justify-items:center"><span class="pill ${legacyCls(a.legacy)}">綜合評等：${a.legacy}</span><span class="small muted num" style="text-align:center">五面向平均 ${fx(a.raw, 1)}${a.pen.length ? `<br>風險扣分 ${a.pen.reduce((x, y) => x + y.pts, 0)} → 強度分數 ${a.index}` : ''}</span></div></div>
     </div>
-    <p class="note" style="margin:14px 0 0"><b>走勢</b>依均線與動能判斷；<b>綜合評等</b>為下列五個面向分數的平均；<b>強度分數</b>為綜合評等扣除風險因素（如接近強壓力、走勢轉弱、短線過熱）後的分數，範圍 0～100，分數越高代表目前整體條件越強，但不代表未來必然上漲。</p>
+    <p class="note" style="margin:14px 0 0"><b>走勢</b>依強度分數分為強勢、觀察、偏弱、風險四級；<b>綜合評等</b>為下列五個面向分數的平均；<b>強度分數</b>為綜合評等扣除風險因素（如接近強壓力、均線動能轉弱、短線過熱、量增收黑）後的分數，範圍 0～100，分數越高代表目前整體條件越強，但不代表未來必然上漲。</p>
     <div class="dims">${dimsHtml}</div>
     <div class="dates num"><span>行情：${esc(d.price || t.d)}</span>${d.inst ? `<span>法人：${esc(d.inst)}</span>` : ''}${d.chip ? `<span>籌碼：${esc(d.chip)}</span>` : ''}${d.val ? `<span>基本面：${esc(d.val)}</span>` : ''}${d.rev ? `<span>營收：${esc(d.rev)}</span>` : ''}</div>
   </section>
@@ -221,7 +221,7 @@ function render(s) {
     score: () => `<p class="small muted" style="margin-top:0">強度分數 = 五面向加權平均（趨勢 25%、量價 20%、法人 20%、籌碼 15%、基本面 20%；缺資料的面向不計，權重重新分配）＋ 風險折減。趨勢、量價、法人、籌碼從 50 分起算，基本面從 40 分起算；量價的加減分以 0.35 倍、籌碼以 0.6 倍計入，以降低單日波動對分數的影響；各面向分數限制在 0～100。</p>
       ${a.dims.map(x => `<div class="score-dim"><header><span>${x.name}（權重 ${x.w * 100}%）</span><span class="num" style="color:${scoreColor(x.s)}">${x.s ?? '資料不足'}</span></header><ul>${x.items.map(i => `<li><span>${esc(i.label)}</span><span class="num ${cls(i.pts)}">${sgi(i.pts)}</span></li>`).join('') || '<li><span>沒有資料</span></li>'}</ul></div>`).join('')}
       <div class="score-dim"><header><span>風險折減</span><span class="num">${a.pen.reduce((x, y) => x + y.pts, 0)}</span></header><ul>${a.pen.map(i => `<li><span>${esc(i.label)}</span><span class="num down">${i.pts}</span></li>`).join('') || '<li><span>無</span></li>'}</ul></div>
-      <p class="small muted">加權原始分 ${fx(a.raw, 1)}，即綜合評等（60 以上偏多、38～60 中性、38 以下偏空）；扣掉風險折減後為強度分數 ${a.index}。走勢依趨勢面分數判定：70 以上多頭、55 偏多、42 整理、30 偏空、30 以下風險；趨勢偏強但股價離月線超過 15% 或 RSI 高於 80 時，改標「過熱」。</p>`
+      <p class="small muted">加權原始分 ${fx(a.raw, 1)}，即綜合評等（60 以上偏多、38～60 中性、38 以下偏空）；扣掉風險折減後為強度分數 ${a.index}。走勢依強度分數判定：75 以上強勢、45～74 觀察、36～44 偏弱、35 以下風險。</p>`
   };
   const showTab = () => { $('#panel').innerHTML = panels[tab](); document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab)); };
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; showTab(); });

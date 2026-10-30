@@ -55,9 +55,10 @@ const Engine = (() => {
   }
 
   /* 結構價位偵測 */
+  let MIN_D = 0.001, MIN_DR = 0.003, EXTRA = true, PICK = 'strong', PICKR = 'strong';
   function structures(B, ind, flows) {
     const n = B.length, c = B.at(-1).c, cands = [];
-    const add = (p, label, cat) => { if (p > c * 0.75 && p < c * 1.3 && Math.abs(p - c) / c >= 0.01) cands.push({ p, label, cat }); };
+    const add = (p, label, cat) => { if (p > c * 0.75 && p < c * 1.3 && Math.abs(p - c) / c >= (p < c ? MIN_D : MIN_DR)) cands.push({ p, label, cat }); };
     const from = Math.max(1, n - 120);
     // 波段高低點：左 3 根、右至少 1 根（最多 3 根）確認
     const ph = [], pl = [];
@@ -67,10 +68,13 @@ const Engine = (() => {
       if (L.every(b => b.l >= B[i].l) && R.every(b => b.l > B[i].l)) pl.push(i);
     }
     const lastPeakAbove = [...ph].reverse().find(i => B[i].h > c);
-    ph.forEach(i => add(B[i].h, i === lastPeakAbove ? '前波高點' : '波段高點', '價格'));
+    ph.forEach(i => add(B[i].h, i === lastPeakAbove ? '前波高點' : B[i].h < c ? '前高轉支撐' : '波段高點', '價格'));
+    // 近 20／60 日高低點（盤中與收盤），不含今天
+    if (EXTRA) for (const [k, nm] of [[20, '近 20 日'], [60, '近 60 日']]) { const W = B.slice(Math.max(0, n - 1 - k), n - 1); if (W.length < k * 0.8) continue;
+      add(Math.max(...W.map(b => b.h)), nm + '高點', '價格'); add(Math.min(...W.map(b => b.l)), nm + '低點', '價格'); add(Math.max(...W.map(b => b.c)), nm + '收盤高點', '價格'); add(Math.min(...W.map(b => b.c)), nm + '收盤低點', '價格'); }
     pl.forEach(i => add(B[i].l, '波段低點', '價格'));
     // 均線
-    [['MA5', ind.ma5], ['MA10', ind.ma10], ['MA20', ind.ma20], ['MA60', ind.ma60]].forEach(([k, a]) => { const v = a.at(-1); if (v != null) add(v, v > c ? k + ' 反壓' : k, '均線'); });
+    [['MA5', ind.ma5], ['MA10', ind.ma10], ['MA20', ind.ma20], ['MA60', ind.ma60]].concat(EXTRA ? [['MA13', ind.ma13], ['MA120', ind.ma120]] : []).forEach(([k, a]) => { const v = a.at(-1); if (v != null) add(v, v > c ? k + ' 反壓' : k, '均線'); });
     // 未回補缺口
     for (let i = Math.max(1, n - 60); i < n; i++) {
       if (B[i].l > B[i - 1].h) { // 跳空上漲，上緣 = 當日低
@@ -117,15 +121,16 @@ const Engine = (() => {
     bands.forEach(b => { b.cats = [...new Set(b.cats)]; b.labels = [...new Set(b.labels)]; const s = b.labels.length; b.strength = s >= 5 ? '極強' : s >= 4 ? '強' : s >= 3 ? '中' : '弱'; b.rank = { 弱: 1, 中: 2, 強: 3, 極強: 4 }[b.strength]; });
 
     // 顯示哪兩道：第一道優先取最近、依據 4 種以上的價位，其次 3 種以上，都沒有才取 10% 內依據最多的；第二道取更遠一層、依據 3 種以上
-    const pick2 = (list, maxD) => {
+    const pick2 = (list, maxD, PICK) => {
       const d = b => Math.abs(b.dist), inR = list.filter(b => d(b) <= maxD), near = m => inR.filter(b => b.labels.length >= m && d(b) <= 15).sort((x, y) => d(x) - d(y))[0];
+      if (PICK !== 'strong') { const m = +PICK.slice(4); const a = inR.filter(b => b.labels.length >= m).sort((x, y) => d(x) - d(y)); return a.slice(0, 2); }
       const first = near(4) || near(3) || inR.filter(b => d(b) <= 10).sort((x, y) => y.labels.length - x.labels.length || d(x) - d(y))[0] || inR.sort((x, y) => d(x) - d(y))[0];
       if (!first) return [];
       const second = inR.filter(b => b !== first && d(b) > d(first) && b.labels.length >= 3).sort((x, y) => d(x) - d(y))[0];
       return second ? [first, second] : [first];
     };
-    const sup = pick2(S, 20).map(b => Object.assign(b, { tier: -b.dist <= 10 ? '近端' : '中期' }));
-    let res = pick2(R, 30).map(b => Object.assign(b, { tier: b.dist <= 10 ? '近端' : '中期' }));
+    const sup = pick2(S, 20, PICK).map(b => Object.assign(b, { tier: -b.dist <= 10 ? '近端' : '中期' }));
+    let res = pick2(R, 30, PICKR).map(b => Object.assign(b, { tier: b.dist <= 10 ? '近端' : '中期' }));
     let limitRef = null;
     const allHigh = Math.max(...B.map(b => b.h));
     if (!res.length && c >= allHigh * 0.995) limitRef = rt(B.at(-1).c * 1.1, 'd');
@@ -133,14 +138,16 @@ const Engine = (() => {
   }
 
   const DEFAULTS = {
+    t_base: 53, v_base: 50, i_base: 50, c_base: 44, t_todayK: 0, t_todayCap: 10,
     t_m5: 5, t_m20: 16, t_m60: 8, t_slope: 6, t_align: 8, t_hist: 5, t_chgK: 0.5, t_chgLo: -8, t_chgHi: 3, t_rsiLow: 4,
     v_up: 12, v_upLow: -4, v_dnHigh: -12, v_dnLow: 4, v_obv: 10, v_share: 40, v_v5: 4, v_scale: 0.35,
-    i_k: 60, i_cap: 40, i_trust: 6, i_streak: 2, i_streakCap: 8, i_today: 5,
+    i_k: 40, i_cap: 45, i_trust: 6, i_streak: 2, i_streakCap: 8, i_today: 5,
     c_scale: 0.6, c_mK: 1.5, c_mKdown: 3, c_sbl: 1.5,
     f_base: 45, f_yoyK: 0.6, f_yoyLo: -15, f_yoyHi: 25, f_momK: 0.5, f_peLo: 10, f_peMid: 5, f_peBad: -8, f_y5: 8, f_y3: 4, f_yLow: -2,
-    w_t: 0.25, w_v: 0.20, w_i: 0.20, w_c: 0.15, w_f: 0.20,
-    p_r1dist: 3, p_r1s: -8, p_r1: -5, p_risk: -8, p_bt: 12, p_bk: 0.8, p_bmax: 20, p_rsiT: 80, p_rsi: -6, p_blk: -6
+    w_t: 0.25, w_v: 0.15, w_i: 0.25, w_c: 0.15, w_f: 0.20,
+    p_r1dist: 2, p_r1s: -3, p_r1: -2, p_risk: -8, p_bt: 12, p_bk: 0.8, p_bmax: 20, p_rsiT: 80, p_rsi: -6, p_blk: -10, p_blkV: 1.5, p_blkChg: -2
   };
+  function setLevelOpts(o) { if (o.minD != null) MIN_D = o.minD; if (o.minDR != null) MIN_DR = o.minDR; if (o.pickR) PICKR = o.pickR; if (o.extra != null) EXTRA = o.extra; if (o.pick) PICK = o.pick; }
   function analyze(stock, params) {
     const B = stock.bars, n = B.length;
     if (n < 30) throw new Error('至少需要 30 個交易日的日K資料才能計算（目前 ' + n + ' 筆）');
@@ -150,7 +157,7 @@ const Engine = (() => {
     const t = B.at(-1), p = B.at(-2), c = t.c;
     const avgV20 = sum(V.slice(-20)) / 20, volRatio = t.v / avgV20;
     const ind = {
-      ma5, ma10, ma20, ma60, rsi: r.at(-1), k: k.k.at(-1), d: k.d.at(-1), dif: dif.at(-1), dea: dea.at(-1), hist: hist.at(-1), histPrev: hist.at(-2),
+      ma5, ma10, ma20, ma60, ma13: sma(C, 13), ma120: sma(C, 120), rsi: r.at(-1), k: k.k.at(-1), d: k.d.at(-1), dif: dif.at(-1), dea: dea.at(-1), hist: hist.at(-1), histPrev: hist.at(-2),
       atr: atr(H, L, C), avgV20, volRatio, chg: c - p.c, chgPct: pct(c, p.c), chg20: n > 20 ? pct(c, C[n - 21]) : 0,
       low20: Math.min(...L.slice(-20)), high20: Math.max(...H.slice(-20)), ma20Slope: ma20.at(-1) - ma20.at(-6)
     };
@@ -171,6 +178,7 @@ const Engine = (() => {
     T.add(ind.hist > 0 ? 'MACD 柱狀體翻正' : (ind.hist > ind.histPrev ? 'MACD 柱狀體為負但收斂' : 'MACD 柱狀體擴大為負'), ind.hist > 0 ? P.t_hist : ind.hist > ind.histPrev ? 0 : -P.t_hist);
     T.add('近 20 日漲跌 ' + ind.chg20.toFixed(1) + '%', clamp(ind.chg20 * P.t_chgK, P.t_chgLo, P.t_chgHi));
     if (ind.rsi < 25) T.add('RSI 低於 25，短線超賣', P.t_rsiLow);
+    if (P.t_todayK) T.add('今日漲跌 ' + ind.chgPct.toFixed(1) + '%', clamp(ind.chgPct * P.t_todayK, -P.t_todayCap, P.t_todayCap));
     // 量價
     const VP = mk(); const up = t.c >= p.c;
     if (up && volRatio > 1.2) VP.add('價漲量增', P.v_up); else if (up && volRatio < 0.8) VP.add('價漲量縮', P.v_upLow); else if (!up && volRatio > 1.2) VP.add('價跌量增', P.v_dnHigh); else if (!up && volRatio < 0.8) VP.add('價跌量縮', P.v_dnLow); else VP.add('量能持平', 0);
@@ -205,10 +213,10 @@ const Engine = (() => {
 
     const score = (o, base, k = 1) => clamp(Math.round(base + sum(o.items.map(x => x.pts)) * k), 0, 100);
     const dims = [
-      { key: 'trend', name: '趨勢面', w: P.w_t, ok: true, s: score(T, 50), items: T.items },
-      { key: 'vp', name: '量價', w: P.w_v, ok: true, s: score(VP, 50, P.v_scale), items: VP.items },
-      { key: 'inst', name: '法人', w: P.w_i, ok: instOk, s: instOk ? score(I, 50) : null, items: I.items },
-      { key: 'chip', name: '籌碼', w: P.w_c, ok: chipOk, s: chipOk ? score(CH, 50, P.c_scale) : null, items: CH.items },
+      { key: 'trend', name: '趨勢面', w: P.w_t, ok: true, s: score(T, P.t_base), items: T.items },
+      { key: 'vp', name: '量價', w: P.w_v, ok: true, s: score(VP, P.v_base, P.v_scale), items: VP.items },
+      { key: 'inst', name: '法人', w: P.w_i, ok: instOk, s: instOk ? score(I, P.i_base) : null, items: I.items },
+      { key: 'chip', name: '籌碼', w: P.w_c, ok: chipOk, s: chipOk ? score(CH, P.c_base, P.c_scale) : null, items: CH.items },
       { key: 'fund', name: '基本面', w: P.w_f, ok: fundOk, s: fundOk ? score(F, P.f_base) : null, items: F.items }
     ];
     const used = dims.filter(d => d.ok), wsum = sum(used.map(d => d.w));
@@ -216,32 +224,34 @@ const Engine = (() => {
     // 風險折減
     const pen = [];
     const trendS = dims[0].s;
-    let trendLabel = trendS >= 70 ? '多頭' : trendS >= 55 ? '偏多' : trendS >= 42 ? '整理' : trendS >= 30 ? '偏空' : '風險';
-    if (trendS >= 55 && ((c / m20 - 1) * 100 > 15 || ind.rsi > 80)) trendLabel = '過熱';
+    // 均線動能狀態（內部用於風險折減與支撐密集區判斷）
+    const trendState = trendS >= 70 ? '多頭' : trendS >= 55 ? '偏多' : trendS >= 42 ? '整理' : trendS >= 30 ? '偏空' : '風險';
     const R1 = st.res[0];
     if (R1 && R1.dist < P.p_r1dist && R1.rank >= 3) pen.push({ label: '距第一壓力不到 ' + P.p_r1dist + '%，且壓力強度「' + R1.strength + '」', pts: R1.rank === 4 ? P.p_r1s : P.p_r1 });
-    if (trendLabel === '風險') pen.push({ label: '走勢屬「風險」：均線與動能同步轉弱', pts: P.p_risk });
+    if (trendState === '風險') pen.push({ label: '均線與動能同步轉弱', pts: P.p_risk });
     const bias = (c / m20 - 1) * 100;
     if (bias > P.p_bt) pen.push({ label: '股價離月線 +' + bias.toFixed(0) + '%，短線乖離過大', pts: -Math.min(P.p_bmax, Math.round((bias - P.p_bt) * P.p_bk)) });
     if (ind.rsi > P.p_rsiT && !(bias > P.p_bt)) pen.push({ label: 'RSI 高於 ' + P.p_rsiT + '，短線過熱', pts: P.p_rsi });
-    if (volRatio > 3 && !up) pen.push({ label: '爆量收黑', pts: P.p_blk });
+    if (volRatio > P.p_blkV && ind.chgPct <= P.p_blkChg) pen.push({ label: '量增收黑（量比 ' + volRatio.toFixed(1) + ' 倍、跌 ' + Math.abs(ind.chgPct).toFixed(1) + '%）', pts: P.p_blk });
     const index = clamp(Math.round(raw + sum(pen.map(x => x.pts))), 0, 100);
     const legacy = raw >= 60 ? '偏多' : raw >= 38 ? '中性' : '偏空';
+    // 走勢標籤依強度分數分四級（與 2TON 相同的分法）
+    const trendLabel = index >= 75 ? '強勢' : index >= 45 ? '觀察' : index >= 36 ? '偏弱' : '風險';
 
     // 支撐密集區：至少兩道近端支撐、相距不超過 1.5 倍 ATR、合計 3 類以上訊號，且走勢不在「風險」
     let zone = null;
     const [s1, s2] = st.sup;
-    if (s1 && s2 && s1.tier === '近端' && s2.tier === '近端' && (s1.lo - s2.level) <= ind.atr * 1.5 && new Set([...s1.cats, ...s2.cats]).size >= 3 && trendLabel !== '風險')
+    if (s1 && s2 && s1.tier === '近端' && s2.tier === '近端' && (s1.lo - s2.level) <= ind.atr * 1.5 && new Set([...s1.cats, ...s2.cats]).size >= 3 && trendState !== '風險')
       zone = { lo: s2.lo, hi: s1.level };
-    else if (s1 && s1.rank >= 4 && s1.tier === '近端' && trendLabel !== '風險') zone = { lo: s1.lo, hi: s1.level };
+    else if (s1 && s1.rank >= 4 && s1.tier === '近端' && trendState !== '風險') zone = { lo: s1.lo, hi: s1.level };
     let zoneWhy = '';
-    if (!zone) zoneWhy = !s1 ? '現價下方 20% 內沒有有效的支撐結構。' : trendLabel === '風險' ? '雖有支撐，但目前走勢屬「風險」，均線與動能同步轉弱時支撐較容易失效，因此不列出支撐密集區。' : '支撐尚未集中在同一價格帶，因此不列出支撐密集區。';
+    if (!zone) zoneWhy = !s1 ? '現價下方 20% 內沒有有效的支撐結構。' : trendState === '風險' ? '雖有支撐，但目前均線與動能同步轉弱，支撐較容易失效，因此不列出支撐密集區。' : '支撐尚未集中在同一價格帶，因此不列出支撐密集區。';
 
     // 位置量表：近 20 日低點到近 20 日高點（或第一壓力，取高者）
     const top = Math.max(ind.high20, R1 ? R1.level : 0), posPct = clamp((c - ind.low20) / (top - ind.low20) * 100, 0, 100);
     const posZone = posPct < 35 ? '低檔區' : posPct < 70 ? '中段區' : '偏熱區';
 
-    return { stock, ind, flows, st, dims, raw, pen, index, legacy, trendLabel, zone, zoneWhy, posPct, posZone, top };
+    return { stock, ind, flows, st, dims, raw, pen, index, legacy, trendLabel, trendState, zone, zoneWhy, posPct, posZone, top };
   }
   function fmtInt(x) { return Math.round(x).toLocaleString('en-US'); }
   function sgn(x) { return (x > 0 ? '+' : '') + x.toFixed(2); }
@@ -272,6 +282,6 @@ const Engine = (() => {
     const seen = new Set(); return rows.filter(r => !seen.has(r.d) && seen.add(r.d));
   }
 
-  return { analyze, parseBars, rt, tickOf, DEFAULTS };
+  return { analyze, parseBars, rt, tickOf, DEFAULTS, setLevelOpts };
 })();
 if (typeof module !== 'undefined') module.exports = Engine;

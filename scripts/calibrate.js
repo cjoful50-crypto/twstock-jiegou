@@ -1,13 +1,17 @@
 // 本機校正：調整評分參數，讓強度分數接近參考分數；分成訓練組與驗證組，避免只貼合樣本
 const fs = require('fs'), path = require('path');
 const Engine = require('../engine.js');
-const T = JSON.parse(fs.readFileSync(path.join(__dirname, 'calib-targets.json'), 'utf8'));
+// 兩個交易日的參考分數：10/28（data/calib/1028）與 10/29（data/calib）
 const dir = path.join(__dirname, '..', 'data', 'calib');
-const S = {}; for (const c of Object.keys(T)) { const f = path.join(dir, c + '.json'); if (fs.existsSync(f)) S[c] = JSON.parse(fs.readFileSync(f, 'utf8')); }
+const sets = [['calib-targets.json', path.join(dir, '1028')], ['calib-targets-1029.json', dir]];
+const S = {}, T = {};
+for (const [tf, d] of sets) { const tg = JSON.parse(fs.readFileSync(path.join(__dirname, tf), 'utf8')); for (const c of Object.keys(tg)) { const f = path.join(d, c + '.json'); if (fs.existsSync(f)) { const k = c + '@' + tf; S[k] = JSON.parse(fs.readFileSync(f, 'utf8')); T[k] = tg[c]; } } }
 const codes = Object.keys(S).sort();
+const stockOf = k => k.split('@')[0], ulist = [...new Set(codes.map(stockOf))].sort();
 // 固定方式分組：每 3 檔取 1 檔當驗證組
 const FOLD = +(process.env.FOLD ?? 2);
-const test = codes.filter((_, i) => i % 3 === FOLD), train = codes.filter((_, i) => i % 3 !== FOLD);
+const inTest = k => ulist.indexOf(stockOf(k)) % 3 === FOLD;
+const test = codes.filter(inTest), train = codes.filter(k => !inTest(k));
 const key = { t: 0, v: 1, i: 2, c: 3, f: 4 };
 function evalSet(P, set, dimW = 0.35) {
   let e = 0, n = 0, de = 0, dn = 0;
@@ -21,6 +25,7 @@ function evalSet(P, set, dimW = 0.35) {
 const D = Engine.DEFAULTS;
 // 可調參數與範圍
 const SPACE = {
+  t_base: [35, 65], v_base: [35, 65], i_base: [35, 65], c_base: [25, 65], t_todayK: [0, 3], t_todayCap: [2, 20], c_mK: [0, 5], c_mKdown: [0, 6], c_sbl: [0, 4],
   t_m5: [0, 12], t_m20: [6, 30], t_m60: [0, 16], t_slope: [0, 12], t_align: [0, 16], t_hist: [0, 10], t_chgK: [0, 1], t_chgHi: [0, 10],
   v_scale: [0.1, 0.8], i_k: [20, 120], i_cap: [15, 45], i_trust: [0, 12], i_streak: [0, 4], i_today: [0, 10],
   c_scale: [0.2, 1], f_base: [30, 55], f_yoyK: [0.2, 1], f_yoyHi: [10, 35],
@@ -53,5 +58,5 @@ console.log('樣本', codes.length, '訓練', train.length, '驗證', test.lengt
 for (const g of ['train', 'test', 'all']) console.log(g, '前 MAE', r(before[g].mae), '面向', r(before[g].dim), '→ 後 MAE', r(after[g].mae), '面向', r(after[g].dim));
 const changed = {}; for (const k of keys) if (Math.abs(best[k] - D[k]) > 1e-9) changed[k] = r(best[k]);
 console.log('PARAMS', JSON.stringify(changed));
-console.log(codes.map(c => `${c}:${Engine.analyze(S[c], best).index}/${T[c][0]}`).join(' '));
+// (per-stock list omitted)
 if (process.env.OUT) fs.writeFileSync(process.env.OUT, JSON.stringify(best));

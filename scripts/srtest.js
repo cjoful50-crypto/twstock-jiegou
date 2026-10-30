@@ -1,7 +1,7 @@
 // 研究用：檢驗支撐壓力準不準。每檔股票每隔幾天，用當時資料算出價位，再看之後 20 天碰到時是否守住
 // 對照組：同樣寬度、同樣距離範圍的隨機價位，用同一套標準判斷，比較兩者差距
 const fs = require('fs'), path = require('path');
-const E = require('../engine.js');
+const E = require('../engine.js'); if (process.env.LVOPT) E.setLevelOpts(JSON.parse(process.env.LVOPT));
 const C = path.join(__dirname, '..', 'data', 'cache');
 const rd = f => JSON.parse(fs.readFileSync(f, 'utf8'));
 const days = fs.readdirSync(path.join(C, 'daily')).sort().map(n => ({ d: n.slice(0, 10), q: rd(path.join(C, 'daily', n)) })).filter(x => !x.q.holiday);
@@ -38,7 +38,7 @@ for (const code of codes) {
       const r = judge(b.side, b.lo, b.hi, Bf);
       out.push({ sid, n: b.labels.length, k: b.cats.length, d: days[i].d, side: b.side, dist, w: (b.hi - b.lo) / c * 100, labels: b.labels, cats: b.cats, rank: b.rank, shown: shown.has(b.side + b.level), first: (b.side === 'S' ? a.st.sup[0] : a.st.res[0])?.level === b.level, ...r });
       // 隨機對照：同寬度、距離在同樣的 1%～15% 範圍內隨機
-      const u = 1 + rnd() * 14, half = (b.hi - b.lo) / 2, mid = b.side === 'S' ? c * (1 - u / 100) - half : c * (1 + u / 100) + half;
+      const u = 0.1 + rnd() * 14.9, half = (b.hi - b.lo) / 2, mid = b.side === 'S' ? c * (1 - u / 100) - half : c * (1 + u / 100) + half;
       const rr = judge(b.side, mid - half, mid + half, Bf);
       out.push({ sid, d: days[i].d, side: b.side, dist: b.side === 'S' ? -u : u, w: (b.hi - b.lo) / c * 100, rand: true, ...rr });
     }
