@@ -157,7 +157,7 @@ function render(s) {
           </div>
           <p class="note" style="margin:8px 0 0">位置僅描述股價所在區間，不代表買賣建議。</p>
           ${R1 ? `<p class="small" style="margin:14px 0 0">第一壓力 <b class="num" style="color:var(--res)">${pxd(R1.level)}</b> 的價位強度為<b>${R1.strength}</b>，由${R1.cats.map(x => x + '結構').join('、')}組成；價位強度越高，股價接近時越可能遇到賣壓。</p>` : ''}
-          <div class="zone-box"><b>${a.zone ? `支撐密集區 <span class="num" style="color:var(--accent)">${pxd(a.zone.lo)}–${pxd(a.zone.hi)}</span>` : '支撐密集區：目前沒有'}</b><span>${a.zone ? '近端兩道支撐落在同一價格帶，且走勢未轉入「風險」；股價回到此區間時，下方有多種結構支撐。' : esc(a.zoneWhy)}</span><span class="note">支撐密集區：多種支撐（如均線、前波低點、大量成交區）集中在同一價格帶，形成較穩固的承接區。</span></div>
+          <div class="zone-box"><b>${a.zone ? `支撐密集區 <span class="num" style="color:var(--accent)">${pxd(a.zone.lo)}–${pxd(a.zone.hi)}</span>` : '支撐密集區：目前沒有'}</b><span>${a.zone ? '近端兩道支撐落在同一價格帶，且均線與動能沒有同步轉弱；股價回到此區間時，下方有多種結構支撐。' : esc(a.zoneWhy)}</span><span class="note">支撐密集區：多種支撐（如均線、前波低點、大量成交區）集中在同一價格帶，形成較穩固的承接區。</span></div>
 
         </div>
       </div>
