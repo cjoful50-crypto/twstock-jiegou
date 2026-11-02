@@ -119,7 +119,7 @@ function bindStars(root, after) {
 }
 
 /* 共用導覽列：每一頁開頭放 <header class="nav" id="nav" data-page="..."></header> */
-const PAGES = [['/', '首頁', 'home'], ['/watch', '選股與庫存', 'watch'], ['/sectors', '產業分類', 'sectors'], ['/intraday', '盤中強勢股', 'intraday'], ['/picks', '盤後名單', 'picks'], ['/scorecard', '名單成績單', 'scorecard'], ['/guide', '使用說明', 'guide']];
+const PAGES = [['/', '首頁', 'home'], ['/watch', '選股與庫存', 'watch'], ['/sectors', '產業分類', 'sectors'], ['/intraday', '盤中強勢股', 'intraday'], ['/picks', '盤後名單', 'picks'], ['/guide', '使用說明', 'guide']];
 (function renderNav() {
   const nav = document.getElementById('nav'); if (!nav) return;
   const page = nav.dataset.page, withSearch = page !== 'home';

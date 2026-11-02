@@ -136,7 +136,7 @@ function render(s) {
       </div>
       <div class="gauge">${ring(a.index)}<div style="display:grid;gap:6px;justify-items:center"><span class="pill ${legacyCls(a.legacy)}">綜合評等：${a.legacy}</span><span class="small muted num" style="text-align:center">五面向平均 ${fx(a.raw, 1)}${a.pen.length ? `<br>風險扣分 ${a.pen.reduce((x, y) => x + y.pts, 0)} → 強度分數 ${a.index}` : ''}</span></div></div>
     </div>
-    <p class="note" style="margin:14px 0 0"><b>走勢</b>依強度分數分為強勢、觀察、偏弱、風險四級；<b>綜合評等</b>為下列五個面向分數的平均；<b>強度分數</b>為綜合評等扣除風險因素（如接近強壓力、均線動能轉弱、短線過熱、量增收黑）後的分數，範圍 0～100，分數越高代表目前整體條件越強，但不是預測，歷史上與之後漲跌的關聯很弱（<a href="/scorecard">查看歷史表現</a>）。</p>
+    <p class="note" style="margin:14px 0 0"><b>走勢</b>依強度分數分為強勢、觀察、偏弱、風險四級；<b>綜合評等</b>為下列五個面向分數的平均；<b>強度分數</b>為綜合評等扣除風險因素（如接近強壓力、均線動能轉弱、短線過熱、量增收黑）後的分數，範圍 0～100，分數越高代表目前整體條件越強，但並非漲跌預測；歷史資料顯示其與後續漲跌的關聯性有限（詳見盤後名單頁「歷史成績」）。</p>
     <div class="dims">${dimsHtml}</div>
     <div class="dates num"><span>行情：${esc(d.price || t.d)}</span>${d.inst ? `<span>法人：${esc(d.inst)}</span>` : ''}${d.chip ? `<span>籌碼：${esc(d.chip)}</span>` : ''}${d.val ? `<span>基本面：${esc(d.val)}</span>` : ''}${d.rev ? `<span>營收：${esc(d.rev)}</span>` : ''}</div>
   </section>
@@ -149,7 +149,7 @@ function render(s) {
         <div class="pos">
           <div class="small" style="font-weight:700">上下空間</div>
           ${spaceSummary(a)}
-          <div class="small" style="font-weight:700;margin-top:16px">現在的位置</div>
+          <div class="small" style="font-weight:700;margin-top:16px">目前位置</div>
           <p class="small" style="margin:10px 0 0">目前位於區間約 <b class="num">${Math.round(a.posPct)}%</b>，屬「<b>${a.posZone}</b>」。區間從近 20 日最低 <span class="num">${pxd(ind.low20)}</span> 到${R1 && R1.level > ind.high20 ? '第一壓力' : '近 20 日最高'} <span class="num">${pxd(a.top)}</span>。</p>
           <div class="zones">
             <div class="${a.posZone === '低檔區' ? 'on' : ''}"><b>低檔區　0～35%</b><span>接近近期低點與支撐，下檔空間相對有限；若走勢轉弱，仍可能續跌。</span></div>
@@ -171,7 +171,7 @@ function render(s) {
   </section>
 
   <section class="card">
-    <h2>${esc(t.d.slice(5).replace('-', '/'))} 為什麼動？</h2><p class="small muted" style="margin:4px 0 0">最近一個交易日的漲跌、成交量與法人動向。</p>
+    <h2>${esc(t.d.slice(5).replace('-', '/'))} 漲跌原因</h2><p class="small muted" style="margin:4px 0 0">最近一個交易日的漲跌、成交量與法人動向。</p>
     <div class="why">${why.map(([h, b, k]) => `<div><b class="${k}">${h}</b><span class="small muted">${b}</span></div>`).join('')}</div>
   </section>
 
@@ -192,7 +192,7 @@ function render(s) {
   <section class="card" id="tdccCard" aria-labelledby="tdccT"><h2 id="tdccT">大戶與散戶</h2><p class="small muted" style="margin:4px 0 0">載入集保資料中…</p></section>
 
   <section class="card">
-    <h2>研究室</h2><p class="small muted" style="margin:4px 0 0">K 線圖、法人買賣、融資借券、本益比與營收，以及分數的計算明細。</p>
+    <h2>進階資料</h2><p class="small muted" style="margin:4px 0 0">K 線圖、法人買賣、融資借券、本益比與營收，以及分數的計算明細。</p>
     <div class="tabs" role="tablist">
       ${[['tech', '技術面'], ['inst', '法人'], ['chip', '籌碼'], ['fund', '基本面'], ['score', '計分明細']].map(([k, l]) => `<button role="tab" type="button" data-tab="${k}" aria-selected="${tab === k}">${l}</button>`).join('')}
     </div>
@@ -221,7 +221,7 @@ function render(s) {
       <div class="scroll" style="margin-top:12px"><table><thead><tr><th>日期</th><th>融資餘額</th><th>融券餘額</th><th>借券賣出餘額</th><th>借券賣出</th><th>還券</th></tr></thead><tbody>${days.map(dd => { const mm = m.find(x => x.d === dd) || {}, bb = b.find(x => x.d === dd) || {}; return `<tr><td class="num">${dd}</td><td class="num">${fi(mm.mb)}</td><td class="num">${fi(mm.sb)}</td><td class="num">${fi(bb.bal)}</td><td class="num">${fi(bb.sell)}</td><td class="num">${fi(bb.ret)}</td></tr>`; }).join('')}</tbody></table></div><p class="note">單位：張。借券賣出餘額下降代表空方回補，對股價壓力減輕。</p>`;
     },
     fund: () => { const f = s.fund || {}; return `<div class="kv"><div><span>本益比</span><b class="num">${fx(f.pe)}</b></div><div><span>殖利率</span><b class="num">${f.yld != null ? fx(f.yld) + '%' : '—'}</b></div><div><span>股價淨值比</span><b class="num">${fx(f.pb)}</b></div><div><span>${esc(f.revMonth || '最新')} 營收年增</span><b class="num ${cls(f.revYoY)}">${f.revYoY != null ? sg(f.revYoY) + '%' : '—'}</b></div><div><span>${esc(f.revMonth || '最新')} 營收月增</span><b class="num ${cls(f.revMoM)}">${f.revMoM != null ? sg(f.revMoM) + '%' : '—'}</b></div></div>`; },
-    score: () => `<p class="small muted" style="margin-top:0">強度分數 = 五面向加權平均（趨勢 25%、量價 20%、法人 20%、籌碼 15%、基本面 20%；缺資料的面向不計，權重重新分配）＋ 風險折減。趨勢、量價、法人、籌碼從 50 分起算，基本面從 40 分起算；量價的加減分以 0.35 倍、籌碼以 0.6 倍計入，以降低單日波動對分數的影響；各面向分數限制在 0～100。</p>
+    score: () => `<p class="small muted" style="margin-top:0">強度分數 = 五面向加權平均（趨勢 25%、量價 15%、法人 25%、籌碼 15%、基本面 20%；缺少資料的面向不計入，權重重新分配）＋ 風險折減。各面向以基準分起算（趨勢 53、量價 50、法人 50、籌碼 44、基本面 45）；量價的加減分以 0.35 倍、籌碼以 0.6 倍計入，以降低單日波動對分數的影響；各面向分數限制在 0～100。</p>
       ${a.dims.map(x => `<div class="score-dim"><header><span>${x.name}（權重 ${x.w * 100}%）</span><span class="num" style="color:${scoreColor(x.s)}">${x.s ?? '資料不足'}</span></header><ul>${x.items.map(i => `<li><span>${esc(i.label)}</span><span class="num ${cls(i.pts)}">${sgi(i.pts)}</span></li>`).join('') || '<li><span>沒有資料</span></li>'}</ul></div>`).join('')}
       <div class="score-dim"><header><span>風險折減</span><span class="num">${a.pen.reduce((x, y) => x + y.pts, 0)}</span></header><ul>${a.pen.map(i => `<li><span>${esc(i.label)}</span><span class="num down">${i.pts}</span></li>`).join('') || '<li><span>無</span></li>'}</ul></div>
       <p class="small muted">加權原始分 ${fx(a.raw, 1)}，即綜合評等（60 以上偏多、38～60 中性、38 以下偏空）；扣掉風險折減後為強度分數 ${a.index}。走勢依強度分數判定：75 以上強勢、45～74 觀察、36～44 偏弱、35 以下風險。</p>`
@@ -264,7 +264,7 @@ async function refreshQuote() {
 async function loadStock(code) {
   if (!code) { location.href = '/'; return; }
   document.title = code + ' 分析｜盤後結構室';
-  $('#app').innerHTML = `<section class="card loading"><div class="dots"><span></span><span></span><span></span></div><b>正在整理 ${esc(code)}</b><span class="small muted">包含近 7 個月日 K、三大法人、融資融券、借券、本益比與月營收，約需 5～15 秒。</span></section>`;
+  $('#app').innerHTML = `<section class="card loading"><div class="dots"><span></span><span></span><span></span></div><b>${esc(code)} 資料載入中</b><span class="small muted">包含近 7 個月日 K、三大法人、融資融券、借券、本益比與月營收，約需 5～15 秒。</span></section>`;
   try {
     const r = await fetch('/api/stock?code=' + encodeURIComponent(code));
     const j = await r.json().catch(() => ({ error: '伺服器回應格式錯誤。' }));
@@ -302,7 +302,7 @@ document.addEventListener('jiegou-data', () => { const b = $('#myHold'); if (b &
 let tdccSum = null;
 async function loadTdcc(code, bars) {
   const box = $('#tdccCard'); if (!box) return;
-  const head = `<h2 id="tdccT">大戶與散戶</h2><p class="small muted" style="margin:4px 0 0">依集保結算所每週公布的股權分散表，看股票集中在大戶還是散戶手上。</p>`;
+  const head = `<h2 id="tdccT">大戶與散戶</h2><p class="small muted" style="margin:4px 0 0">依集保結算所每週公布的股權分散表，呈現持股集中於大戶或散戶的程度。</p>`;
   let j = null; try { const r = await fetch('/data/tdcc/' + encodeURIComponent(code) + '.json'); if (r.ok) j = await r.json(); } catch (e) {}
   if (!j || !j.rows || !j.rows.length) { box.innerHTML = head + '<p class="small muted">這檔股票目前沒有集保股權分散資料。</p>'; return; }
   try { if (!tdccSum) tdccSum = await fetch('/data/tdcc/summary.json').then(r => r.ok ? r.json() : null); } catch (e) {}
@@ -339,13 +339,13 @@ async function loadTdcc(code, bars) {
       pl = `<polyline fill="none" stroke="var(--faint)" stroke-width="1.5" stroke-dasharray="4 3" vector-effect="non-scaling-stroke" points="${B.map(b => X(dayN(b.d)).toFixed(1) + ',' + (H - pad - (b.c - plo) / prg * (H - 2 * pad)).toFixed(1)).join(' ')}"/>`;
       pr = `　<span class="tdcc-key"><i class="price"></i>股價 ${pxd(B[0].c)} → ${pxd(B.at(-1).c)}</span>`; } }
     chart = `<figure class="tdcc-chart"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="千張大戶持股比例與股價走勢">${pl}<polyline fill="none" stroke="var(--accent)" stroke-width="2.2" vector-effect="non-scaling-stroke" points="${pts.map(p => p.join(',')).join(' ')}"/>${pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="2.6" fill="var(--accent)"/>`).join('')}</svg>
-      <figcaption class="small muted num"><span class="tdcc-key"><i class="big"></i>千張大戶 ${R[0][1].toFixed(2)}% → ${L[1].toFixed(2)}%</span>${pr}　${esc(R[0][0].replace(/-/g, '/'))}～${esc(L[0].replace(/-/g, '/'))}，兩條線各自縮放，看方向是否一致。大戶增加但股價下跌，或大戶減少但股價上漲，稱為「背離」。</figcaption></figure>`;
+      <figcaption class="small muted num"><span class="tdcc-key"><i class="big"></i>千張大戶 ${R[0][1].toFixed(2)}% → ${L[1].toFixed(2)}%</span>${pr}　${esc(R[0][0].replace(/-/g, '/'))}～${esc(L[0].replace(/-/g, '/'))}，兩條線分別依比例縮放，用於比較方向是否一致。大戶增加但股價下跌，或大戶減少但股價上漲，稱為「背離」。</figcaption></figure>`;
   }
   box.innerHTML = head + `<p style="margin:10px 0 0"><b>${read}</b></p>${facts.length ? `<ul class="tdcc-facts small">${facts.map(f => `<li>${f}</li>`).join('')}</ul>` : ''}
     <div class="hold-sum tdcc-sum" style="margin-top:10px">${tile('千張大戶持股', 1, '持有 1,000 張以上')}${tile('400 張以上大戶', 2, '')}${tile('散戶持股', 3, '持有 50 張以下')}
       <div><span>股東人數</span><b class="num">${fi(L[4])}</b><small>較上週 ${ppl(L, P1)}</small><small>4 週 ${ppl(L, P4)}</small></div></div>
     ${chart}
-    <p class="note" style="margin:8px 0 0">資料日期 ${esc(L[0].replace(/-/g, '/'))}，共 ${R.length} 週紀錄（歷史資料每天陸續補齊中）。來源為臺灣集中保管結算所「集保戶股權分散表」，每週最後一個交易日統計、隔日公布，本站於週六更新。比例為占集保庫存的百分比，變化以「百分點」表示。這裡的大戶與散戶依<b>持有張數</b>區分；部分看盤軟體的「大戶／散戶」是依單筆成交大小推估，兩者意義不同。大戶持股增加不代表股價一定上漲。</p>`;
+    <p class="note" style="margin:8px 0 0">資料日期 ${esc(L[0].replace(/-/g, '/'))}，共 ${R.length} 週紀錄（歷史資料陸續補齊中）。來源為臺灣集中保管結算所「集保戶股權分散表」，每週最後一個交易日統計、隔日公布，本站於週六更新。比例為占集保庫存的百分比，變化以「百分點」表示。本站的大戶與散戶依<b>持有張數</b>區分；部分看盤軟體的「大戶／散戶」是依單筆成交大小推估，兩者意義不同。大戶持股增加不代表股價一定上漲。</p>`;
 }
 
 /* 這檔股票最近有沒有入選盤後名單，入選後表現如何 */
@@ -359,5 +359,5 @@ async function pickHist(code) {
   // 同一類別只顯示最近一次入選
   const seen = new Set(), rows = act.filter(p => !seen.has(p.cat) && seen.add(p.cat));
   if (!$('#pickHist')) return;
-  $('#pickHist').innerHTML = `<div class="pick-hist">${rows.map(p => `<div><b>${esc(p.date.slice(5).replace('-', '/'))} 入選${CAT[p.cat]}名單</b>（第 ${p.rank} 名）${p.entry == null ? '，明天開盤起算。' : `，隔天開盤 <span class="num">${pxd(p.entry)}</span> 起算到今天 <b class="num ${cls(p.now)}">${p.now != null ? sg(p.now) + '%' : '—'}</b>（扣成本，持有 ${p.held}/${sc.hold[p.cat]} 天）${p.broke ? `，<b style="color:var(--warn)">持有期間曾跌破入選時的支撐 ${pxd(p.sup)}</b>` : p.sup != null ? `，仍守在入選時的支撐 ${pxd(p.sup)} 之上` : ''}。`}</div>`).join('')}</div>`;
+  $('#pickHist').innerHTML = `<div class="pick-hist">${rows.map(p => `<div><b>${esc(p.date.slice(5).replace('-', '/'))} 入選${CAT[p.cat]}名單</b>（第 ${p.rank} 名）${p.entry == null ? '，自次一交易日開盤起算。' : `，以次一交易日開盤價 <span class="num">${pxd(p.entry)}</span> 計算，至今報酬 <b class="num ${cls(p.now)}">${p.now != null ? sg(p.now) + '%' : '—'}</b>（已扣除成本，持有 ${p.held}/${sc.hold[p.cat]} 日）${p.broke ? `，<b style="color:var(--warn)">持有期間曾跌破入選時的支撐 ${pxd(p.sup)}</b>` : p.sup != null ? `，仍守在入選時的支撐 ${pxd(p.sup)} 之上` : ''}。`}</div>`).join('')}</div>`;
 }

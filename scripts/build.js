@@ -124,6 +124,11 @@ const isoOf = d => d.toISOString().slice(0, 10);
     out[cat].periods = halves.map(hf => ({ label: hf.slice(0, 4) + (hf.endsWith('上') ? ' 上半年' : ' 下半年'), s: stat(rows.filter(p => p.date.slice(0, 4) + (p.date.slice(5, 7) <= '06' ? '上' : '下') === hf)) })).filter(x => x.s);
   } return out; };
   const summary = summarize(p => p.rank <= 3), summaryAll = summarize(() => true);
-  wr(path.join(DATA, 'scorecard.json'), { updated: new Date().toISOString(), through: days[last].d, cost: COST, hold: HOLD, summary, summaryAll, picks: picks.slice(-3000).reverse() });
+  // 依入選當天大盤位置分開統計：加權指數在季線（60 日均線）之上或之下
+  const weakDay = {}; days.forEach((x, i) => { const tx = days.slice(Math.max(0, i - 59), i + 1).map(y => taiex[y.d]).filter(Boolean);
+    if (tx.length >= 55 && taiex[x.d]) weakDay[x.d] = taiex[x.d] < tx.reduce((a, b) => a + b, 0) / tx.length; });
+  const regime = {}; for (const cat of ['day', 'swing', 'long']) { const rows = picks.filter(p => p.cat === cat && p.rank <= 3 && p.date in weakDay);
+    regime[cat] = { up: stat(rows.filter(p => !weakDay[p.date])), down: stat(rows.filter(p => weakDay[p.date])) }; }
+  wr(path.join(DATA, 'scorecard.json'), { updated: new Date().toISOString(), through: days[last].d, cost: COST, hold: HOLD, summary, summaryAll, regime, picks: picks.slice(-3000).reverse() });
   console.log(`::notice::完成 ${days[last].d}：名單 ${allDates.length} 天、成績單 ${picks.length} 筆、交易日 ${days.length}；最新名單 ${JSON.stringify(latest.counts)}`);
 })().catch(e => { console.log('::error::' + String(e && e.stack || e).replace(/\n/g, ' | ')); process.exit(1); });

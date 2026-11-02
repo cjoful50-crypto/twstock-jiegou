@@ -420,3 +420,12 @@ details.mkt-warn p{margin:6px 0 0;font-size:.85rem}
   .howto{grid-template-columns:1fr}
 }
 .pick .lv{border:0;padding:0;border-radius:0;margin-top:6px;font-size:.82rem}
+.page-tabs{display:flex;gap:6px;margin:0 0 12px}
+.page-tabs button{padding:8px 18px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--muted);font:inherit;font-weight:500;cursor:pointer}
+.page-tabs button[aria-pressed=true]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+@media (max-width:720px){.page-tabs button{flex:1}}
+.sc-main{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:var(--sunk);border-radius:10px;padding:10px}
+.sc-main div{display:grid;gap:2px}.sc-main .lab{font-size:.72rem;color:var(--muted)}.sc-main b{font-size:1.05rem}
+.sc-more>summary{font-size:.82rem;color:var(--accent)}
+#scoreStat details>summary h2{font-size:1.05rem}
+.show-sm{display:none!important}@media (max-width:640px){.follow-t .show-sm{display:block!important}}

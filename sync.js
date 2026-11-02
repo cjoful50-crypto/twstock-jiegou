@@ -50,13 +50,13 @@ const Sync = (() => {
     ov = document.createElement('div'); ov.id = 'acctOverlay'; ov.className = 'acct-overlay';
     const reg = mode === 'register';
     ov.innerHTML = `<form class="acct-card card" autocomplete="on"><h2>${reg ? '註冊會員' : '會員登入'}</h2>
-      <p class="small muted" style="margin:0">登入後，「選股與庫存」會在手機、電腦等不同裝置同步。</p>
-      <label><span>帳號</span><input name="username" autocomplete="username" required minlength="3" maxlength="24" placeholder="英文字母或數字，3～24 個字"></label>
+      <p class="small muted" style="margin:0">登入後，選股與庫存資料將於手機、電腦等裝置同步。</p>
+      <label><span>帳號</span><input name="username" autocomplete="username" required minlength="3" maxlength="24" placeholder="3～24 個英文字母或數字"></label>
       <label><span>密碼</span><input name="password" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}" required minlength="6" placeholder="至少 6 個字元"></label>
-      ${reg ? '<label><span>再輸入一次密碼</span><input name="password2" type="password" autocomplete="new-password" required minlength="6"></label><p class="small" style="margin:0;color:var(--warn)">本站沒有寄信功能，忘記密碼無法找回，請記好帳號密碼。</p>' : ''}
+      ${reg ? '<label><span>再輸入一次密碼</span><input name="password2" type="password" autocomplete="new-password" required minlength="6"></label><p class="small" style="margin:0;color:var(--warn)">本站未提供密碼重設功能，忘記密碼將無法找回，請妥善保存帳號與密碼。</p>' : ''}
       <p class="small err" id="acctMsg" hidden></p>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="submit">${reg ? '註冊並登入' : '登入'}</button><button class="btn ghost" type="button" id="acctClose">取消</button></div>
-      <p class="small muted" style="margin:0">${reg ? '已經有帳號？' : '還沒有帳號？'}<button class="linkbtn" type="button" id="acctSwitch">${reg ? '登入' : '免費註冊'}</button></p></form>`;
+      <p class="small muted" style="margin:0">${reg ? '已有帳號？' : '尚未註冊？'}<button class="linkbtn" type="button" id="acctSwitch">${reg ? '登入' : '免費註冊'}</button></p></form>`;
     document.body.appendChild(ov);
     const f = ov.querySelector('form'), msg = ov.querySelector('#acctMsg');
     ov.querySelector('#acctClose').onclick = () => ov.remove(); ov.onclick = e => { if (e.target === ov) ov.remove(); };

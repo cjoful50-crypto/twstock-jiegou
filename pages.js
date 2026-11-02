@@ -1,4 +1,4 @@
-const syncNote = () => window.Sync && Sync.ready() ? (Sync.user ? '資料已登入同步，不同裝置會顯示相同內容。' : '目前存在這台裝置；登入後可在不同裝置同步。') : '資料存在目前使用的瀏覽器中。';
+const syncNote = () => window.Sync && Sync.ready() ? (Sync.user ? '已登入，資料將於各裝置同步。' : '資料目前儲存於本裝置，登入後可於各裝置同步。') : '資料儲存於目前使用的瀏覽器。';
 /* 各分頁共用：依頁面上有哪些區塊決定要載入什麼 */
 // 第 4 名以後用精簡列表顯示
 const moreRows = (list, pk) => list.length ? `<ol class="rank-more" start="4">${list.map(x => `<li><button type="button" class="pick-row" data-code="${esc(x.code)}"><span class="num" style="color:var(--accent)">${esc(x.code)}</span><span class="nm">${esc(x.name)}${secTag(x.code)}</span><span class="num ${cls(x.chg)}">${pxd(x[pk])} ${sg(x.chg)}%</span></button></li>`).join('')}</ol>` : '';
@@ -19,18 +19,18 @@ loadStocks().then(() => { if ($('#browse')) renderBrowse(); if ($('#pvSectors'))
   if (!$('#quick')) return;
   const rec = Recent.get();
   const list = rec.length ? rec.slice(0, 6) : [{ code: '2330', name: '台積電' }, { code: '2317', name: '鴻海' }, { code: '2454', name: '聯發科' }, { code: '2303', name: '聯電' }];
-  $('#quick').innerHTML = `<span class="lab">${rec.length ? '最近查詢' : '試試看'}</span>` + list.map(s => `<a class="chip" href="/analysis/${esc(s.code)}" style="text-decoration:none"><span class="num" style="color:var(--accent)">${esc(s.code)}</span> ${esc(s.name || '')}</a>`).join('');
+  $('#quick').innerHTML = `<span class="lab">${rec.length ? '最近查詢' : '熱門股票'}</span>` + list.map(s => `<a class="chip" href="/analysis/${esc(s.code)}" style="text-decoration:none"><span class="num" style="color:var(--accent)">${esc(s.code)}</span> ${esc(s.name || '')}</a>`).join('');
 })();
 
 let intraTimer = null;
 async function loadIntraday() {
   const box = $('#intraday'); if (!box) return;
-  if (!box.innerHTML) box.innerHTML = `<h2 id="intraTitle">盤中強勢股觀察</h2><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">正在掃描即時行情…</span></div>`;
+  if (!box.innerHTML) box.innerHTML = `<h2 id="intraTitle">盤中強勢股觀察</h2><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">即時行情掃描中…</span></div>`;
   try {
     const r = await fetch('/api/intraday'); const j = await r.json().catch(() => ({ error: '伺服器回應格式錯誤。' }));
     if (!r.ok || j.error) throw new Error(j.error || 'HTTP ' + r.status);
     const open = j.session && j.session.open;
-    const state = open ? `<span class="live-badge"><span class="dot on"></span>盤中 ${esc((j.time || '').slice(0, 5))}・每 3 分鐘更新</span>` : `<span class="live-badge"><span class="dot"></span>${j.date ? esc(j.date.replace(/-/g, '/')) + ' ' : ''}收盤結果・下個交易日 9:00 起即時更新</span>`;
+    const state = open ? `<span class="live-badge"><span class="dot on"></span>盤中 ${esc((j.time || '').slice(0, 5))}・每 3 分鐘更新</span>` : `<span class="live-badge"><span class="dot"></span>${j.date ? esc(j.date.replace(/-/g, '/')) + ' ' : ''}收盤結果・下一交易日 9:00 起即時更新</span>`;
     const cards = j.picks.length ? j.picks.slice(0, 3).map(x => `<button class="pick" type="button" data-code="${esc(x.code)}">
         <div class="top1"><span><span class="code num" style="color:var(--accent)">${esc(x.code)}</span> <span class="nm">${esc(x.name)}</span>${secTag(x.code)}</span><span class="num ${cls(x.chg)}">${pxd(x.price)} ${sg(x.chg)}%</span></div>
         <div class="sigs">${x.why.map(w => `<span>${esc(w)}</span>`).join('')}</div>
@@ -55,7 +55,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && $(
 
 // 大盤狀態提醒：回測顯示加權指數在季線下時，三類名單都沒有優於全市場
 const mktBanner = (j, compact) => { const m = j && j.market; if (!m) return '';
-  if (m.below60) return compact ? `<div class="mkt-warn"><b>大盤在季線之下</b>：名單參考性降低。</div>` : `<details class="mkt-warn"><summary><b>大盤在季線之下</b>，名單參考性降低 <span class="more">為什麼</span></summary><p>加權指數 ${fi(m.taiex)}，低於季線 ${fi(m.ma60)}。依 2025 年起的回測，大盤在季線之下時，三類名單平均都<b>沒有</b>優於全市場（短線勝率只有約 3 成），這段期間請降低對名單的依賴、控制部位。</p></details>`;
+  if (m.below60) return compact ? `<div class="mkt-warn"><b>大盤在季線之下</b>：名單參考性降低。</div>` : `<details class="mkt-warn"><summary><b>大盤在季線之下</b>，名單參考性降低 <span class="more">說明</span></summary><p>加權指數 ${fi(m.taiex)}，低於季線 ${fi(m.ma60)}。依 2025 年起的回測，大盤位於季線之下時，三類名單平均報酬皆未優於全市場，短線勝率約 27%，此期間名單參考價值較低。</p></details>`;
   return ''; };
 // 名單後續追蹤：最近入選、還在持有期間的股票，到今天的表現與是否跌破入選時的支撐
 const FCAT = { day: '短線', swing: '波段', long: '長線' };
@@ -68,11 +68,11 @@ function followHtml(sc, cat) {
   // 還沒進場的（最新一天入選）併成一行；已進場的同一檔只列最近一次入選，旁邊註明入選次數
   const wait = all.filter(p => p.entry == null), cnt = {}; on.forEach(p => { cnt[p.code] = (cnt[p.code] || 0) + 1; });
   const seen = new Set(), rows = on.filter(p => !seen.has(p.code) && seen.add(p.code)).slice(0, 12);
-  return `<details class="follow"${followOpen ? ' open' : ''}><summary><b>最近入選的後續</b>　<span class="small">${FCAT[cat]}${on.length ? `最近 ${on.length} 次：平均 <b class="num ${cls(avg)}">${sg(avg)}%</b>，<span style="color:${br ? 'var(--warn)' : 'inherit'}">${br} 次跌破支撐</span>` : '：目前沒有持有中的股票'}</span> <span class="more">看明細</span></summary><div class="section-head" style="margin-top:10px"><span></span><div class="sort-row" style="margin:0">${Object.entries(FCAT).map(([k, l]) => `<button type="button" data-fcat="${k}" aria-pressed="${k === cat}">${l}</button>`).join('')}</div></div>
-    <p class="small" style="margin:6px 0">${FCAT[cat]}前 3 名，持有期 ${h} 個交易日內的股票${on.length ? `：共 ${on.length} 檔已進場，到今天平均 <b class="num ${cls(avg)}">${sg(avg)}%</b>（扣成本）、${up} 檔賺錢、<b style="color:${br ? 'var(--warn)' : 'inherit'}">${br} 檔跌破入選時的支撐</b>。` : '：目前沒有持有中的股票。'}</p>
-    ${wait.length ? `<p class="small muted" style="margin:0 0 6px">${esc(wait[0].date.slice(5).replace('-', '/'))} 剛入選、明天開盤起算：${wait.map(p => `<a href="/analysis/${esc(p.code)}">${esc(p.code)} ${esc(p.name)}</a>`).join('、')}</p>` : ''}
-    ${rows.length ? `<div class="scroll"><table class="follow-t"><thead><tr><th>股票</th><th class="r">入選日</th><th class="r hide-sm">進場價<span class="th-sub">隔天開盤</span></th><th class="r hide-sm">現價</th><th class="r">至今<span class="th-sub">扣成本</span></th><th>狀態</th></tr></thead><tbody>${rows.map(p => `<tr><td class="nm"><a href="/analysis/${esc(p.code)}"><span class="num">${esc(p.code)}</span> ${esc(p.name)}</a>${cnt[p.code] > 1 ? `<span class="small muted"> ×${cnt[p.code]}</span>` : ''}</td><td class="r num">${esc(p.date.slice(5).replace('-', '/'))}<span class="th-sub">第 ${p.held}/${h} 天</span></td><td class="r num hide-sm">${pxd(p.entry)}</td><td class="r num hide-sm">${p.last != null ? pxd(p.last) : '—'}</td><td class="r num ${cls(p.now)}">${sg(p.now)}%</td><td>${followState(p)}</td></tr>`).join('')}</tbody></table></div>` : ''}
-    <p class="note" style="margin:6px 0 0">「跌破」代表持有期間曾以收盤價跌破入選時標示的支撐（之後可能又漲回），入選理由已經改變；這只是狀態提醒，成績單仍照「持有到期」計算。同一檔多天入選時只列最近一次（×次數）；平均報酬與跌破檔數以每一次入選計算。完整紀錄請看<a href="/scorecard">成績單</a>。</p></details>`;
+  return `<details class="follow"${followOpen ? ' open' : ''}><summary><b>入選後追蹤</b>　<span class="small">${FCAT[cat]}持有中 ${on.length} 筆${on.length ? `：平均報酬 <b class="num ${cls(avg)}">${sg(avg)}%</b>，<span style="color:${br ? 'var(--warn)' : 'inherit'}">${br} 筆跌破支撐</span>` : ''}</span> <span class="more">明細</span></summary><div class="section-head" style="margin-top:10px"><span></span><div class="sort-row" style="margin:0">${Object.entries(FCAT).map(([k, l]) => `<button type="button" data-fcat="${k}" aria-pressed="${k === cat}">${l}</button>`).join('')}</div></div>
+    <p class="small" style="margin:6px 0">${FCAT[cat]}每日前 3 名、仍在 ${h} 個交易日持有期內的紀錄${on.length ? `：共 ${on.length} 筆，平均報酬 <b class="num ${cls(avg)}">${sg(avg)}%</b>（已扣除成本），獲利 ${up} 筆，<b style="color:${br ? 'var(--warn)' : 'inherit'}">跌破入選時支撐 ${br} 筆</b>。` : '：目前無持有中的紀錄。'}</p>
+    ${wait.length ? `<p class="small muted" style="margin:0 0 6px">${esc(wait[0].date.slice(5).replace('-', '/'))} 入選，自次一交易日開盤起算：${wait.map(p => `<a href="/analysis/${esc(p.code)}">${esc(p.code)} ${esc(p.name)}</a>`).join('、')}</p>` : ''}
+    ${rows.length ? `<div class="scroll"><table class="follow-t"><thead><tr><th>股票</th><th class="r">入選日</th><th class="r hide-sm">進場價<span class="th-sub">次日開盤</span></th><th class="r hide-sm">現價</th><th class="r">報酬<span class="th-sub">扣除成本</span></th><th>狀態</th></tr></thead><tbody>${rows.map(p => `<tr><td class="nm"><a href="/analysis/${esc(p.code)}"><span class="num">${esc(p.code)}</span> ${esc(p.name)}</a>${cnt[p.code] > 1 ? `<span class="small muted"> ×${cnt[p.code]}</span>` : ''}</td><td class="r num">${esc(p.date.slice(5).replace('-', '/'))}<span class="th-sub">第 ${p.held}/${h} 天</span></td><td class="r num hide-sm">${pxd(p.entry)}</td><td class="r num hide-sm">${p.last != null ? pxd(p.last) : '—'}</td><td class="r num ${cls(p.now)}">${sg(p.now)}%</td><td>${followState(p)}</td></tr>`).join('')}</tbody></table></div>` : ''}
+    <p class="note" style="margin:6px 0 0">「跌破」表示持有期間曾以收盤價跌破入選時的支撐價位，原入選條件已改變（其後可能回升）；績效統計仍以持有期滿計算。同一檔股票多次入選時僅列最近一次並標示次數，平均報酬與跌破筆數以每次入選分別計算。完整紀錄請見「歷史成績」分頁。</p></details>`;
 }
 let followOpen = false;
 function bindFollow(sc) { const box = $('#follow'); if (!box) return; const d = box.querySelector('details'); if (d) d.ontoggle = () => { followOpen = d.open; };
@@ -80,36 +80,36 @@ function bindFollow(sc) { const box = $('#follow'); if (!box) return; const d = 
 let pickTab = 'day';
 async function loadPicks(date) {
   const box = $('#picks'); if (!box) return;
-  box.innerHTML = `<h2 id="picksTitle">盤後篩選名單</h2><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">載入名單中…</span></div>`;
+  box.innerHTML = `<h2 id="picksTitle">盤後篩選名單</h2><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">名單載入中…</span></div>`;
   try {
     const j = await getPicks(date); const idx = await getIndex();
     const sc = await fetch('/data/scorecard.json').then(r => r.ok ? r.json() : null).catch(() => null);
     // 歷史表現縮成標題旁的小標籤，點開才看數字
     const track = cat => { const s = sc && sc.summary && sc.summary[cat]; const v = s && s.all; if (!v) return '';
-      const ok = v.n >= 30 && v.excess > 0, lab = v.n < 30 ? '樣本少' : ok ? '歷史贏大盤' : '歷史未贏大盤';
-      return `<details class="trk"><summary class="tg ${ok ? 'good' : 'weak'}">${lab}</summary><p>每日前 3 名隔天開盤買進、持有 ${s.hold} 個交易日，扣成本後平均 <span class="num ${cls(v.avg)}">${sg(v.avg)}%</span>、勝率 ${v.win}%；同期間全市場平均 ${sg(v.bench)}%（${v.n} 筆）。<a href="/scorecard">成績單</a></p></details>`; };
+      const ok = v.n >= 30 && v.excess > 0, lab = v.n < 30 ? '樣本不足' : ok ? '優於大盤' : '未優於大盤';
+      return `<details class="trk"><summary class="tg ${ok ? 'good' : 'weak'}">${lab}</summary><p>每日前 3 名於次一交易日開盤買進、持有 ${s.hold} 個交易日，扣除成本後平均報酬 <span class="num ${cls(v.avg)}">${sg(v.avg)}%</span>，勝率 ${v.win}%；同期全市場平均 ${sg(v.bench)}%（共 ${v.n} 筆）。</p></details>`; };
     const keyWhy = (x, cat) => { const w = x.why || []; return (cat === 'long' && w.find(t => t.includes('營收'))) || w[1] || w[0] || ''; };
     const col = (title, sub, list, n, cat) => `<div class="pcol" data-pcat="${cat}"><h3><span>${title} ${track(cat)}</span><small>${sub}・符合 ${n} 檔</small></h3>${list.length ? list.slice(0, 3).map(x => `<button class="pick" type="button" data-code="${esc(x.code)}">
       <div class="top1"><span><span class="code num" style="color:var(--accent)">${esc(x.code)}</span> <span class="nm">${esc(x.name)}</span>${secTag(x.code)}</span><span class="num ${cls(x.chg)}">${pxd(x.close)} ${sg(x.chg)}%</span></div>
       <div class="why1">${esc(keyWhy(x, cat))}</div>
-      <div class="lv num"><span>支撐 <b style="color:var(--sup)">${x.sup != null ? pxd(x.sup) : '—'}</b></span><span>壓力 <b style="color:var(--res)">${x.res != null ? pxd(x.res) : '—'}</b></span></div></button>`).join('') + moreRows(list.slice(3), 'close') : '<div class="empty">今天沒有股票符合條件。</div>'}</div>`;
+      <div class="lv num"><span>支撐 <b style="color:var(--sup)">${x.sup != null ? pxd(x.sup) : '—'}</b></span><span>壓力 <b style="color:var(--res)">${x.res != null ? pxd(x.res) : '—'}</b></span></div></button>`).join('') + moreRows(list.slice(3), 'close') : '<div class="empty">本日無符合條件的股票。</div>'}</div>`;
     box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h2 id="picksTitle">盤後篩選名單</h2><span class="small muted num">${idx && idx.dates.length > 1 ? `<label for="pickDate">查看日期 </label><select id="pickDate">${idx.dates.slice().reverse().map(d => `<option value="${d}"${d.replace(/-/g, '/') === j.date ? ' selected' : ''}>${d.replace(/-/g, '/')}</option>`).join('')}</select>　` : esc(j.date) + ' 收盤・'}掃描 ${j.universe} 檔上市櫃股票</span></div>
       ${mktBanner(j)}
-      <details class="howto-d"><summary>怎麼看這份名單？</summary><div class="howto">
+      <details class="howto-d"><summary>名單說明</summary><div class="howto">
         <div><b>內容</b><span>每個交易日收盤後，依固定規則從上市櫃股票中篩選，分為短線（約 1 週）、波段（約 1 個月）、長線（約 3 個月）三類，每類列出前 10 名。規則以 2025 年起的歷史資料回測選出，同一檔股票可能同時出現在多類名單。</span></div>
-        <div><b>使用方式</b><span>名單的歷史表現以「隔天開盤買進、持有到期後賣出」計算，請依各類的持有期間參考。點選個股可查看強度分數與支撐壓力；若入選後跌破主要支撐，代表入選時的條件已經改變。</span></div>
+        <div><b>使用方式</b><span>歷史績效以「次一交易日開盤買進、持有期滿賣出」計算，請依各類持有期間參考。點選個股可查看支撐與壓力；入選後若跌破主要支撐，表示入選條件已改變。</span></div>
         <div><b>注意事項</b><span>入選代表該股在收盤時符合篩選條件，並非對未來漲跌的預測，也不構成買賣建議。回測期間以多頭行情為主，行情轉弱時表現可能明顯變差。</span></div>
       </div></details>
       <div class="ptabs" role="tablist">${[['day', '短線'], ['swing', '波段'], ['long', '長線']].map(([k, l]) => `<button type="button" data-ptab="${k}" aria-pressed="${k === pickTab}">${l}</button>`).join('')}</div>
       <div class="picks-grid" data-tab="${pickTab}">${col('短線觀察', '持有約 1 週', j.day, j.counts.day, 'day')}${col('波段觀察', '持有約 1 個月', j.swing, j.counts.swing, 'swing')}${col('長線觀察', '持有約 3 個月', j.long, j.counts.long, 'long')}</div>
       <div id="follow">${followHtml(sc, pickTab)}</div>
       <details class="rules"><summary>篩選條件</summary>
-        <p>共同條件：上市櫃普通股，近 20 日平均每日成交值 10 億元以上，三大法人近 5 個交易日中多數日子為合計買超。</p>
+        <p>共同條件：上市櫃普通股，近 20 日平均每日成交值 10 億元以上，三大法人近 5 個交易日中多數交易日為合計買超。</p>
         <p><b>短線觀察</b>：均線多頭排列（收盤在月線之上、月線在季線之上，且月線與季線都向上）、收盤距離 60 日最高點 5% 以內、近 5 日至少 3 天法人買超。依法人買超占日均量的比例排名。</p>
         <p><b>波段觀察</b>：均線多頭排列、股價拉回到月線附近（高於月線 0%～8%）、近 5 日至少 4 天法人買超。依成交值與法人買超比例排名。</p>
         <p><b>長線觀察</b>：收盤站上季線且季線向上、本益比 12～40 倍、近 5 日至少 3 天法人買超。依成交值與法人買超比例排名。</p>
-        <p><b>規則怎麼來的</b>：以 2025 年 1 月至 2026 年 10 月的上市櫃資料回測，比較多組條件，只保留在每個半年期間都優於「同一天隨機買進全市場股票」的規則。另外檢驗了大盤狀態：加權指數在季線之下時（回測期間約 1 成的交易日），三類名單平均都沒有優於全市場，因此遇到這種情況時頁面上方會提醒。報酬以隔天開盤價買進、扣除手續費與證交稅（約 0.47%）計算。</p>
-        <p>實際表現每日更新於<a href="/scorecard">名單成績單</a>。資料來源為證交所與櫃買中心盤後公開資料。</p>
+        <p><b>規則來源</b>：以 2025 年 1 月至 2026 年 10 月的上市櫃資料回測，比較多組條件，僅保留每個半年期間皆優於「同日買進全市場股票」的規則。另檢驗大盤狀態：加權指數位於季線之下時（約占回測期間 1 成交易日），三類名單平均皆未優於全市場，屆時頁面上方將顯示提醒。報酬以次一交易日開盤價買進、扣除手續費與證交稅（約 0.47%）計算。</p>
+        <p>實際績效每日更新於「歷史成績」分頁。資料來源為證交所與櫃買中心盤後公開資料。</p>
       </details>`;
     box.querySelectorAll('.pick, .pick-row').forEach(b => b.onclick = () => goTo(b.dataset.code));
     const sel = $('#pickDate'); if (sel) sel.onchange = () => loadPicks(sel.value);
@@ -154,19 +154,19 @@ function lvPrice(code, px) {
   const sub = v.lo || v.hi ? `<div class="lv-sub num"><span class="sup">↓${v.lo ? pxd(v.lo[0]) : '—'}</span> <span class="res">↑${v.hi ? pxd(v.hi[0]) : '—'}</span></div>` : '';
   return `<div class="lv-px">${tag}${main}</div>${sub}`;
 }
-// 摘要列：今天需要注意的股票，點一下只看這幾檔
+// 摘要列：今天需要注意的股票，點一下僅顯示提醒個股
 function lvSummary(codes, q = {}, box) {
   const n = { 接近支撐: 0, 接近壓力: 0, 跌破支撐: 0, 突破壓力: 0 }; let any = 0;
   codes.forEach(c => { const v = lvInfo(c, (q[c] || {}).price || null); if (v && v.tag) { n[v.tag[0]]++; any++; } });
   if (!any) return LV ? '<p class="lv-summary small muted">目前沒有股票接近或穿越支撐壓力。</p>' : '';
   const parts = Object.entries(n).filter(x => x[1]).map(([k, v]) => `${v} 檔${k}`).join('、');
   const on = box && box.dataset.lvf === '1';
-  return `<p class="lv-summary"><b>今天要注意：</b>${parts}　<button class="linkbtn" type="button" data-lvf>${on ? '顯示全部' : '只看這幾檔'}</button></p>`;
+  return `<p class="lv-summary"><b>今日提醒：</b>${parts}　<button class="linkbtn" type="button" data-lvf>${on ? '顯示全部' : '僅顯示提醒個股'}</button></p>`;
 }
 function applyLvFilter(box, q = {}) {
   const on = box.dataset.lvf === '1';
   box.querySelectorAll('tr[data-code]').forEach(tr => { const v = lvInfo(tr.dataset.code, (q[tr.dataset.code] || {}).price || null); const hide = on && !(v && v.tag); tr.hidden = hide; const d = box.querySelector(`tr.lv-detail[data-for="${tr.dataset.code}"]`); if (d && hide) d.hidden = true; });
-  const b = box.querySelector('[data-lvf]'); if (b) b.onclick = () => { box.dataset.lvf = on ? '' : '1'; b.textContent = on ? '只看這幾檔' : '顯示全部'; applyLvFilter(box, q); };
+  const b = box.querySelector('[data-lvf]'); if (b) b.onclick = () => { box.dataset.lvf = on ? '' : '1'; b.textContent = on ? '僅顯示提醒個股' : '顯示全部'; applyLvFilter(box, q); };
 }
 function lvDetail(code, px, cols) {
   const v = lvInfo(code, px) || {};
@@ -175,7 +175,7 @@ function lvDetail(code, px, cols) {
   const it = x => { const side = ref != null && x[1] > ref ? '上方' : '下方', was = ref != null && ((x[0] === '支撐' && x[1] > ref) ? '（已跌破的支撐）' : (x[0] === '壓力' && x[1] < ref) ? '（已突破的壓力）' : '');
     return `<span><b>${side}</b> <span class="num">${pxd(x[1])}</span>${ref ? `<span class="muted">（${sg((x[1] / ref - 1) * 100, 1)}%）</span>` : ''}・${LV_STR[x[2]] || ''}${was ? `<span class="muted">${was}</span>` : ''}</span>`; };
   const body = all.sort((a, b) => b[1] - a[1]).map(it).join('');
-  return `<tr class="lv-detail" data-for="${esc(code)}" hidden><td colspan="${cols}"><div class="lv-more">${body || '<span class="muted">近端沒有明確的支撐壓力。</span>'}<a href="/analysis/${esc(code)}">看完整分析 →</a></div></td></tr>`;
+  return `<tr class="lv-detail" data-for="${esc(code)}" hidden><td colspan="${cols}"><div class="lv-more">${body || '<span class="muted">近端沒有明確的支撐壓力。</span>'}<a href="/analysis/${esc(code)}">完整分析 →</a></div></td></tr>`;
 }
 function bindLv(box, redraw) {
   const det = lvMode.get() === 'detail'; box.querySelectorAll('tr.lv-detail').forEach(t => t.hidden = !det);
@@ -183,7 +183,7 @@ function bindLv(box, redraw) {
   const b = box.querySelector('[data-lvmode]'); if (b) b.onclick = () => { lvMode.set(lvMode.get() === 'detail' ? 'simple' : 'detail'); redraw(); };
 }
 const lvToggle = () => `<button class="linkbtn" type="button" data-lvmode title="切換是否展開所有股票的第二道支撐壓力">${lvMode.get() === 'detail' ? '收合價位' : '展開價位'}</button>`;
-const lvNote = () => LV && LV.date ? `價格下方的 ↓ 為下方最近的支撐、↑ 為上方最近的壓力（${esc(LV.date.replace(/-/g, '/'))} 收盤後計算），點一下該列可看所有價位與強度。「大戶」為集保千張大戶持股比例的變化（百分點）。` : '';
+const lvNote = () => LV && LV.date ? `價格下方的 ↓ 為下方最近的支撐、↑ 為上方最近的壓力（${esc(LV.date.replace(/-/g, '/'))} 收盤後計算），點選該列可查看所有價位與強度。「大戶」為集保千張大戶持股比例的變化（百分點）。` : '';
 
 async function renderWatch() {
   const box = $('#watch'); if (!box) return; const list = Watch.get();
@@ -209,7 +209,7 @@ async function renderWatch() {
     const any = Object.values(q)[0];
     $('#watchState').innerHTML = sess && sess.open ? `<span class="live-badge"><span class="dot on"></span>盤中 ${esc((any && any.time || '').slice(0, 5))}・每 30 秒更新</span>` : `<span class="live-badge"><span class="dot"></span>${any && any.date ? esc(any.date.replace(/-/g, '/')) + ' ' : ''}收盤價</span>`;
     clearTimeout(watchTimer); if (sess && sess.open) watchTimer = setTimeout(renderWatch, 30000);
-  } catch (e) { $('#watchState').textContent = '即時價格暫時取不到'; }
+  } catch (e) { $('#watchState').textContent = '暫時無法取得即時價格'; }
 }
 renderWatch();
 
@@ -238,7 +238,7 @@ async function renderHold() {
     const tpl = tv - pv;
     return `<div class="hold-sum"><div><span>總成本</span><b class="num">${fi(tc)}</b></div><div><span>目前市值</span><b class="num">${tv ? fi(tv) : '—'}</b></div><div><span>未實現損益</span><b class="num ${cls(tpl)}">${pv ? sgi(tpl) : '—'}</b></div><div><span>報酬率</span><b class="num ${cls(tpl)}">${pv ? sg(tpl / pv * 100) + '%' : '—'}</b></div></div>
       ${lvSummary(list.map(h => h.code), q, box)}<div class="scroll"><table class="stock-table"><thead><tr><th>股票</th><th>股數</th><th>平均成本</th><th>現價<span class="th-sub">↓支撐 ↑壓力</span></th><th>成本</th><th>市值</th><th>今日損益</th><th>未實現損益</th><th>報酬率</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
-      <p class="note" style="margin:6px 0 0">金額單位為元。損益以現價（盤中為即時價、收盤後為收盤價）計算，未扣除手續費與證交稅${hasAll ? '' : '；部分股票暫時取不到價格，未列入市值合計'}。${lvNote()}${syncNote()}</p>`;
+      <p class="note" style="margin:6px 0 0">金額單位為元。損益以現價（盤中為即時價、收盤後為收盤價）計算，未扣除手續費與證交稅${hasAll ? '' : '；部分股票暫時無法取得價格，未列入市值合計'}。${lvNote()}${syncNote()}</p>`;
   };
   const draw = q => {
     box.innerHTML = head + form + body(q);
@@ -269,7 +269,7 @@ async function renderHold() {
     const any = Object.values(q)[0];
     $('#holdState').innerHTML = sess && sess.open ? `<span class="live-badge"><span class="dot on"></span>盤中 ${esc((any && any.time || '').slice(0, 5))}・每 30 秒更新</span>` : `<span class="live-badge"><span class="dot"></span>${any && any.date ? esc(any.date.replace(/-/g, '/')) + ' ' : ''}收盤價</span>`;
     clearTimeout(holdTimer); if (sess && sess.open) holdTimer = setTimeout(renderHold, 30000);
-  } catch (e) { const st = $('#holdState'); if (st) st.textContent = '即時價格暫時取不到'; }
+  } catch (e) { const st = $('#holdState'); if (st) st.textContent = '暫時無法取得即時價格'; }
 }
 renderHold();
 document.addEventListener('jiegou-data', () => { renderHold(); renderWatch(); });
