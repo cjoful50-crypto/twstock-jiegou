@@ -372,3 +372,9 @@ tr.lv-detail td{background:var(--sunk);text-align:left}
 .lv-sub .sup{color:var(--sup)} .lv-sub .res{color:var(--res)}
 .th-sub{display:block;font-size:11px;font-weight:400;color:var(--faint);margin-top:2px}
 .lv-summary{margin:10px 0 6px;font-size:14px}
+.tdcc-facts{margin:6px 0 0;padding-left:18px;display:grid;gap:2px;color:var(--ink)}
+.tdcc-chart svg{height:140px}
+.tdcc-key{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.tdcc-key i{display:inline-block;width:14px;height:0;border-top:2px solid var(--accent)}
+.tdcc-key i.price{border-top:2px dashed var(--faint)}
+.td-note{color:var(--muted);font-weight:400;margin-top:3px;white-space:nowrap}

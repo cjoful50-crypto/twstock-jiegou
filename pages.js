@@ -97,7 +97,11 @@ loadPicks();
 let watchTimer = null;
 /* 選股與庫存的支撐壓力：每天收盤後算好的 data/levels.json，配合即時價格標示位置 */
 let LV = null, lvP = null;
-const getLevels = () => lvP || (lvP = fetch('/data/levels.json').then(r => r.ok ? r.json() : null).then(j => (LV = j)).catch(() => null));
+const getLevels = () => lvP || (lvP = Promise.all([fetch('/data/levels.json').then(r => r.ok ? r.json() : null).catch(() => null), fetch('/data/tdcc/summary.json').then(r => r.ok ? r.json() : null).catch(() => null)]).then(([a, b]) => { TD = b; return (LV = a); }));
+let TD = null;
+// 千張大戶持股變化小字：優先 4 週，沒有就用 1 週
+const tdNote = code => { const v = TD && TD.s && TD.s[code]; if (!v) return ''; const [, c1, c4, st] = v; const c = c4 != null ? c4 : c1; if (c == null) return '';
+  return `<div class="td-note small">大戶 ${c4 != null ? '4週' : '1週'} <span class="num ${cls(c)}">${c > 0 ? '+' : ''}${c.toFixed(2)}</span>${Math.abs(st) >= 3 ? `・連${st > 0 ? '增' : '減'} ${Math.abs(st)} 週` : ''}</div>`; };
 const LV_STR = ['', '弱', '中', '強', '極強'];
 const lvMode = { get: () => Store.read('jiegou-lvmode', 'simple'), set: v => Store.write('jiegou-lvmode', v) };
 function lvInfo(code, px) {
@@ -147,7 +151,7 @@ function bindLv(box, redraw) {
   const b = box.querySelector('[data-lvmode]'); if (b) b.onclick = () => { lvMode.set(lvMode.get() === 'detail' ? 'simple' : 'detail'); redraw(); };
 }
 const lvToggle = () => `<button class="linkbtn" type="button" data-lvmode title="切換是否展開所有股票的第二道支撐壓力">${lvMode.get() === 'detail' ? '收合價位' : '展開價位'}</button>`;
-const lvNote = () => LV && LV.date ? `價格下方的 ↓ 為下方最近的支撐、↑ 為上方最近的壓力（${esc(LV.date.replace(/-/g, '/'))} 收盤後計算），點一下該列可看所有價位與強度。` : '';
+const lvNote = () => LV && LV.date ? `價格下方的 ↓ 為下方最近的支撐、↑ 為上方最近的壓力（${esc(LV.date.replace(/-/g, '/'))} 收盤後計算），點一下該列可看所有價位與強度。「大戶」為集保千張大戶持股比例的變化（百分點）。` : '';
 
 async function renderWatch() {
   const box = $('#watch'); if (!box) return; const list = Watch.get();
@@ -159,7 +163,7 @@ async function renderWatch() {
   const rowsHtml = (q = {}) => list.map(w => { const x = q[w.code] || {}; const chg = x.price && x.prev ? (x.price / x.prev - 1) * 100 : null;
     return `<tr data-code="${esc(w.code)}"><td class="nm"><a href="/analysis/${esc(w.code)}"><span class="num">${esc(w.code)}</span>${esc(w.name || x.name || '')}</a>${secTag(w.code)}</td>
       <td class="num">${lvPrice(w.code, x.price || null)}</td><td class="num ${cls(chg)}">${chg == null ? '—' : sg(chg) + '%'}</td><td class="num hide-sm">${x.vol != null ? fi(x.vol) : '—'}</td>
-      <td class="num" style="color:${scoreColor(w.index)}">${w.index ?? '—'}${w.trend ? `<span class="small muted">・${esc(w.trend)}</span>` : ''}</td><td>${starBtn(w.code, w.name)}</td></tr>${lvDetail(w.code, x.price || null, 6)}`; }).join('');
+      <td class="num" style="color:${scoreColor(w.index)}">${w.index ?? '—'}${w.trend ? `<span class="small muted">・${esc(w.trend)}</span>` : ''}${tdNote(w.code)}</td><td>${starBtn(w.code, w.name)}</td></tr>${lvDetail(w.code, x.price || null, 6)}`; }).join('');
   const table = q => `${lvSummary(list.map(w => w.code), q, box)}<div class="scroll"><table class="stock-table"><thead><tr><th>股票</th><th>價格<span class="th-sub">↓支撐 ↑壓力</span></th><th>漲跌</th><th class="hide-sm">成交量（張）</th><th>強度分數</th><th></th></tr></thead><tbody>${rowsHtml(q)}</tbody></table></div>
     <p class="note" style="margin:6px 0 0">${lvNote()}強度分數為最近一次開啟該股分析頁時的結果，進入個股分析頁即可依最新資料重新計算。${syncNote()}</p>`;
   box.innerHTML = head + table();
@@ -195,7 +199,7 @@ async function renderHold() {
     const rows = list.map(h => { const x = q[h.code] || {}; const px = x.price || null, cost = h.shares * h.avg, mv = px ? h.shares * px : null, pl = mv != null ? mv - cost : null;
       tc += cost; if (mv != null) { tv += mv; pv += cost; } else hasAll = false;
       const day = x.price && x.prev ? (x.price - x.prev) * h.shares : null;
-      return `<tr data-code="${esc(h.code)}"><td class="nm"><a href="/analysis/${esc(h.code)}"><span class="num">${esc(h.code)}</span>${esc(h.name || x.name || '')}</a>${secTag(h.code)}</td>
+      return `<tr data-code="${esc(h.code)}"><td class="nm"><a href="/analysis/${esc(h.code)}"><span class="num">${esc(h.code)}</span>${esc(h.name || x.name || '')}</a>${secTag(h.code)}${tdNote(h.code)}</td>
         <td class="num">${fi(h.shares)}</td><td class="num">${pxd(h.avg)}</td><td class="num">${lvPrice(h.code, px)}</td><td class="num">${fi(cost)}</td><td class="num">${mv != null ? fi(mv) : '—'}</td>
         <td class="num ${cls(day)}">${day != null ? sgi(day) : '—'}</td><td class="num ${cls(pl)}">${pl != null ? sgi(pl) : '—'}</td><td class="num ${cls(pl)}">${pl != null ? sg(pl / cost * 100) + '%' : '—'}</td>
         <td class="hold-act"><button class="linkbtn" type="button" data-edit="${esc(h.code)}">編輯</button><button class="linkbtn" type="button" data-del="${esc(h.code)}">刪除</button></td></tr>${lvDetail(h.code, px, 10)}`; }).join('');
