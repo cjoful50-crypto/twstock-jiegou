@@ -8,9 +8,18 @@
 const crypto = require('crypto');
 const { put, get } = require('@vercel/blob');
 
-const TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
-const SECRET = process.env.MEMBER_SECRET || TOKEN || '';
-const enabled = () => !!TOKEN;
+// 兩種連線方式：BLOB_READ_WRITE_TOKEN，或較新的 BLOB_STORE_ID＋Vercel OIDC（每次請求帶在標頭）
+const RW = process.env.BLOB_READ_WRITE_TOKEN, STORE = process.env.BLOB_STORE_ID;
+let AUTH = {};
+const enabled = () => !!(RW || STORE);
+// 簽章用密鑰：優先用環境變數，否則第一次使用時產生一組，存在私人儲存空間
+let SECRET = process.env.MEMBER_SECRET || RW || '';
+async function ensureSecret() {
+  if (SECRET) return;
+  const s = await readJson('members/_secret.json');
+  if (s && s.k) { SECRET = s.k; return; }
+  const k = crypto.randomBytes(32).toString('hex'); await writeJson('members/_secret.json', { k }); SECRET = k;
+}
 const b64u = b => Buffer.from(b).toString('base64url');
 const uidOf = name => crypto.createHash('sha256').update('jiegou:' + name.toLowerCase()).digest('hex').slice(0, 32);
 const sign = s => crypto.createHmac('sha256', SECRET).update(s).digest('base64url');
@@ -22,10 +31,10 @@ function readToken(req) {
   try { const o = JSON.parse(Buffer.from(p, 'base64url').toString()); return o.e > Date.now() ? o : null; } catch (e) { return null; }
 }
 async function readJson(path) {
-  const r = await get(path, { access: 'private', useCache: false }); if (!r) return null;
+  const r = await get(path, Object.assign({ access: 'private', useCache: false }, AUTH)); if (!r) return null;
   const chunks = []; for await (const c of r.stream) chunks.push(Buffer.from(c)); return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
-const writeJson = (path, obj) => put(path, JSON.stringify(obj), { access: 'private', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json' });
+const writeJson = (path, obj) => put(path, JSON.stringify(obj), Object.assign({ access: 'private', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json' }, AUTH));
 const hashPass = (pass, salt) => crypto.scryptSync(pass, salt, 64).toString('hex');
 function body(req) {
   if (req.body && typeof req.body === 'object') return Promise.resolve(req.body);
@@ -35,8 +44,11 @@ const send = (res, code, obj) => { res.statusCode = code; res.setHeader('Content
 
 module.exports = async (req, res) => {
   try {
-    if (req.method === 'GET' && req.query && req.query.status) return send(res, 200, { enabled: enabled() });
+    const oidc = req.headers['x-vercel-oidc-token'] || process.env.VERCEL_OIDC_TOKEN;
+    AUTH = !RW && STORE && oidc ? { oidcToken: oidc, storeId: STORE } : {};
+    if (req.method === 'GET' && req.query && req.query.status) return send(res, 200, { enabled: enabled(), via: RW ? 'token' : STORE ? (oidc ? 'oidc' : 'store-no-oidc') : 'none' });
     if (!enabled()) return send(res, 503, { error: '會員功能尚未啟用。' });
+    await ensureSecret();
 
     if (req.method === 'POST') {
       const b = await body(req); const name = String(b.user || '').trim(), pass = String(b.pass || '');
