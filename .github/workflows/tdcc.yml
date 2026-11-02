@@ -24,6 +24,7 @@ jobs:
       - run: node scripts/tdcc.js
       - if: ${{ github.event.inputs.backfill == 'true' }}
         run: node scripts/tdcc-backfill.js
+      - run: node scripts/tdcc-summary.js
       - name: 存檔
         run: |
           git config user.name "twstock-bot"

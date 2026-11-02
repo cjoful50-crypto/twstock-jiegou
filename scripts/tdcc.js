@@ -17,7 +17,7 @@ const rd = f => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (
   for (const ln of lines.slice(1)) {
     const c = ln.split(',').map(s => s.replace(/"/g, '').trim()); if (c.length < 6) continue;
     const [d, code, lv, people, shares, pct] = c; if (!/^[1-9]\d{3}$/.test(code)) continue;
-    date = d; const o = by[code] || (by[code] = { p: {}, n: {} }); o.p[+lv] = parseFloat(pct) || 0; o.n[+lv] = +people || 0;
+    date = d; const o = by[code] || (by[code] = { p: {}, n: {}, s: {} }); o.p[+lv] = parseFloat(pct) || 0; o.n[+lv] = +people || 0; o.s[+lv] = +shares || 0;
   }
   if (!date || Object.keys(by).length < 500) throw new Error('資料筆數不足：' + Object.keys(by).length);
   const iso = `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`;
@@ -25,8 +25,9 @@ const rd = f => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (
   const sumP = (o, a, b) => { let s = 0; for (let k = a; k <= b; k++) s += o.p[k] || 0; return +s.toFixed(2); };
   const sumN = (o, a, b) => { let s = 0; for (let k = a; k <= b; k++) s += o.n[k] || 0; return s; };
   for (const [code, o] of Object.entries(by)) {
-    // 每週一列：[日期, 千張大戶%, 400張以上%, 50張以下散戶%, 總股東人數, 400張以上人數, 50張以下人數]
-    const row = [iso, sumP(o, 15, 15), sumP(o, 12, 15), sumP(o, 1, 9), o.n[17] || sumN(o, 1, 15), sumN(o, 12, 15), sumN(o, 1, 9)];
+    // 每週一列：[日期, 千張大戶%, 400張以上%, 50張以下散戶%, 總股東人數, 400張以上人數, 50張以下人數, 集保總張數]
+    let tot = o.s[17]; if (!tot) { tot = 0; for (let k = 1; k <= 15; k++) tot += o.s[k] || 0; }
+    const row = [iso, sumP(o, 15, 15), sumP(o, 12, 15), sumP(o, 1, 9), o.n[17] || sumN(o, 1, 15), sumN(o, 12, 15), sumN(o, 1, 9), Math.round(tot / 1000)];
     const f = path.join(OUT, code + '.json'); const s = rd(f) || { code, rows: [] };
     s.rows = s.rows.filter(r => r[0] !== iso).concat([row]).sort((a, b) => a[0].localeCompare(b[0])).slice(-104);
     fs.writeFileSync(f, JSON.stringify(s)); n++;

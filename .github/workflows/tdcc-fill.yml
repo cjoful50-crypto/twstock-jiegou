@@ -1,0 +1,38 @@
+name: 集保歷史回補（每日一批）
+on:
+  schedule:
+    - cron: '23 19 * * *'   # 台北凌晨 3:23，避開交易時間與每日名單
+  workflow_dispatch:
+    inputs:
+      budget:
+        description: '本次最多查詢筆數'
+        default: '3000'
+permissions:
+  contents: write
+concurrency:
+  group: daily
+  cancel-in-progress: false
+jobs:
+  fill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node scripts/tdcc-backfill.js
+        env:
+          BUDGET: ${{ github.event.inputs.budget || '3000' }}
+          MAXMIN: '55'
+      - run: node scripts/tdcc-summary.js
+      - name: 存檔
+        if: always()
+        run: |
+          git config user.name "twstock-bot"
+          git config user.email "twstock-bot@users.noreply.github.com"
+          git add data/tdcc
+          if git diff --cached --quiet; then echo "沒有變更"; exit 0; fi
+          git commit -m "集保歷史回補 $(TZ=Asia/Taipei date +%F)"
+          git pull --rebase origin main
+          git push origin HEAD:main
