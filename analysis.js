@@ -132,6 +132,7 @@ function render(s) {
         ${s.live ? `<div class="live-badge"><span class="dot${s.live.open ? ' on' : ''}"></span>${s.live.open ? '盤中即時' : '今日收盤'} ${esc(s.live.time || '')}<span class="muted">・價格約延遲數秒；法人與籌碼為前一交易日資料</span></div>` : `<div class="small muted">資料更新至 ${esc(t.d.replace(/-/g, '/'))} 收盤</div>`}
         <div class="price"><span class="px num">${pxd(c)}</span><span class="ch num ${cls(ind.chg)}">${sg(ind.chg)}（${sg(ind.chgPct)}%）</span></div>
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="small muted">走勢</span><span class="pill ${trendCls(a.trendLabel)}">${a.trendLabel}</span></div>
+        <div class="my-hold" id="myHold"></div>
       </div>
       <div class="gauge">${ring(a.index)}<div style="display:grid;gap:6px;justify-items:center"><span class="pill ${legacyCls(a.legacy)}">綜合評等：${a.legacy}</span><span class="small muted num" style="text-align:center">五面向平均 ${fx(a.raw, 1)}${a.pen.length ? `<br>風險扣分 ${a.pen.reduce((x, y) => x + y.pts, 0)} → 強度分數 ${a.index}` : ''}</span></div></div>
     </div>
@@ -226,6 +227,7 @@ function render(s) {
   const showTab = () => { $('#panel').innerHTML = panels[tab](); document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab)); };
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; showTab(); });
   showTab();
+  drawMyHold(s.code, s.name, c);
   const wb = $('#watchBtn');
   if (wb) wb.onclick = () => { const on = Watch.toggle(s.code, s.name); if (on) Watch.update(s.code, { index: a.index, trend: a.trendLabel, date: t.d }); wb.setAttribute('aria-pressed', on); wb.textContent = on ? '★ 已加入我的選股' : '☆ 加入我的選股'; };
   Watch.update(s.code, { index: a.index, trend: a.trendLabel, date: t.d, name: s.name });
@@ -272,3 +274,21 @@ async function loadStock(code) {
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && base) refreshQuote(); });
 loadStock(codeFromPath());
+
+/* 個股頁的庫存：顯示持股損益，可直接新增或修改 */
+function drawMyHold(code, name, px, editing) {
+  const box = $('#myHold'); if (!box) return; Object.assign(box.dataset, { code, name: name || '', px }); const h = Holdings.find(code);
+  if (editing) {
+    box.innerHTML = `<form class="hold-form" id="myHoldForm" style="margin:10px 0 0"><label><span>股數</span><input id="mhS" inputmode="numeric" value="${h ? h.shares : ''}" placeholder="例如 1000"></label><label><span>平均成本（元）</span><input id="mhA" inputmode="decimal" value="${h ? h.avg : ''}" placeholder="例如 ${pxd(px)}"></label><button class="btn" type="submit">儲存</button><button class="btn ghost" type="button" id="mhC">取消</button>${h ? '<button class="linkbtn" type="button" id="mhD">刪除庫存</button>' : ''}<p class="small err" id="mhM" hidden></p></form>`;
+    $('#myHoldForm').onsubmit = e => { e.preventDefault(); const sh = +String($('#mhS').value).replace(/,/g, ''), av = +String($('#mhA').value).replace(/,/g, '');
+      if (!(sh > 0) || !(av > 0)) { const m = $('#mhM'); m.textContent = '股數與平均成本請輸入大於 0 的數字。'; m.hidden = false; return; }
+      Holdings.set(code, name, sh, av); drawMyHold(code, name, px); };
+    $('#mhC').onclick = () => drawMyHold(code, name, px); const d = $('#mhD'); if (d) d.onclick = () => { Holdings.remove(code); drawMyHold(code, name, px); };
+    $('#mhS').focus(); return;
+  }
+  if (!h) { box.innerHTML = `<button class="linkbtn" type="button" id="mhE" style="padding-left:0;margin-top:8px">＋ 記錄我的庫存</button>`; }
+  else { const pl = (px - h.avg) * h.shares, pct = (px / h.avg - 1) * 100;
+    box.innerHTML = `<div class="small" style="margin-top:10px">我的庫存 <b class="num">${fi(h.shares)}</b> 股・均價 <b class="num">${pxd(h.avg)}</b>・未實現損益 <b class="num ${cls(pl)}">${sgi(pl)}（${sg(pct)}%）</b> <button class="linkbtn" type="button" id="mhE">修改</button></div>`; }
+  $('#mhE').onclick = () => drawMyHold(code, name, px, true);
+}
+document.addEventListener('jiegou-data', () => { const b = $('#myHold'); if (b && b.dataset.code) drawMyHold(b.dataset.code, b.dataset.name, +b.dataset.px); });

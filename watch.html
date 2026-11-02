@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>我的選股｜盤後結構室</title>
-<meta name="description" content="你加入觀察的股票，盤中即時更新價格。">
+<title>選股與庫存｜盤後結構室</title>
+<meta name="description" content="記錄庫存股數與均價、計算未實現損益，以及加入觀察的股票。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;800&display=swap">
 <link rel="stylesheet" href="/style.css">
@@ -12,12 +12,14 @@
 <body>
 <header class="nav" id="nav" data-page="watch"></header>
 <div class="wrap">
-  <div class="page-head"><h1>我的選股</h1><p>加入觀察的股票會列在這裡。交易時間每 30 秒更新價格，收盤後顯示收盤價。</p></div>
+  <div class="page-head"><h1>選股與庫存</h1><p>記錄手上的股數與平均成本，計算目前市值與未實現損益；也可以把想觀察的股票加入清單。交易時間每 30 秒更新價格，收盤後顯示收盤價。</p></div>
+  <section class="card" id="hold" aria-labelledby="holdTitle"></section>
   <section class="card" id="watch" aria-labelledby="watchTitle"></section>
 
   <footer class="note">本站內容為公開資料的整理與統計，不構成任何投資建議，投資前請自行判斷並承擔風險。資料來源：臺灣證券交易所、證券櫃檯買賣中心、公開資訊觀測站。收盤資料於交易日盤後更新，盤中價格約有數秒延遲。</footer>
 </div>
 <script src="/common.js"></script>
+<script src="/sync.js"></script>
 <script src="/pages.js"></script>
 </body>
 </html>

@@ -1,3 +1,4 @@
+const syncNote = () => window.Sync && Sync.ready() ? (Sync.user ? '資料已登入同步，不同裝置會顯示相同內容。' : '目前存在這台裝置；登入後可在不同裝置同步。') : '資料存在目前使用的瀏覽器中。';
 /* 各分頁共用：依頁面上有哪些區塊決定要載入什麼 */
 // 第 4 名以後用精簡列表顯示
 const moreRows = (list, pk) => list.length ? `<ol class="rank-more" start="4">${list.map(x => `<li><button type="button" class="pick-row" data-code="${esc(x.code)}"><span class="num" style="color:var(--accent)">${esc(x.code)}</span><span class="nm">${esc(x.name)}${secTag(x.code)}</span><span class="num ${cls(x.chg)}">${pxd(x[pk])} ${sg(x.chg)}%</span>${x.index != null ? `<span class="num small" style="color:${scoreColor(x.index)}">${x.index}</span>` : ''}</button></li>`).join('')}</ol>` : '';
@@ -98,7 +99,7 @@ async function renderWatch() {
   const box = $('#watch'); if (!box) return; const list = Watch.get();
   const head = `<div class="section-head"><h2 id="watchTitle">我的選股</h2><span class="small muted" id="watchState"></span></div>`;
   if (!list.length) {
-    box.innerHTML = head + `<p class="small muted" style="margin:6px 0 0">尚未加入股票。可在個股分析頁點選「☆ 加入我的選股」，或在<a href="/sectors">產業分類</a>中點選 ☆。清單儲存在目前使用的瀏覽器中。</p>`;
+    box.innerHTML = head + `<p class="small muted" style="margin:6px 0 0">尚未加入股票。可在個股分析頁點選「☆ 加入我的選股」，或在<a href="/sectors">產業分類</a>中點選 ☆。${syncNote()}</p>`;
     return;
   }
   const rowsHtml = (q = {}) => list.map(w => { const x = q[w.code] || {}; const chg = x.price && x.prev ? (x.price / x.prev - 1) * 100 : null;
@@ -106,7 +107,7 @@ async function renderWatch() {
       <td class="num">${x.price ? pxd(x.price) : '—'}</td><td class="num ${cls(chg)}">${chg == null ? '—' : sg(chg) + '%'}</td><td class="num">${x.vol != null ? fi(x.vol) : '—'}</td>
       <td class="num" style="color:${scoreColor(w.index)}">${w.index ?? '—'}${w.trend ? `<span class="small muted">・${esc(w.trend)}</span>` : ''}</td><td>${starBtn(w.code, w.name)}</td></tr>`; }).join('');
   const table = q => `<div class="scroll"><table class="stock-table"><thead><tr><th>股票</th><th>價格</th><th>漲跌</th><th>成交量（張）</th><th>強度分數</th><th></th></tr></thead><tbody>${rowsHtml(q)}</tbody></table></div>
-    <p class="note" style="margin:6px 0 0">強度分數為最近一次開啟該股分析頁時的結果，點選個股即可依最新資料重新計算。清單儲存在目前使用的瀏覽器中，不會同步至其他裝置。</p>`;
+    <p class="note" style="margin:6px 0 0">強度分數為最近一次開啟該股分析頁時的結果，點選個股即可依最新資料重新計算。${syncNote()}</p>`;
   box.innerHTML = head + table();
   const bind = () => { bindStars(box, renderWatch); box.querySelectorAll('tr[data-code]').forEach(tr => tr.onclick = e => { if (!e.target.closest('a,button')) goTo(tr.dataset.code); }); };
   bind();
@@ -120,6 +121,65 @@ async function renderWatch() {
   } catch (e) { $('#watchState').textContent = '即時價格暫時取不到'; }
 }
 renderWatch();
+
+/* 庫存：股數與平均成本，計算市值與未實現損益 */
+let holdTimer = null, holdEdit = null;
+async function renderHold() {
+  const box = $('#hold'); if (!box) return; const list = Holdings.get();
+  const e = holdEdit ? list.find(x => x.code === holdEdit) : null;
+  const form = `<form class="hold-form" id="holdForm" autocomplete="off">
+      <label><span>股票</span><input id="hCode" list="hList" placeholder="代號或名稱" value="${e ? esc(e.code + ' ' + (e.name || '')) : ''}" required></label><datalist id="hList"></datalist>
+      <label><span>股數</span><input id="hShares" inputmode="numeric" placeholder="例如 1000" value="${e ? e.shares : ''}" required></label>
+      <label><span>平均成本（元）</span><input id="hAvg" inputmode="decimal" placeholder="例如 52.3" value="${e ? e.avg : ''}" required></label>
+      <button class="btn" type="submit">${e ? '更新' : '新增'}</button>${e ? '<button class="btn ghost" type="button" id="hCancel">取消</button>' : ''}
+      <p class="small err" id="hMsg" hidden></p></form>`;
+  const head = `<div class="section-head"><h2 id="holdTitle">我的庫存</h2><span class="small muted" id="holdState"></span></div>`;
+  const body = (q = {}) => {
+    if (!list.length) return `<p class="small muted" style="margin:6px 0 0">尚未記錄庫存。輸入股票、股數（1 張 = 1,000 股）與平均成本即可計算損益。</p>`;
+    let tc = 0, tv = 0, pv = 0, hasAll = true;
+    const rows = list.map(h => { const x = q[h.code] || {}; const px = x.price || null, cost = h.shares * h.avg, mv = px ? h.shares * px : null, pl = mv != null ? mv - cost : null;
+      tc += cost; if (mv != null) { tv += mv; pv += cost; } else hasAll = false;
+      const day = x.price && x.prev ? (x.price - x.prev) * h.shares : null;
+      return `<tr data-code="${esc(h.code)}"><td class="nm"><a href="/analysis/${esc(h.code)}"><span class="num">${esc(h.code)}</span>${esc(h.name || x.name || '')}</a>${secTag(h.code)}</td>
+        <td class="num">${fi(h.shares)}</td><td class="num">${pxd(h.avg)}</td><td class="num">${px ? pxd(px) : '—'}</td><td class="num">${fi(cost)}</td><td class="num">${mv != null ? fi(mv) : '—'}</td>
+        <td class="num ${cls(day)}">${day != null ? sgi(day) : '—'}</td><td class="num ${cls(pl)}">${pl != null ? sgi(pl) : '—'}</td><td class="num ${cls(pl)}">${pl != null ? sg(pl / cost * 100) + '%' : '—'}</td>
+        <td class="hold-act"><button class="linkbtn" type="button" data-edit="${esc(h.code)}">編輯</button><button class="linkbtn" type="button" data-del="${esc(h.code)}">刪除</button></td></tr>`; }).join('');
+    const tpl = tv - pv;
+    return `<div class="hold-sum"><div><span>總成本</span><b class="num">${fi(tc)}</b></div><div><span>目前市值</span><b class="num">${tv ? fi(tv) : '—'}</b></div><div><span>未實現損益</span><b class="num ${cls(tpl)}">${pv ? sgi(tpl) : '—'}</b></div><div><span>報酬率</span><b class="num ${cls(tpl)}">${pv ? sg(tpl / pv * 100) + '%' : '—'}</b></div></div>
+      <div class="scroll"><table class="stock-table"><thead><tr><th>股票</th><th>股數</th><th>平均成本</th><th>現價</th><th>成本</th><th>市值</th><th>今日損益</th><th>未實現損益</th><th>報酬率</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="note" style="margin:6px 0 0">金額單位為元。損益以現價（盤中為即時價、收盤後為收盤價）計算，未扣除手續費與證交稅${hasAll ? '' : '；部分股票暫時取不到價格，未列入市值合計'}。${syncNote()}</p>`;
+  };
+  const draw = q => {
+    box.innerHTML = head + form + body(q);
+    const f = $('#holdForm'), msg = $('#hMsg');
+    const dl = $('#hList'), ci = $('#hCode');
+    ci.addEventListener('input', () => { if (!STOCKS) return; dl.innerHTML = findStocks(ci.value, 8).map(x => `<option value="${esc(x[0] + ' ' + x[1])}">`).join(''); });
+    loadStocks();
+    f.onsubmit = async ev => { ev.preventDefault(); msg.hidden = true;
+      await loadStocks(); const raw = ci.value.trim(), hit = findStocks(raw.split(/\s+/)[0], 1)[0] || findStocks(raw, 1)[0];
+      const shares = +String($('#hShares').value).replace(/,/g, ''), avg = +String($('#hAvg').value).replace(/,/g, '');
+      const bad = !hit ? '找不到這檔股票，請輸入代號或完整名稱。' : !(shares > 0 && Number.isFinite(shares)) ? '股數請輸入大於 0 的數字。' : !(avg > 0 && Number.isFinite(avg)) ? '平均成本請輸入大於 0 的數字。' : '';
+      if (bad) { msg.textContent = bad; msg.hidden = false; return; }
+      if (holdEdit && holdEdit !== hit[0]) Holdings.remove(holdEdit);
+      Holdings.set(hit[0], hit[1], shares, avg); holdEdit = null; renderHold(); };
+    const cc = $('#hCancel'); if (cc) cc.onclick = () => { holdEdit = null; renderHold(); };
+    box.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => { holdEdit = b.dataset.edit; renderHold(); $('#hShares').focus(); });
+    box.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { Holdings.remove(b.dataset.del); if (holdEdit === b.dataset.del) holdEdit = null; renderHold(); });
+  };
+  draw();
+  if (!list.length) return;
+  try {
+    const codes = list.map(h => h.code), q = {}; let sess = null;
+    for (let i = 0; i < codes.length; i += 20) { const r = await fetch('/api/quote?codes=' + codes.slice(i, i + 20).join(',')); const j = await r.json(); sess = j.session; (j.quotes || []).forEach(x => { if (x.price) q[x.code] = x; }); }
+    const keep = document.activeElement && box.contains(document.activeElement) && document.activeElement.tagName === 'INPUT';
+    if (!keep) draw(q);
+    const any = Object.values(q)[0];
+    $('#holdState').innerHTML = sess && sess.open ? `<span class="live-badge"><span class="dot on"></span>盤中 ${esc((any && any.time || '').slice(0, 5))}・每 30 秒更新</span>` : `<span class="live-badge"><span class="dot"></span>${any && any.date ? esc(any.date.replace(/-/g, '/')) + ' ' : ''}收盤價</span>`;
+    clearTimeout(holdTimer); if (sess && sess.open) holdTimer = setTimeout(renderHold, 30000);
+  } catch (e) { const st = $('#holdState'); if (st) st.textContent = '即時價格暫時取不到'; }
+}
+renderHold();
+document.addEventListener('jiegou-data', () => { renderHold(); renderWatch(); });
 
 /* 依類型找股票 */
 let curSector = null, sortBy = 'vol', showAll = false;

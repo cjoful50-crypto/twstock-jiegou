@@ -72,17 +72,34 @@ function attachSearch(form, input, list) {
   });
 }
 
-/* 我的選股：存在這台裝置的瀏覽器裡 */
+/* 個人資料（我的選股、庫存）：先存在這台裝置；登入後同步到雲端，不同裝置看到相同內容 */
+const Store = {
+  read(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch (e) { return d; } },
+  write(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  touch() { const m = this.read('jiegou-meta', {}); m.updatedAt = new Date().toISOString(); this.write('jiegou-meta', m); if (window.Sync) Sync.schedule(); }
+};
 const Watch = {
-  get() { try { return JSON.parse(localStorage.getItem('jiegou-watch') || '[]') || []; } catch (e) { return []; } },
-  save(list) { try { localStorage.setItem('jiegou-watch', JSON.stringify(list)); } catch (e) {} },
+  get() { return Store.read('jiegou-watch', []) || []; },
+  save(list, quiet) { Store.write('jiegou-watch', list); if (!quiet) Store.touch(); },
   has(code) { return this.get().some(x => x.code === code); },
   toggle(code, name) {
     const list = this.get();
     if (list.some(x => x.code === code)) { this.save(list.filter(x => x.code !== code)); return false; }
     list.unshift({ code, name, added: new Date().toISOString().slice(0, 10) }); this.save(list); return true;
   },
-  update(code, patch) { const list = this.get(); const x = list.find(y => y.code === code); if (x) { Object.assign(x, patch); this.save(list); } }
+  // 更新強度分數等快取資料，不算使用者修改
+  update(code, patch) { const list = this.get(); const x = list.find(y => y.code === code); if (x) { Object.assign(x, patch); this.save(list, true); } }
+};
+/* 庫存：股數（股）與平均成本（元／股） */
+const Holdings = {
+  get() { return Store.read('jiegou-hold', []) || []; },
+  save(list) { Store.write('jiegou-hold', list); Store.touch(); },
+  find(code) { return this.get().find(x => x.code === code) || null; },
+  set(code, name, shares, avg) {
+    const list = this.get().filter(x => x.code !== code);
+    list.unshift({ code, name, shares: Math.round(shares), avg: +avg, t: new Date().toISOString() }); this.save(list);
+  },
+  remove(code) { this.save(this.get().filter(x => x.code !== code)); }
 };
 function starBtn(code, name) {
   const on = Watch.has(code);
@@ -98,7 +115,7 @@ function bindStars(root, after) {
 }
 
 /* 共用導覽列：每一頁開頭放 <header class="nav" id="nav" data-page="..."></header> */
-const PAGES = [['/', '首頁', 'home'], ['/watch', '我的選股', 'watch'], ['/sectors', '產業分類', 'sectors'], ['/intraday', '盤中強勢股', 'intraday'], ['/picks', '盤後名單', 'picks'], ['/scorecard', '名單成績單', 'scorecard'], ['/guide', '使用說明', 'guide']];
+const PAGES = [['/', '首頁', 'home'], ['/watch', '選股與庫存', 'watch'], ['/sectors', '產業分類', 'sectors'], ['/intraday', '盤中強勢股', 'intraday'], ['/picks', '盤後名單', 'picks'], ['/scorecard', '名單成績單', 'scorecard'], ['/guide', '使用說明', 'guide']];
 (function renderNav() {
   const nav = document.getElementById('nav'); if (!nav) return;
   const page = nav.dataset.page, withSearch = page !== 'home';
@@ -106,6 +123,7 @@ const PAGES = [['/', '首頁', 'home'], ['/watch', '我的選股', 'watch'], ['/
     <div class="brand"><a href="/">盤後結構室</a></div>
     ${withSearch ? `<div class="search-wrap"><form class="search" id="navSearch" role="search" autocomplete="off"><input id="navQ" inputmode="search" placeholder="代號或名稱" aria-label="搜尋股票" role="combobox" aria-controls="navSuggest" aria-expanded="false" aria-autocomplete="list"><button class="btn" type="submit">查詢</button></form><ul class="suggest" id="navSuggest" role="listbox" hidden></ul><p class="search-msg" hidden></p></div>` : ''}
     <nav class="nav-links" aria-label="主要頁面">${PAGES.map(([href, label, key]) => `<a href="${href}"${key === page ? ' aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
+    <div class="acct" id="acct"></div>
   </div>`;
   if (withSearch) attachSearch(document.getElementById('navSearch'), document.getElementById('navQ'), document.getElementById('navSuggest'));
 })();
