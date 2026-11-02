@@ -1,7 +1,7 @@
 // 每日排程：抓全市場資料（有快取）→ 算當天名單 → 回補歷史名單 → 計算名單成績單
 // 由 .github/workflows/daily.yml 在每個交易日收盤後執行，結果寫進 data/ 由網站直接讀取
 const fs = require('fs'), path = require('path');
-const M = require('./market.js'), { screenAt } = require('./screen.js');
+const M = require('./market.js'), { screenAt } = require('./screen.js'), { buildLevels } = require('./levels.js');
 const ROOT = path.join(__dirname, '..'), DATA = path.join(ROOT, 'data'), CACHE = path.join(DATA, 'cache');
 const BACKFILL = +(process.env.BACKFILL || 60), HISTORY = BACKFILL + 62;
 const rd = f => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { return null; } };
@@ -67,6 +67,8 @@ const isoOf = d => d.toISOString().slice(0, 10);
   }
   const latest = rd(path.join(DATA, 'daily', days[last].d + '.json'));
   wr(path.join(DATA, 'latest.json'), latest);
+  // 所有股票的支撐壓力（選股與庫存頁使用）
+  wr(path.join(DATA, 'levels.json'), buildLevels(days, instByDay));
   const allDates = fs.readdirSync(path.join(DATA, 'daily')).map(n => n.replace('.json', '')).sort();
   wr(path.join(DATA, 'index.json'), { dates: allDates, latest: days[last].d });
 

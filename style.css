@@ -327,7 +327,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .hold-act{white-space:nowrap}
 .linkbtn{background:none;border:0;color:var(--accent);cursor:pointer;font:inherit;font-size:13px;padding:2px 6px}
 
-#hold .stock-table{min-width:760px}
+#hold .stock-table{min-width:960px}
 #hold .stock-table td.nm{white-space:nowrap}
 .acct-overlay{position:fixed;inset:0;z-index:100;background:rgba(10,12,24,.45);display:grid;place-items:center;padding:16px}
 .acct-card{width:min(400px,100%);display:flex;flex-direction:column;gap:12px;margin:0}
@@ -340,3 +340,29 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .tdcc-chart{margin:12px 0 0}
 .tdcc-chart svg{width:100%;height:120px;background:var(--sunk);border-radius:10px}
 @media (max-width:640px){.tdcc-sum{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* 選股與庫存：支撐壓力小橫條 */
+.stock-table th.lvc,.stock-table td.lvc{text-align:left}
+.lvx{min-width:190px}
+.lvx-ends{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:13px}
+.lvx-ends .sup{color:var(--sup);font-weight:600}
+.lvx-ends .res{color:var(--res);font-weight:600}
+.lvx-bar{position:relative;height:6px;border-radius:3px;margin:4px 0;background:linear-gradient(90deg,color-mix(in srgb,var(--sup) 40%,var(--sunk)),var(--sunk) 50%,color-mix(in srgb,var(--res) 40%,var(--sunk)))}
+.lvx-bar i{position:absolute;top:50%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:var(--ink);border:2px solid var(--surface)}
+.lv-tag{font-size:11px;padding:0 6px;border-radius:4px;line-height:18px;white-space:nowrap;font-weight:600}
+.lv-tag.warn{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+.lv-tag.bad{background:color-mix(in srgb,var(--down) 16%,transparent);color:var(--down)}
+.lv-tag.good{background:color-mix(in srgb,var(--up) 16%,transparent);color:var(--up)}
+tr.lv-detail td{background:var(--sunk);text-align:left}
+.lv-more{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:13px;padding:2px 0}
+.lv-more a{margin-left:auto}
+#watch tr[data-code],#hold tr[data-code]{cursor:pointer}
+@media (max-width:640px){.hide-sm{display:none}}
+@media (max-width:640px){
+  #watch .stock-table td.nm,#watch .stock-table th:first-child,#hold .stock-table td.nm,#hold .stock-table th:first-child{position:sticky;left:0;z-index:1;background:var(--surface);box-shadow:1px 0 0 var(--line)}
+  .lv-more{position:sticky;left:0;width:calc(100vw - 90px)}
+  .lvx{min-width:170px}
+}
+@media (max-width:640px){
+  #watch .stock-table td.nm a,#hold .stock-table td.nm a{display:flex;flex-direction:column;white-space:nowrap;line-height:1.3}
+  #watch .stock-table td.nm .stag,#hold .stock-table td.nm .stag{margin:4px 0 0}
+}
