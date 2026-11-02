@@ -1,7 +1,7 @@
 const syncNote = () => window.Sync && Sync.ready() ? (Sync.user ? '資料已登入同步，不同裝置會顯示相同內容。' : '目前存在這台裝置；登入後可在不同裝置同步。') : '資料存在目前使用的瀏覽器中。';
 /* 各分頁共用：依頁面上有哪些區塊決定要載入什麼 */
 // 第 4 名以後用精簡列表顯示
-const moreRows = (list, pk) => list.length ? `<ol class="rank-more" start="4">${list.map(x => `<li><button type="button" class="pick-row" data-code="${esc(x.code)}"><span class="num" style="color:var(--accent)">${esc(x.code)}</span><span class="nm">${esc(x.name)}${secTag(x.code)}</span><span class="num ${cls(x.chg)}">${pxd(x[pk])} ${sg(x.chg)}%</span>${x.index != null ? `<span class="num small" style="color:${scoreColor(x.index)}">${x.index}</span>` : ''}</button></li>`).join('')}</ol>` : '';
+const moreRows = (list, pk) => list.length ? `<ol class="rank-more" start="4">${list.map(x => `<li><button type="button" class="pick-row" data-code="${esc(x.code)}"><span class="num" style="color:var(--accent)">${esc(x.code)}</span><span class="nm">${esc(x.name)}${secTag(x.code)}</span><span class="num ${cls(x.chg)}">${pxd(x[pk])} ${sg(x.chg)}%</span></button></li>`).join('')}</ol>` : '';
 // 盤後名單：讀每日排程（GitHub Actions）存好的檔案
 let pickIndex;
 async function getIndex() { if (pickIndex === undefined) pickIndex = await fetch('/data/index.json').then(r => r.ok ? r.json() : null).catch(() => null); return pickIndex; }
@@ -55,8 +55,8 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && $(
 
 // 大盤狀態提醒：回測顯示加權指數在季線下時，三類名單都沒有優於全市場
 const mktBanner = (j, compact) => { const m = j && j.market; if (!m) return '';
-  if (m.below60) return `<div class="mkt-warn"><b>大盤在季線之下</b>${compact ? '：名單參考性降低。' : `　加權指數 ${fi(m.taiex)}，低於季線 ${fi(m.ma60)}。依 2025 年起的回測，大盤在季線之下時，三類名單平均都<b>沒有</b>優於全市場（短線勝率只有約 3 成），這段期間請降低對名單的依賴、控制部位。`}</div>`;
-  return compact ? '' : `<p class="mkt-ok small">大盤狀態：加權指數 ${fi(m.taiex)}，在季線 ${fi(m.ma60)} 之上${m.below20 ? '（但已跌破月線 ' + fi(m.ma20) + '）' : ''}。名單規則的回測期間以這種狀態為主。</p>`; };
+  if (m.below60) return compact ? `<div class="mkt-warn"><b>大盤在季線之下</b>：名單參考性降低。</div>` : `<details class="mkt-warn"><summary><b>大盤在季線之下</b>，名單參考性降低 <span class="more">為什麼</span></summary><p>加權指數 ${fi(m.taiex)}，低於季線 ${fi(m.ma60)}。依 2025 年起的回測，大盤在季線之下時，三類名單平均都<b>沒有</b>優於全市場（短線勝率只有約 3 成），這段期間請降低對名單的依賴、控制部位。</p></details>`;
+  return ''; };
 // 名單後續追蹤：最近入選、還在持有期間的股票，到今天的表現與是否跌破入選時的支撐
 const FCAT = { day: '短線', swing: '波段', long: '長線' };
 const followRows = (sc, cat) => sc && sc.picks ? sc.picks.filter(p => p.cat === cat && p.rank <= 3 && p.ret == null && !p.note) : [];
@@ -68,35 +68,41 @@ function followHtml(sc, cat) {
   // 還沒進場的（最新一天入選）併成一行；已進場的同一檔只列最近一次入選，旁邊註明入選次數
   const wait = all.filter(p => p.entry == null), cnt = {}; on.forEach(p => { cnt[p.code] = (cnt[p.code] || 0) + 1; });
   const seen = new Set(), rows = on.filter(p => !seen.has(p.code) && seen.add(p.code)).slice(0, 12);
-  return `<div class="follow"><div class="section-head"><h3>最近入選的後續</h3><div class="sort-row" style="margin:0">${Object.entries(FCAT).map(([k, l]) => `<button type="button" data-fcat="${k}" aria-pressed="${k === cat}">${l}</button>`).join('')}</div></div>
+  return `<details class="follow"${followOpen ? ' open' : ''}><summary><b>最近入選的後續</b>　<span class="small">${FCAT[cat]}${on.length ? `最近 ${on.length} 次：平均 <b class="num ${cls(avg)}">${sg(avg)}%</b>，<span style="color:${br ? 'var(--warn)' : 'inherit'}">${br} 次跌破支撐</span>` : '：目前沒有持有中的股票'}</span> <span class="more">看明細</span></summary><div class="section-head" style="margin-top:10px"><span></span><div class="sort-row" style="margin:0">${Object.entries(FCAT).map(([k, l]) => `<button type="button" data-fcat="${k}" aria-pressed="${k === cat}">${l}</button>`).join('')}</div></div>
     <p class="small" style="margin:6px 0">${FCAT[cat]}前 3 名，持有期 ${h} 個交易日內的股票${on.length ? `：共 ${on.length} 檔已進場，到今天平均 <b class="num ${cls(avg)}">${sg(avg)}%</b>（扣成本）、${up} 檔賺錢、<b style="color:${br ? 'var(--warn)' : 'inherit'}">${br} 檔跌破入選時的支撐</b>。` : '：目前沒有持有中的股票。'}</p>
     ${wait.length ? `<p class="small muted" style="margin:0 0 6px">${esc(wait[0].date.slice(5).replace('-', '/'))} 剛入選、明天開盤起算：${wait.map(p => `<a href="/analysis/${esc(p.code)}">${esc(p.code)} ${esc(p.name)}</a>`).join('、')}</p>` : ''}
     ${rows.length ? `<div class="scroll"><table class="follow-t"><thead><tr><th>股票</th><th class="r">入選日</th><th class="r hide-sm">進場價<span class="th-sub">隔天開盤</span></th><th class="r hide-sm">現價</th><th class="r">至今<span class="th-sub">扣成本</span></th><th>狀態</th></tr></thead><tbody>${rows.map(p => `<tr><td class="nm"><a href="/analysis/${esc(p.code)}"><span class="num">${esc(p.code)}</span> ${esc(p.name)}</a>${cnt[p.code] > 1 ? `<span class="small muted"> ×${cnt[p.code]}</span>` : ''}</td><td class="r num">${esc(p.date.slice(5).replace('-', '/'))}<span class="th-sub">第 ${p.held}/${h} 天</span></td><td class="r num hide-sm">${pxd(p.entry)}</td><td class="r num hide-sm">${p.last != null ? pxd(p.last) : '—'}</td><td class="r num ${cls(p.now)}">${sg(p.now)}%</td><td>${followState(p)}</td></tr>`).join('')}</tbody></table></div>` : ''}
-    <p class="note" style="margin:6px 0 0">「跌破」代表持有期間曾以收盤價跌破入選時標示的支撐（之後可能又漲回），入選理由已經改變；這只是狀態提醒，成績單仍照「持有到期」計算。同一檔多天入選時只列最近一次（×次數）；平均報酬與跌破檔數以每一次入選計算。完整紀錄請看<a href="/scorecard">成績單</a>。</p></div>`;
+    <p class="note" style="margin:6px 0 0">「跌破」代表持有期間曾以收盤價跌破入選時標示的支撐（之後可能又漲回），入選理由已經改變；這只是狀態提醒，成績單仍照「持有到期」計算。同一檔多天入選時只列最近一次（×次數）；平均報酬與跌破檔數以每一次入選計算。完整紀錄請看<a href="/scorecard">成績單</a>。</p></details>`;
 }
-function bindFollow(sc) { const box = $('#follow'); if (!box) return; box.querySelectorAll('[data-fcat]').forEach(b => b.onclick = () => { box.innerHTML = followHtml(sc, b.dataset.fcat); bindFollow(sc); }); }
+let followOpen = false;
+function bindFollow(sc) { const box = $('#follow'); if (!box) return; const d = box.querySelector('details'); if (d) d.ontoggle = () => { followOpen = d.open; };
+  box.querySelectorAll('[data-fcat]').forEach(b => b.onclick = () => { followOpen = true; box.innerHTML = followHtml(sc, b.dataset.fcat); bindFollow(sc); }); }
+let pickTab = 'day';
 async function loadPicks(date) {
   const box = $('#picks'); if (!box) return;
   box.innerHTML = `<h2 id="picksTitle">盤後篩選名單</h2><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">載入名單中…</span></div>`;
   try {
     const j = await getPicks(date); const idx = await getIndex();
     const sc = await fetch('/data/scorecard.json').then(r => r.ok ? r.json() : null).catch(() => null);
-    const track = cat => { const s = sc && sc.summary && sc.summary[cat]; const v = s && s.all; if (!v) return `<p class="track">成績單：紀錄不足，暫無法評估。</p>`;
-      const ok = v.n >= 30 && v.excess > 0;
-      return `<p class="track ${ok ? 'good' : 'weak'}"><b>歷史表現</b>　每日前 3 名隔天開盤買進、持有 ${s.hold} 個交易日，扣交易成本後平均 <span class="num ${cls(v.avg)}">${sg(v.avg)}%</span>、勝率 ${v.win}%；同期間隨機買進全市場平均 ${sg(v.bench)}%（${v.n} 筆）。${ok ? '' : v.n < 30 ? '樣本數仍少，僅供參考。' : '目前未優於全市場平均，請審慎參考。'} <a href="/scorecard">成績單</a></p>`; };
-    const col = (title, sub, list, n, cat) => `<div class="pcol"><h3>${title}<small>${sub}・符合 ${n} 檔</small></h3>${track(cat)}${list.length ? list.slice(0, 3).map(x => `<button class="pick" type="button" data-code="${esc(x.code)}">
+    // 歷史表現縮成標題旁的小標籤，點開才看數字
+    const track = cat => { const s = sc && sc.summary && sc.summary[cat]; const v = s && s.all; if (!v) return '';
+      const ok = v.n >= 30 && v.excess > 0, lab = v.n < 30 ? '樣本少' : ok ? '歷史贏大盤' : '歷史未贏大盤';
+      return `<details class="trk"><summary class="tg ${ok ? 'good' : 'weak'}">${lab}</summary><p>每日前 3 名隔天開盤買進、持有 ${s.hold} 個交易日，扣成本後平均 <span class="num ${cls(v.avg)}">${sg(v.avg)}%</span>、勝率 ${v.win}%；同期間全市場平均 ${sg(v.bench)}%（${v.n} 筆）。<a href="/scorecard">成績單</a></p></details>`; };
+    const keyWhy = (x, cat) => { const w = x.why || []; return (cat === 'long' && w.find(t => t.includes('營收'))) || w[1] || w[0] || ''; };
+    const col = (title, sub, list, n, cat) => `<div class="pcol" data-pcat="${cat}"><h3><span>${title} ${track(cat)}</span><small>${sub}・符合 ${n} 檔</small></h3>${list.length ? list.slice(0, 3).map(x => `<button class="pick" type="button" data-code="${esc(x.code)}">
       <div class="top1"><span><span class="code num" style="color:var(--accent)">${esc(x.code)}</span> <span class="nm">${esc(x.name)}</span>${secTag(x.code)}</span><span class="num ${cls(x.chg)}">${pxd(x.close)} ${sg(x.chg)}%</span></div>
-      <div class="sigs">${x.why.map(w => `<span>${esc(w)}</span>`).join('')}</div>
-      <div class="lv num"><span>強度分數 <b style="color:${scoreColor(x.index)}">${x.index ?? '—'}</b></span><span>支撐 <b style="color:var(--sup)">${x.sup != null ? pxd(x.sup) : '—'}</b></span><span>壓力 <b style="color:var(--res)">${x.res != null ? pxd(x.res) : '—'}</b></span></div></button>`).join('') + moreRows(list.slice(3), 'close') : '<div class="empty">今天沒有股票符合條件。</div>'}</div>`;
+      <div class="why1">${esc(keyWhy(x, cat))}</div>
+      <div class="lv num"><span>支撐 <b style="color:var(--sup)">${x.sup != null ? pxd(x.sup) : '—'}</b></span><span>壓力 <b style="color:var(--res)">${x.res != null ? pxd(x.res) : '—'}</b></span></div></button>`).join('') + moreRows(list.slice(3), 'close') : '<div class="empty">今天沒有股票符合條件。</div>'}</div>`;
     box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h2 id="picksTitle">盤後篩選名單</h2><span class="small muted num">${idx && idx.dates.length > 1 ? `<label for="pickDate">查看日期 </label><select id="pickDate">${idx.dates.slice().reverse().map(d => `<option value="${d}"${d.replace(/-/g, '/') === j.date ? ' selected' : ''}>${d.replace(/-/g, '/')}</option>`).join('')}</select>　` : esc(j.date) + ' 收盤・'}掃描 ${j.universe} 檔上市櫃股票</span></div>
       ${mktBanner(j)}
-      <div class="howto">
+      <details class="howto-d"><summary>怎麼看這份名單？</summary><div class="howto">
         <div><b>內容</b><span>每個交易日收盤後，依固定規則從上市櫃股票中篩選，分為短線（約 1 週）、波段（約 1 個月）、長線（約 3 個月）三類，每類列出前 10 名。規則以 2025 年起的歷史資料回測選出，同一檔股票可能同時出現在多類名單。</span></div>
         <div><b>使用方式</b><span>名單的歷史表現以「隔天開盤買進、持有到期後賣出」計算，請依各類的持有期間參考。點選個股可查看強度分數與支撐壓力；若入選後跌破主要支撐，代表入選時的條件已經改變。</span></div>
         <div><b>注意事項</b><span>入選代表該股在收盤時符合篩選條件，並非對未來漲跌的預測，也不構成買賣建議。回測期間以多頭行情為主，行情轉弱時表現可能明顯變差。</span></div>
-      </div>
-      <div class="picks-grid">${col('短線觀察', '持有約 1 週', j.day, j.counts.day, 'day')}${col('波段觀察', '持有約 1 個月', j.swing, j.counts.swing, 'swing')}${col('長線觀察', '持有約 3 個月', j.long, j.counts.long, 'long')}</div>
-      <div id="follow">${followHtml(sc, 'day')}</div>
+      </div></details>
+      <div class="ptabs" role="tablist">${[['day', '短線'], ['swing', '波段'], ['long', '長線']].map(([k, l]) => `<button type="button" data-ptab="${k}" aria-pressed="${k === pickTab}">${l}</button>`).join('')}</div>
+      <div class="picks-grid" data-tab="${pickTab}">${col('短線觀察', '持有約 1 週', j.day, j.counts.day, 'day')}${col('波段觀察', '持有約 1 個月', j.swing, j.counts.swing, 'swing')}${col('長線觀察', '持有約 3 個月', j.long, j.counts.long, 'long')}</div>
+      <div id="follow">${followHtml(sc, pickTab)}</div>
       <details class="rules"><summary>篩選條件</summary>
         <p>共同條件：上市櫃普通股，近 20 日平均每日成交值 10 億元以上，三大法人近 5 個交易日中多數日子為合計買超。</p>
         <p><b>短線觀察</b>：均線多頭排列（收盤在月線之上、月線在季線之上，且月線與季線都向上）、收盤距離 60 日最高點 5% 以內、近 5 日至少 3 天法人買超。依法人買超占日均量的比例排名。</p>
@@ -108,6 +114,7 @@ async function loadPicks(date) {
     box.querySelectorAll('.pick, .pick-row').forEach(b => b.onclick = () => goTo(b.dataset.code));
     const sel = $('#pickDate'); if (sel) sel.onchange = () => loadPicks(sel.value);
     bindFollow(sc);
+    box.querySelectorAll('[data-ptab]').forEach(b => b.onclick = () => { pickTab = b.dataset.ptab; box.querySelector('.picks-grid').dataset.tab = pickTab; box.querySelectorAll('[data-ptab]').forEach(x => x.setAttribute('aria-pressed', x === b)); const f = $('#follow'); if (f) { f.innerHTML = followHtml(sc, pickTab); bindFollow(sc); } });
     if (j.longNote) { const lc = box.querySelectorAll('.pcol')[2]; if (lc) lc.insertAdjacentHTML('beforeend', `<p class="note">${esc(j.longNote)}</p>`); }
   } catch (e) {
     box.innerHTML = `<h2 id="picksTitle">盤後篩選名單</h2><p class="err">${esc(e.message)}</p><button class="btn ghost" type="button" id="retryPicks">再試一次</button>`;
