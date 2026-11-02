@@ -1,7 +1,8 @@
 name: 每日名單與成績單
 on:
   schedule:
-    - cron: '50 8 * * 1-5'   # 台北 16:50，收盤資料與三大法人公布後
+    - cron: '7 4 * * 1-5'    # 台北 12:07 先啟動，等到 16:45 收盤資料公布後才執行（GitHub 排程常延遲數小時，提早啟動才能準時）
+    - cron: '50 8 * * 1-5'   # 台北 16:50，備援
     - cron: '30 11 * * 1-5'  # 台北 19:30 補跑一次，以防法人資料延遲
   workflow_dispatch:
     inputs:
@@ -19,12 +20,16 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: 等到收盤資料公布（台北 16:45）
+        if: github.event_name == 'schedule'
+        run: |
+          node -e "const now=new Date(Date.now()+8*3600e3), m=now.getUTCHours()*60+now.getUTCMinutes(), w=16*60+45-m; if (w>0) { console.log('等待', w, '分鐘'); setTimeout(()=>{}, w*60e3); } else console.log('已過 16:45，直接執行');"
       - run: node scripts/build.js
         env:
           BACKFILL: ${{ github.event.inputs.backfill || '60' }}
