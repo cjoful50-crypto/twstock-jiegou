@@ -95,6 +95,9 @@ async function tpexBars(code) {
 
 async function safe(p) { try { return await p; } catch (e) { return null; } }
 
+const { adjustBars } = require('../lib/adjust.js');
+let EXR = null;
+const exEvents = () => { if (!EXR) { try { EXR = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'data', 'exright.json'), 'utf8')).ev || {}; } catch (e) { EXR = {}; } } return EXR; };
 module.exports = async (req, res) => {
   const code = String((req.query && req.query.code) || '').trim().toUpperCase();
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -107,9 +110,11 @@ module.exports = async (req, res) => {
     if (!bars.length) { res.status(404).end(JSON.stringify({ error: `找不到 ${code} 的成交資料。請確認代號是上市或上櫃股票，ETF 與權證不在支援範圍。` })); return; }
     bars.sort((a, b) => a.d < b.d ? -1 : 1);
     const seen = new Set(); bars = bars.filter(b => !seen.has(b.d) && seen.add(b.d));
+    // 還原除權息、減資、分割造成的價格斷層
+    const raw = bars; bars = adjustBars(bars, exEvents()[code]); const adjusted = bars !== raw;
 
     if (name) name = name.replace(/[*＊]+$/, '');
-    const out = { code, name: name || code, market, bars, inst: [], margin: [], sbl: [], fund: {}, dates: { price: slash(bars.at(-1).d) }, fetchedAt: new Date().toISOString(),
+    const out = { code, name: name || code, market, bars, adjusted, inst: [], margin: [], sbl: [], fund: {}, dates: { price: slash(bars.at(-1).d) }, fetchedAt: new Date().toISOString(),
       source: market === 'TWSE' ? '臺灣證券交易所、公開資訊觀測站' : '證券櫃檯買賣中心、公開資訊觀測站' };
 
     if (market === 'TWSE') {

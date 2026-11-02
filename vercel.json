@@ -10,7 +10,8 @@
   ],
   "functions": {
     "api/stock.js": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "includeFiles": "data/exright.json"
     },
     "api/intraday.js": {
       "maxDuration": 30

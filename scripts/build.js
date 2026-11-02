@@ -1,6 +1,7 @@
 // 每日排程：抓全市場資料（有快取）→ 算當天名單 → 回補歷史名單 → 計算名單成績單
 // 由 .github/workflows/daily.yml 在每個交易日收盤後執行，結果寫進 data/ 由網站直接讀取
 const fs = require('fs'), path = require('path');
+const { adjustDays } = require('../lib/adjust.js');
 const M = require('./market.js'), { screenAt } = require('./screen.js'), { buildLevels } = require('./levels.js');
 const ROOT = path.join(__dirname, '..'), DATA = path.join(ROOT, 'data'), CACHE = path.join(DATA, 'cache');
 const BACKFILL = +(process.env.BACKFILL || 60), HISTORY = BACKFILL + 62;
@@ -32,6 +33,9 @@ const isoOf = d => d.toISOString().slice(0, 10);
   // 名單與成績單用快取裡所有交易日（含研究用回補的歷史）
   days.length = 0;
   for (const n of fs.readdirSync(path.join(CACHE, 'daily')).sort()) { const d = n.slice(0, 10); if (d === today && !afterClose) continue; const c = rd(path.join(CACHE, 'daily', n)); if (c && !c.holiday) days.push({ d, q: c }); }
+  // 還原除權息、減資、分割（名單、支撐壓力、成績單都用還原價計算）
+  const EXR = (rd(path.join(DATA, 'exright.json')) || {}).ev || {};
+  const adj = adjustDays(days, EXR); const rawDays = days.slice(); days.length = 0; days.push(...adj.days); console.log('還原價格：', adj.n, '檔');
   if (days.length < 45) throw new Error('交易日資料不足：' + days.length);
   const last = days.length - 1, from = Math.max(70, last - BACKFILL + 1);
 
@@ -89,13 +93,14 @@ const isoOf = d => d.toISOString().slice(0, 10);
     const i = idx.get(d); if (i == null) continue; const L = rd(path.join(DATA, 'daily', d + '.json'));
     for (const cat of ['day', 'swing', 'long']) (L[cat] || []).forEach((p, rank) => {
       const c0 = (days[i].q[p.code] || [])[3]; if (!c0) return;
-      const row = { date: d, cat, rank: rank + 1, code: p.code, name: p.name, close: c0 }, h = HOLD[cat];
+      const raw0 = (rawDays[i].q[p.code] || [])[3] || c0, rawNb = i + 1 <= last ? rawDays[i + 1].q[p.code] : null;
+      const row = { date: d, cat, rank: rank + 1, code: p.code, name: p.name, close: raw0 }, h = HOLD[cat];
       const nb = i + 1 <= last ? days[i + 1].q[p.code] : null;
-      if (nb && nb[0]) { row.entry = nb[0];
+      if (nb && nb[0]) { row.entry = rawNb && rawNb[0] ? rawNb[0] : nb[0];
         // 持有期間若停牌，取最後一個有收盤價的日子
         let ex = null; for (let j = i + 1; j <= Math.min(last, i + h); j++) { const b = days[j].q[p.code]; if (b && b[3]) ex = b[3]; }
         const clean = jumpFree(p.code, i, Math.min(last, i + h));
-        row.now = ex != null && clean ? +((ex / nb[0] - 1) * 100 - COST).toFixed(2) : null; if (!clean) row.note = '持有期間有除權息、減資或分割，不列入統計';
+        row.now = ex != null && clean ? +((ex / nb[0] - 1) * 100 - COST).toFixed(2) : null; if (!clean) row.note = '持有期間價格資料異常，不列入統計';
         if (i + h <= last && ex != null) { row.ret = row.now; row.bench = bench(i, h); }
       }
       picks.push(row);
