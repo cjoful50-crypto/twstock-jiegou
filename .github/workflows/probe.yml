@@ -1,0 +1,17 @@
+name: 測試腳本
+on:
+  workflow_dispatch:
+    inputs:
+      script:
+        description: 'scripts 底下的檔名'
+        required: true
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node scripts/${{ github.event.inputs.script }}
