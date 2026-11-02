@@ -136,7 +136,7 @@ function render(s) {
       </div>
       <div class="gauge">${ring(a.index)}<div style="display:grid;gap:6px;justify-items:center"><span class="pill ${legacyCls(a.legacy)}">綜合評等：${a.legacy}</span><span class="small muted num" style="text-align:center">五面向平均 ${fx(a.raw, 1)}${a.pen.length ? `<br>風險扣分 ${a.pen.reduce((x, y) => x + y.pts, 0)} → 強度分數 ${a.index}` : ''}</span></div></div>
     </div>
-    <p class="note" style="margin:14px 0 0"><b>走勢</b>依強度分數分為強勢、觀察、偏弱、風險四級；<b>綜合評等</b>為下列五個面向分數的平均；<b>強度分數</b>為綜合評等扣除風險因素（如接近強壓力、均線動能轉弱、短線過熱、量增收黑）後的分數，範圍 0～100，分數越高代表目前整體條件越強，但不代表未來必然上漲。</p>
+    <p class="note" style="margin:14px 0 0"><b>走勢</b>依強度分數分為強勢、觀察、偏弱、風險四級；<b>綜合評等</b>為下列五個面向分數的平均；<b>強度分數</b>為綜合評等扣除風險因素（如接近強壓力、均線動能轉弱、短線過熱、量增收黑）後的分數，範圍 0～100，分數越高代表目前整體條件越強，但不是預測，歷史上與之後漲跌的關聯很弱（<a href="/scorecard">查看歷史表現</a>）。</p>
     <div class="dims">${dimsHtml}</div>
     <div class="dates num"><span>行情：${esc(d.price || t.d)}</span>${d.inst ? `<span>法人：${esc(d.inst)}</span>` : ''}${d.chip ? `<span>籌碼：${esc(d.chip)}</span>` : ''}${d.val ? `<span>基本面：${esc(d.val)}</span>` : ''}${d.rev ? `<span>營收：${esc(d.rev)}</span>` : ''}</div>
   </section>

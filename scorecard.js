@@ -37,3 +37,15 @@ let filter = 'all', scope = 'top';
   };
   list();
 })();
+
+/* 強度分數的歷史表現：分數高的股票之後有沒有比較強 */
+(async () => {
+  const box = $('#scoreStat'); if (!box) return;
+  let j = null; try { const r = await fetch('/data/scorestat.json'); if (r.ok) j = await r.json(); } catch (e) {}
+  if (!j) { box.remove(); return; }
+  box.innerHTML = `<h2 id="statT">強度分數的歷史表現</h2>
+    <p class="small muted" style="margin:4px 0 0">${esc(j.from.replace(/-/g, '/'))}～${esc(j.to.replace(/-/g, '/'))}，日均成交值 2 億元以上的股票每 5 個交易日計算一次強度分數，統計隔天開盤買進、持有 ${j.hold} 個交易日的表現，與同一天全市場平均比較（共 ${fi(j.n)} 筆，價格已還原除權息）。</p>
+    <div class="scroll"><table><thead><tr><th>強度分數</th><th>相對全市場</th><th>跑贏全市場的比例</th><th>筆數</th></tr></thead><tbody>
+    ${j.rows.map(r => `<tr><td>${esc(r.label)}</td><td class="num ${cls(r.excess)}">${sg(r.excess)}%</td><td class="num">${r.beat}%</td><td class="num">${fi(r.n)}</td></tr>`).join('')}</tbody></table></div>
+    <p class="note" style="margin:8px 0 0"><b>怎麼看：</b>強度分數用來描述股票<b>目前</b>的條件，不是預測。歷史上 35 分以下的股票，之後 20 天平均落後全市場；55～74 分略為領先；75 分以上反而沒有更好，常是已經漲多的股票。整體來說，分數高低與之後漲跌的關聯很弱，請搭配支撐壓力、名單與自己的判斷使用。各組「跑贏比例」都低於一半，是因為全市場平均被少數大漲的股票拉高，多數股票都會落後平均。</p>`;
+})();
