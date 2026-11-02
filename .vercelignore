@@ -3,4 +3,3 @@ scripts
 .github
 README.md
 data/calib
-supabase.sql
