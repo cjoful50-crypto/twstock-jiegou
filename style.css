@@ -381,3 +381,18 @@ tr.lv-detail td{background:var(--sunk);text-align:left}
 .mkt-warn{margin:10px 0;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--warn) 14%,var(--surface));border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);font-size:14px;line-height:1.6}
 .mkt-warn b:first-child{color:var(--warn)}
 .mkt-ok{margin:8px 0 0;color:var(--muted)}
+.follow{margin-top:18px;border-top:1px solid var(--line);padding-top:14px}
+.follow h3{margin:0;font-size:1rem}
+.fs{display:inline-block;font-size:.78rem;padding:1px 7px;border-radius:999px;white-space:nowrap}
+.fs.ok{background:color-mix(in srgb,var(--sup) 14%,transparent);color:var(--sup)}
+.fs.bad{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn);font-weight:600}
+.fs.wait{background:var(--sunk);color:var(--muted)}
+.pick-hist{margin:10px 0 0;padding:8px 12px;border-radius:8px;background:var(--sunk);font-size:.9rem}
+.share-btn{margin-left:6px}
+.follow-t{width:100%;border-collapse:collapse;font-size:.9rem}
+.follow-t th,.follow-t td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.follow-t th{font-weight:500;color:var(--muted);font-size:.8rem}
+.follow-t .r{text-align:right}
+.follow-t .th-sub{display:block;font-size:.7rem;color:var(--faint);font-weight:400}
+.follow-t .nm a{color:inherit;text-decoration:none}.follow-t .nm .num{color:var(--accent)}
+@media (max-width:640px){.follow-t .hide-sm{display:none}.follow-t .nm .small{font-size:.72rem}.follow-t th,.follow-t td{padding:6px 5px}.follow .section-head{flex-wrap:wrap;gap:6px}}

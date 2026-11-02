@@ -128,11 +128,11 @@ function render(s) {
   <section class="card">
     <div class="hero">
       <div>
-        <div class="id"><span class="code">${esc(s.code)}</span><span class="name">${esc(s.name || '')}</span>${secTag(s.code)}<button class="watch-btn" type="button" id="watchBtn" aria-pressed="${Watch.has(s.code)}">${Watch.has(s.code) ? '★ 已加入我的選股' : '☆ 加入我的選股'}</button></div>
+        <div class="id"><span class="code">${esc(s.code)}</span><span class="name">${esc(s.name || '')}</span>${secTag(s.code)}<button class="watch-btn" type="button" id="watchBtn" aria-pressed="${Watch.has(s.code)}">${Watch.has(s.code) ? '★ 已加入我的選股' : '☆ 加入我的選股'}</button><button class="watch-btn share-btn" type="button" id="shareBtn" title="分享這檔股票的分析頁">分享</button></div>
         ${s.live ? `<div class="live-badge"><span class="dot${s.live.open ? ' on' : ''}"></span>${s.live.open ? '盤中即時' : '今日收盤'} ${esc(s.live.time || '')}<span class="muted">・價格約延遲數秒；法人與籌碼為前一交易日資料</span></div>` : `<div class="small muted">資料更新至 ${esc(t.d.replace(/-/g, '/'))} 收盤</div>`}
         <div class="price"><span class="px num">${pxd(c)}</span><span class="ch num ${cls(ind.chg)}">${sg(ind.chg)}（${sg(ind.chgPct)}%）</span></div>
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="small muted">走勢</span><span class="pill ${trendCls(a.trendLabel)}">${a.trendLabel}</span></div>
-        <div class="my-hold" id="myHold"></div>
+        <div class="my-hold" id="myHold"></div><div id="pickHist"></div>
       </div>
       <div class="gauge">${ring(a.index)}<div style="display:grid;gap:6px;justify-items:center"><span class="pill ${legacyCls(a.legacy)}">綜合評等：${a.legacy}</span><span class="small muted num" style="text-align:center">五面向平均 ${fx(a.raw, 1)}${a.pen.length ? `<br>風險扣分 ${a.pen.reduce((x, y) => x + y.pts, 0)} → 強度分數 ${a.index}` : ''}</span></div></div>
     </div>
@@ -229,7 +229,10 @@ function render(s) {
   const showTab = () => { $('#panel').innerHTML = panels[tab](); document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab)); };
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; showTab(); });
   showTab();
-  drawMyHold(s.code, s.name, c); loadTdcc(s.code, s.bars);
+  drawMyHold(s.code, s.name, c); loadTdcc(s.code, s.bars); pickHist(s.code);
+  const sb = $('#shareBtn'); if (sb) sb.onclick = async () => { const url = location.origin + '/analysis/' + encodeURIComponent(s.code), title = `${s.code} ${s.name || ''} 支撐壓力分析｜盤後結構室`;
+    if (navigator.share) { try { await navigator.share({ title, url }); } catch (e) {} return; }
+    try { await navigator.clipboard.writeText(url); sb.textContent = '已複製連結'; } catch (e) { prompt('複製這個連結', url); } setTimeout(() => { sb.textContent = '分享'; }, 2000); };
   const wb = $('#watchBtn');
   if (wb) wb.onclick = () => { const on = Watch.toggle(s.code, s.name); if (on) Watch.update(s.code, { index: a.index, trend: a.trendLabel, date: t.d }); wb.setAttribute('aria-pressed', on); wb.textContent = on ? '★ 已加入我的選股' : '☆ 加入我的選股'; };
   Watch.update(s.code, { index: a.index, trend: a.trendLabel, date: t.d, name: s.name });
@@ -343,4 +346,18 @@ async function loadTdcc(code, bars) {
       <div><span>股東人數</span><b class="num">${fi(L[4])}</b><small>較上週 ${ppl(L, P1)}</small><small>4 週 ${ppl(L, P4)}</small></div></div>
     ${chart}
     <p class="note" style="margin:8px 0 0">資料日期 ${esc(L[0].replace(/-/g, '/'))}，共 ${R.length} 週紀錄（歷史資料每天陸續補齊中）。來源為臺灣集中保管結算所「集保戶股權分散表」，每週最後一個交易日統計、隔日公布，本站於週六更新。比例為占集保庫存的百分比，變化以「百分點」表示。這裡的大戶與散戶依<b>持有張數</b>區分；部分看盤軟體的「大戶／散戶」是依單筆成交大小推估，兩者意義不同。大戶持股增加不代表股價一定上漲。</p>`;
+}
+
+/* 這檔股票最近有沒有入選盤後名單，入選後表現如何 */
+let scP = null;
+async function pickHist(code) {
+  const box = $('#pickHist'); if (!box) return;
+  const sc = await (scP || (scP = fetch('/data/scorecard.json').then(r => r.ok ? r.json() : null).catch(() => null)));
+  if (!sc || !sc.picks) return; const CAT = { day: '短線', swing: '波段', long: '長線' };
+  const act = sc.picks.filter(p => p.code === code && p.ret == null && !p.note);
+  if (!act.length) return;
+  // 同一類別只顯示最近一次入選
+  const seen = new Set(), rows = act.filter(p => !seen.has(p.cat) && seen.add(p.cat));
+  if (!$('#pickHist')) return;
+  $('#pickHist').innerHTML = `<div class="pick-hist">${rows.map(p => `<div><b>${esc(p.date.slice(5).replace('-', '/'))} 入選${CAT[p.cat]}名單</b>（第 ${p.rank} 名）${p.entry == null ? '，明天開盤起算。' : `，隔天開盤 <span class="num">${pxd(p.entry)}</span> 起算到今天 <b class="num ${cls(p.now)}">${p.now != null ? sg(p.now) + '%' : '—'}</b>（扣成本，持有 ${p.held}/${sc.hold[p.cat]} 天）${p.broke ? `，<b style="color:var(--warn)">持有期間曾跌破入選時的支撐 ${pxd(p.sup)}</b>` : p.sup != null ? `，仍守在入選時的支撐 ${pxd(p.sup)} 之上` : ''}。`}</div>`).join('')}</div>`;
 }

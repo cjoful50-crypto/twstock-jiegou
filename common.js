@@ -45,7 +45,11 @@ function attachSearch(form, input, list) {
   let items = [], active = -1;
   const close = () => { list.hidden = true; active = -1; input.setAttribute('aria-expanded', 'false'); };
   const draw = () => {
-    items = findStocks(input.value);
+    // 還沒輸入時先列出最近查詢與我的選股，點一下就能進去
+    if (!input.value.trim()) { const seen = new Set(), mk = (x, t) => seen.has(x.code) ? null : (seen.add(x.code), [x.code, x.name || '', t]);
+      const w = (() => { try { return JSON.parse(localStorage.getItem('jiegou-watch') || '[]') || []; } catch (e) { return []; } })();
+      items = [...Recent.get().slice(0, 5).map(x => mk(x, '最近查詢')), ...w.slice(0, 5).map(x => mk(x, '我的選股'))].filter(Boolean).slice(0, 8); }
+    else items = findStocks(input.value);
     if (!items.length) { close(); return; }
     list.innerHTML = items.map((s, i) => `<li role="option" id="opt${i}" aria-selected="${i === active}" data-code="${esc(s[0])}"><span class="num">${esc(s[0])}</span><b>${esc(s[1])}</b><small>${s[2]}</small></li>`).join('');
     list.hidden = false; input.setAttribute('aria-expanded', 'true');

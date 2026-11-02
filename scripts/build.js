@@ -106,6 +106,11 @@ const isoOf = d => d.toISOString().slice(0, 10);
         const clean = jumpFree(p.code, i, Math.min(last, i + h));
         row.now = ex != null && clean ? +((ex / nb[0] - 1) * 100 - COST).toFixed(2) : null; if (!clean) row.note = '持有期間價格資料異常，不列入統計';
         if (i + h <= last && ex != null) { row.ret = row.now; row.bench = bench(i, h); }
+        // 後續追蹤：已持有幾天、最新價（未還原，與看盤軟體一致）、持有期間收盤是否曾跌破入選時的支撐
+        const end = Math.min(last, i + h); row.held = end - i;
+        const lastRaw = (rawDays[end].q[p.code] || [])[3]; if (lastRaw) row.last = lastRaw;
+        if (p.sup != null) { row.sup = p.sup; const sAdj = p.sup * c0 / raw0;
+          for (let j = i + 1; j <= end; j++) { const b = days[j].q[p.code]; if (b && b[3] && b[3] < sAdj) { row.broke = days[j].d; break; } } }
       }
       picks.push(row);
     });
