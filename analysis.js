@@ -183,11 +183,13 @@ function render(s) {
       ${levelCard('res', '第二壓力', R2 ? [R2] : [], '第一壓力之上沒有其他獨立的壓力結構。', a)}
     </div>
     <details class="rules"><summary>價位計算方式</summary>
-      <p>候選價位皆取自實際成交結構，包括：近 120 個交易日的波段高低點、5／10／20／60 日均線、近 60 個交易日尚未回補的跳空缺口、爆量 K 棒（成交量達前 20 日均量 2 倍以上）的高點、收盤價與低點、近 60 個交易日成交量最集中的 3 個價格帶，以及由近期高低點延伸的趨勢線。距現價不到 1% 的價位不列入。</p>
+      <p>候選價位皆取自實際成交結構，包括：近 120 個交易日的波段高低點、5／10／13／20／60／120 日均線、近 20 與 60 日的最高最低點、近 60 個交易日尚未回補的跳空缺口、爆量 K 棒（成交量達前 20 日均量 2 倍以上）的高點、收盤價與低點、近 60 個交易日成交量最集中的 3 個價格帶，以及由近期高低點延伸的趨勢線。距現價不到 1% 的價位不列入。</p>
       <p>相鄰價位的差距小於波動容差（取現價 0.9% 與 0.3 倍 ATR 的較大者，目前為 ${fx(a.st.tol)} 元）時，合併為同一價格帶。價位強度依同一價格帶上疊了幾種依據判定：5 種以上為極強、4 種為強、3 種為中，1～2 種為弱。依 2025 年起的歷史資料檢驗，只有 1～2 種依據的價位，股價碰到時守住的比例並不比隨意畫的價位高；疊得越多越有效。因此第一道支撐、壓力優先列出最近且依據 4 種以上的價位，其次 3 種以上；第二道只列依據 3 種以上的價位，沒有就不列。借券賣出餘額 5 日增加超過 3% 時，列為第一壓力的籌碼訊號。</p>
       <p>支撐位於現價下方 0～10% 者標示為近端，10～20% 標示為中期，超過 20% 不列出；第二壓力為第一壓力上方的下一個獨立價位，距現價超過 10% 者標示為中期。價位依台股升降單位取整。股價創新高且上方無歷史成交結構時，以 10% 漲跌幅限制計算下一交易日的漲停參考價。以上價位為觀察參考，並非目標價或買賣建議。</p>
     </details>
   </section>
+
+  <section class="card" id="tdccCard" aria-labelledby="tdccT"><h2 id="tdccT">大戶與散戶</h2><p class="small muted" style="margin:4px 0 0">載入集保資料中…</p></section>
 
   <section class="card">
     <h2>研究室</h2><p class="small muted" style="margin:4px 0 0">K 線圖、法人買賣、融資借券、本益比與營收，以及分數的計算明細。</p>
@@ -227,7 +229,7 @@ function render(s) {
   const showTab = () => { $('#panel').innerHTML = panels[tab](); document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab)); };
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; showTab(); });
   showTab();
-  drawMyHold(s.code, s.name, c);
+  drawMyHold(s.code, s.name, c); loadTdcc(s.code);
   const wb = $('#watchBtn');
   if (wb) wb.onclick = () => { const on = Watch.toggle(s.code, s.name); if (on) Watch.update(s.code, { index: a.index, trend: a.trendLabel, date: t.d }); wb.setAttribute('aria-pressed', on); wb.textContent = on ? '★ 已加入我的選股' : '☆ 加入我的選股'; };
   Watch.update(s.code, { index: a.index, trend: a.trendLabel, date: t.d, name: s.name });
@@ -292,3 +294,35 @@ function drawMyHold(code, name, px, editing) {
   $('#mhE').onclick = () => drawMyHold(code, name, px, true);
 }
 document.addEventListener('jiegou-data', () => { const b = $('#myHold'); if (b && b.dataset.code) drawMyHold(b.dataset.code, b.dataset.name, +b.dataset.px); });
+
+/* 大戶與散戶：集保戶股權分散表（每週） */
+async function loadTdcc(code) {
+  const box = $('#tdccCard'); if (!box) return;
+  const head = `<h2 id="tdccT">大戶與散戶</h2><p class="small muted" style="margin:4px 0 0">依集保結算所每週公布的股權分散表，看股票集中在大戶還是散戶手上。</p>`;
+  let j = null; try { const r = await fetch('/data/tdcc/' + encodeURIComponent(code) + '.json'); if (r.ok) j = await r.json(); } catch (e) {}
+  if (!j || !j.rows || !j.rows.length) { box.innerHTML = head + '<p class="small muted">這檔股票目前沒有集保股權分散資料。</p>'; return; }
+  const R = j.rows, L = R.at(-1), P1 = R.at(-2), back = w => { const t = new Date(L[0]); t.setDate(t.getDate() - 7 * w + 3); return [...R].reverse().find(r => r[0] <= t.toISOString().slice(0, 10) && r !== L) || null; };
+  const P4 = back(4), P12 = back(12);
+  const d = (cur, old, i) => old ? cur[i] - old[i] : null;
+  const pp = v => v == null ? '' : `<span class="num ${cls(v)}">${v > 0 ? '+' : ''}${v.toFixed(2)}</span>`;
+  const ppl = (cur, old) => old ? `<span class="num ${cls(cur[4] - old[4])}">${sgi(cur[4] - old[4])} 人（${sg((cur[4] / old[4] - 1) * 100, 1)}%）</span>` : '—';
+  const tile = (lab, i, note) => `<div><span>${lab}</span><b class="num">${L[i].toFixed(2)}%</b><small>較上週 ${P1 ? pp(d(L, P1, i)) : '—'}</small><small>4 週 ${P4 ? pp(d(L, P4, i)) : '—'}${P12 ? '｜3 個月 ' + pp(d(L, P12, i)) : ''}</small>${note ? `<small class="muted">${note}</small>` : ''}</div>`;
+  // 白話判讀：大戶持股與股東人數的方向
+  let read = '資料累積中，下週起可比較變化。';
+  const ref = P4 || P1;
+  if (ref) { const db = L[2] - ref[2], dh = (L[4] / ref[4] - 1) * 100, span = P4 ? '近 4 週' : '近 1 週';
+    read = db > 0.3 && dh < 0 ? `${span}400 張以上大戶持股增加、股東人數減少：籌碼往大戶集中。`
+      : db < -0.3 && dh > 0 ? `${span}400 張以上大戶持股減少、股東人數增加：籌碼分散到散戶手上。`
+      : db > 0.3 ? `${span}400 張以上大戶持股增加。` : db < -0.3 ? `${span}400 張以上大戶持股減少。` : `${span}400 張以上大戶持股變化不大。`; }
+  // 千張大戶持股走勢
+  let chart = '';
+  if (R.length >= 3) { const W = 600, H = 120, pad = 6, v = R.map(r => r[1]), lo = Math.min(...v), hi = Math.max(...v), rg = hi - lo || 1;
+    const t0 = +new Date(R[0][0]), t1 = +new Date(L[0]) || t0 + 1; const pts = R.map(r => [pad + (+new Date(r[0]) - t0) / (t1 - t0 || 1) * (W - 2 * pad), H - pad - (r[1] - lo) / rg * (H - 2 * pad)]);
+    chart = `<figure class="tdcc-chart"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="千張大戶持股比例走勢"><polyline fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke" points="${pts.map(p => p.join(',')).join(' ')}"/>${pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="2.5" fill="var(--accent)"/>`).join('')}</svg>
+      <figcaption class="small muted num">千張大戶持股比例：${esc(R[0][0].replace(/-/g, '/'))} ${R[0][1].toFixed(2)}% → ${esc(L[0].replace(/-/g, '/'))} ${L[1].toFixed(2)}%（最高 ${hi.toFixed(2)}%、最低 ${lo.toFixed(2)}%）</figcaption></figure>`; }
+  box.innerHTML = head + `<p style="margin:10px 0 0"><b>${read}</b></p>
+    <div class="hold-sum tdcc-sum" style="margin-top:10px">${tile('千張大戶持股', 1, '持有 1,000 張以上')}${tile('400 張以上大戶', 2, '')}${tile('散戶持股', 3, '持有 50 張以下')}
+      <div><span>股東人數</span><b class="num">${fi(L[4])}</b><small>較上週 ${ppl(L, P1)}</small><small>4 週 ${ppl(L, P4)}</small></div></div>
+    ${chart}
+    <p class="note" style="margin:8px 0 0">資料日期 ${esc(L[0].replace(/-/g, '/'))}。來源為臺灣集中保管結算所「集保戶股權分散表」，每週最後一個交易日統計、隔日公布，本站於週六更新。比例為占集保庫存的百分比，變化以「百分點」表示。這裡的大戶與散戶依<b>持有張數</b>區分；部分看盤軟體的「大戶／散戶」是依單筆成交大小推估，兩者意義不同。大戶持股增加不代表股價一定上漲。</p>`;
+}
