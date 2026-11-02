@@ -53,6 +53,10 @@ async function loadIntraday() {
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && $('#intraday')) loadIntraday(); });
 
+// 大盤狀態提醒：回測顯示加權指數在季線下時，三類名單都沒有優於全市場
+const mktBanner = (j, compact) => { const m = j && j.market; if (!m) return '';
+  if (m.below60) return `<div class="mkt-warn"><b>大盤在季線之下</b>${compact ? '：名單參考性降低。' : `　加權指數 ${fi(m.taiex)}，低於季線 ${fi(m.ma60)}。依 2025 年起的回測，大盤在季線之下時，三類名單平均都<b>沒有</b>優於全市場（短線勝率只有約 3 成），這段期間請降低對名單的依賴、控制部位。`}</div>`;
+  return compact ? '' : `<p class="mkt-ok small">大盤狀態：加權指數 ${fi(m.taiex)}，在季線 ${fi(m.ma60)} 之上${m.below20 ? '（但已跌破月線 ' + fi(m.ma20) + '）' : ''}。名單規則的回測期間以這種狀態為主。</p>`; };
 async function loadPicks(date) {
   const box = $('#picks'); if (!box) return;
   box.innerHTML = `<h2 id="picksTitle">盤後篩選名單</h2><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">載入名單中…</span></div>`;
@@ -67,6 +71,7 @@ async function loadPicks(date) {
       <div class="sigs">${x.why.map(w => `<span>${esc(w)}</span>`).join('')}</div>
       <div class="lv num"><span>強度分數 <b style="color:${scoreColor(x.index)}">${x.index ?? '—'}</b></span><span>支撐 <b style="color:var(--sup)">${x.sup != null ? pxd(x.sup) : '—'}</b></span><span>壓力 <b style="color:var(--res)">${x.res != null ? pxd(x.res) : '—'}</b></span></div></button>`).join('') + moreRows(list.slice(3), 'close') : '<div class="empty">今天沒有股票符合條件。</div>'}</div>`;
     box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h2 id="picksTitle">盤後篩選名單</h2><span class="small muted num">${idx && idx.dates.length > 1 ? `<label for="pickDate">查看日期 </label><select id="pickDate">${idx.dates.slice().reverse().map(d => `<option value="${d}"${d.replace(/-/g, '/') === j.date ? ' selected' : ''}>${d.replace(/-/g, '/')}</option>`).join('')}</select>　` : esc(j.date) + ' 收盤・'}掃描 ${j.universe} 檔上市櫃股票</span></div>
+      ${mktBanner(j)}
       <div class="howto">
         <div><b>內容</b><span>每個交易日收盤後，依固定規則從上市櫃股票中篩選，分為短線（約 1 週）、波段（約 1 個月）、長線（約 3 個月）三類，每類列出前 10 名。規則以 2025 年起的歷史資料回測選出，同一檔股票可能同時出現在多類名單。</span></div>
         <div><b>使用方式</b><span>名單的歷史表現以「隔天開盤買進、持有到期後賣出」計算，請依各類的持有期間參考。點選個股可查看強度分數與支撐壓力；若入選後跌破主要支撐，代表入選時的條件已經改變。</span></div>
@@ -78,7 +83,7 @@ async function loadPicks(date) {
         <p><b>短線觀察</b>：均線多頭排列（收盤在月線之上、月線在季線之上，且月線與季線都向上）、收盤距離 60 日最高點 5% 以內、近 5 日至少 3 天法人買超。依法人買超占日均量的比例排名。</p>
         <p><b>波段觀察</b>：均線多頭排列、股價拉回到月線附近（高於月線 0%～8%）、近 5 日至少 4 天法人買超。依成交值與法人買超比例排名。</p>
         <p><b>長線觀察</b>：收盤站上季線且季線向上、本益比 12～40 倍、近 5 日至少 3 天法人買超。依成交值與法人買超比例排名。</p>
-        <p><b>規則怎麼來的</b>：以 2025 年 1 月至 2026 年 10 月的上市櫃資料回測，比較多組條件，只保留在每個半年期間都優於「同一天隨機買進全市場股票」的規則。報酬以隔天開盤價買進、扣除手續費與證交稅（約 0.47%）計算。</p>
+        <p><b>規則怎麼來的</b>：以 2025 年 1 月至 2026 年 10 月的上市櫃資料回測，比較多組條件，只保留在每個半年期間都優於「同一天隨機買進全市場股票」的規則。另外檢驗了大盤狀態：加權指數在季線之下時（回測期間約 1 成的交易日），三類名單平均都沒有優於全市場，因此遇到這種情況時頁面上方會提醒。報酬以隔天開盤價買進、扣除手續費與證交稅（約 0.47%）計算。</p>
         <p>實際表現每日更新於<a href="/scorecard">名單成績單</a>。資料來源為證交所與櫃買中心盤後公開資料。</p>
       </details>`;
     box.querySelectorAll('.pick, .pick-row').forEach(b => b.onclick = () => goTo(b.dataset.code));
@@ -297,7 +302,7 @@ async function renderPvPicks() {
     const cats = [['day', '短線'], ['swing', '波段'], ['long', '長線']];
     let cur = 'day';
     const draw = () => { const l = j[cur] || [];
-      box.innerHTML = `<p class="small muted" style="margin:0">${esc(j.date)} 收盤後篩選，各類前 3 名</p><div class="mini-tabs" role="tablist">${cats.map(([k, t]) => `<button type="button" role="tab" data-k="${k}" aria-selected="${k === cur}">${t}</button>`).join('')}</div>${l.length ? `<ul class="mini">${l.slice(0, 3).map(x => miniRow(x.code, x.name, `<span class="num ${cls(x.chg)}">${pxd(x.close)}　${sg(x.chg)}%</span>`)).join('')}</ul>` : '<p class="small muted" style="margin:0">此類別今日沒有符合條件的股票。</p>'}`;
+      box.innerHTML = `${mktBanner(j, true)}<p class="small muted" style="margin:0">${esc(j.date)} 收盤後篩選，各類前 3 名</p><div class="mini-tabs" role="tablist">${cats.map(([k, t]) => `<button type="button" role="tab" data-k="${k}" aria-selected="${k === cur}">${t}</button>`).join('')}</div>${l.length ? `<ul class="mini">${l.slice(0, 3).map(x => miniRow(x.code, x.name, `<span class="num ${cls(x.chg)}">${pxd(x.close)}　${sg(x.chg)}%</span>`)).join('')}</ul>` : '<p class="small muted" style="margin:0">此類別今日沒有符合條件的股票。</p>'}`;
       box.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { cur = b.dataset.k; draw(); }); };
     draw();
   } catch (e) { box.innerHTML = `<p class="small err" style="margin:0">${esc(e.message)}</p>`; }

@@ -67,6 +67,10 @@ const isoOf = d => d.toISOString().slice(0, 10);
     const d = days[i].d, f = path.join(DATA, 'daily', d + '.json');
     if (rd(f) && i < last && !process.env.RESCREEN) { dates.push(d); continue; }
     const res = screenAt(days, i, instByDay, valByDay, revAt(d), names);
+    // 大盤狀態：加權指數與季線（回測顯示，大盤在季線下時三類名單都沒有優於全市場）
+    const tx = days.slice(Math.max(0, i - 59), i + 1).map(x => taiex[x.d]).filter(Boolean);
+    if (tx.length >= 55 && taiex[d]) { const ma60 = tx.reduce((a, b) => a + b, 0) / tx.length, t20 = tx.slice(-20), ma20 = t20.reduce((a, b) => a + b, 0) / t20.length;
+      res.market = { taiex: taiex[d], ma60: Math.round(ma60), ma20: Math.round(ma20), below60: taiex[d] < ma60, below20: taiex[d] < ma20 }; }
     res.generatedAt = new Date().toISOString(); wr(f, res); dates.push(d); console.log('名單', d, res.counts);
   }
   const latest = rd(path.join(DATA, 'daily', days[last].d + '.json'));
