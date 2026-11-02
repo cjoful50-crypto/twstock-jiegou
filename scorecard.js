@@ -2,6 +2,8 @@
 const CAT = { day: ['短線', '持有 5 個交易日'], swing: ['波段', '持有 20 個交易日'], long: ['長線', '持有 60 個交易日'] };
 const pc = v => v == null ? '—' : `<span class="num ${cls(v)}">${sg(v)}%</span>`;
 let scTab = 'day', hf = 'all', hr = 'all', hn = 20, scData = null;
+// 歷史紀錄排序：預設最早在前，選擇會記在這台裝置
+let hs = (() => { try { return localStorage.getItem('jiegou-hsort') || 'old'; } catch (e) { return 'old'; } })();
 
 /* 分頁切換：今日名單／歷史成績，網址加上 #score 時直接開啟歷史成績 */
 function showPage(tab) {
@@ -21,6 +23,8 @@ async function loadScore() {
   try { const r = await fetch('/data/scorecard.json'); if (!r.ok) throw new Error('歷史成績尚未產生，每個交易日收盤後更新。'); scData = await r.json(); }
   catch (e) { box.innerHTML = `<h2 id="scoreT">歷史成績</h2><p class="err">${esc(e.message)}</p>`; return; }
   renderScore(); renderHist(); renderStat();
+  // 完整歷史紀錄較大，另外載入；載入前先用 scorecard.json 內最近的紀錄
+  try { const r = await fetch('/data/scorehist.json'); if (r.ok) { const h = await r.json(); if (h.picks && h.picks.length) { scData.picks = h.picks; renderHist(); } } } catch (e) {}
 }
 
 function renderScore() {
@@ -49,17 +53,20 @@ function renderHist() {
   const j = scData, F = { all: '全部', day: '短線', swing: '波段', long: '長線' }, RF = { all: '全部', win: '獲利', loss: '虧損', broke: '跌破支撐' };
   const val = p => p.ret ?? p.now;
   const all = j.picks.filter(p => p.entry != null && (hf === 'all' || p.cat === hf) && (hr === 'all' || (hr === 'win' ? val(p) > 0 : hr === 'loss' ? val(p) < 0 : !!p.broke)));
+  if (hs === 'old') all.reverse();
   const rows = all.slice(0, hn);
   const st = p => p.ret != null ? pc(p.ret) : p.now != null ? `${pc(p.now)}<span class="th-sub">持有中 ${p.held}/${j.hold[p.cat]} 日</span>` : '<span class="small muted">不列入統計</span>';
   $('#scoreList').innerHTML = `<div class="section-head"><h2 id="listT">歷史紀錄</h2></div>
     <div class="sort-row">${Object.entries(F).map(([k, l]) => `<button type="button" data-hf="${k}" aria-pressed="${hf === k}">${l}</button>`).join('')}</div>
     <div class="sort-row" style="margin-top:6px">${Object.entries(RF).map(([k, l]) => `<button type="button" data-hr="${k}" aria-pressed="${hr === k}">${l}</button>`).join('')}</div>
+    <div class="sort-row" style="margin-top:6px">排序：${[['old', '最早在前'], ['new', '最新在前']].map(([k, l]) => `<button type="button" data-hs="${k}" aria-pressed="${hs === k}">${l}</button>`).join('')}</div>
     ${rows.length ? `<div class="scroll"><table class="follow-t"><thead><tr><th>股票</th><th class="r">入選日</th><th class="r hide-sm">進場價</th><th class="r">報酬<span class="th-sub">扣除成本</span></th><th class="hide-sm">狀態</th></tr></thead><tbody>${rows.map(p => `<tr><td class="nm"><a href="/analysis/${esc(p.code)}"><span class="num">${esc(p.code)}</span> ${esc(p.name)}</a></td><td class="r num">${esc(p.date.replace(/-/g, '/'))}<span class="th-sub">${CAT[p.cat][0]}第 ${p.rank} 名</span></td><td class="r num hide-sm">${p.entry != null ? pxd(p.entry) : '—'}</td><td class="r">${st(p)}${p.broke ? '<span class="th-sub show-sm" style="color:var(--warn)">跌破支撐</span>' : ''}</td><td class="hide-sm">${p.broke ? '<span class="fs bad">跌破</span>' : p.entry != null ? '<span class="fs ok">守住</span>' : ''}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">沒有符合條件的紀錄。</div>'}
     ${all.length > hn ? `<button class="btn ghost" type="button" id="histMore" style="margin-top:10px;width:100%">顯示更多（共 ${fi(all.length)} 筆）</button>` : ''}
     <p class="note" style="margin:8px 0 0">最新一日入選的股票自次一交易日起列入。「持有中」為截至最新收盤的報酬，持有期滿後列入統計。「跌破」為持有期間曾以收盤價跌破入選時的支撐價位。</p>`;
   const box = $('#scoreList');
   box.querySelectorAll('[data-hf]').forEach(b => b.onclick = () => { hf = b.dataset.hf; hn = 20; renderHist(); });
   box.querySelectorAll('[data-hr]').forEach(b => b.onclick = () => { hr = b.dataset.hr; hn = 20; renderHist(); });
+  box.querySelectorAll('[data-hs]').forEach(b => b.onclick = () => { hs = b.dataset.hs; hn = 20; try { localStorage.setItem('jiegou-hsort', hs); } catch (e) {} renderHist(); });
   const m = $('#histMore'); if (m) m.onclick = () => { hn += 20; renderHist(); };
 }
 
