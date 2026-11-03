@@ -5,7 +5,7 @@ const Sync = (() => {
   const tok = () => Store.read('jiegou-token', null);
   const meta = () => Store.read('jiegou-meta', {});
   const setMeta = patch => Store.write('jiegou-meta', Object.assign(meta(), patch));
-  const local = () => ({ watch: Watch.get(), holdings: Holdings.get(), prefs: { cols: Store.read('jiegou-cols', []) || [] } });
+  const local = () => ({ watch: Watch.get(), holdings: Holdings.get(), prefs: { cols: Store.read('jiegou-cols', []) || [], mopts: Store.read('jiegou-mopts', null) } });
   const api = async (method, bodyObj) => {
     const r = await fetch('/api/member', { method, headers: Object.assign({ 'Content-Type': 'application/json' }, tok() ? { Authorization: 'Bearer ' + tok() } : {}), body: bodyObj ? JSON.stringify(bodyObj) : undefined });
     const j = await r.json().catch(() => ({ error: '伺服器回應格式錯誤。' }));
@@ -19,7 +19,7 @@ const Sync = (() => {
     return { watch: [...w.values()], holdings: [...h.values()], prefs: Object.assign({}, b.prefs || {}, a.prefs || {}) };
   }
   const changed = () => document.dispatchEvent(new CustomEvent('jiegou-data'));
-  function applyLocal(d, at) { Store.write('jiegou-watch', d.watch || []); Store.write('jiegou-hold', d.holdings || []); if (d.prefs && Array.isArray(d.prefs.cols)) Store.write('jiegou-cols', d.prefs.cols); setMeta({ updatedAt: at, syncedAt: at, uid: user }); changed(); }
+  function applyLocal(d, at) { Store.write('jiegou-watch', d.watch || []); Store.write('jiegou-hold', d.holdings || []); if (d.prefs && Array.isArray(d.prefs.cols)) Store.write('jiegou-cols', d.prefs.cols); if (d.prefs && Array.isArray(d.prefs.mopts)) Store.write('jiegou-mopts', d.prefs.mopts); setMeta({ updatedAt: at, syncedAt: at, uid: user }); changed(); }
   async function push() {
     if (!user) return; const at = meta().updatedAt || new Date().toISOString();
     await api('PUT', Object.assign(local(), { updated_at: at })); setMeta({ syncedAt: at, uid: user }); paint('已同步');

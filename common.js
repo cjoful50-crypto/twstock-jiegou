@@ -139,7 +139,7 @@ const fix2 = x => x == null ? '—' : (+x).toLocaleString('en-US', { minimumFrac
 async function marketBar(box, live) {
   const m = await getMarket(); if (!m) { box.remove(); return; }
   let lq = null, open = false;
-  const draw = () => {
+  let draw = () => {
     const px = lq ? lq.price : m.taiex, prev = lq ? lq.prev : m.taiex - m.chg, chg = px - prev, pct = prev ? chg / prev * 100 : 0, below = px < m.ma60;
     const was = box.querySelector('details'); if (was) open = was.open;
     const ins = m.inst, insTxt = ins ? `合計 <b class="num ${cls(ins.all)}">${sg(ins.all, 1)}</b> 億（外資 ${sg(ins.f, 1)}、投信 ${sg(ins.t, 1)}、自營商 ${sg(ins.d, 1)}）` : '—';
@@ -153,8 +153,12 @@ async function marketBar(box, live) {
         <div><span>成交金額</span><b class="num">${m.amount != null ? fi(m.amount) + ' 億' : '—'}</b><small>上市</small></div>
         <div class="wide"><span>三大法人買賣超</span><b>${insTxt}</b></div>
       </div>
+      ${m.series && m.series.length > 20 ? `<div class="mb-chartwrap"><div class="mb-opts">顯示：${MOPTS.map(([k, l]) => `<label><input type="checkbox" data-mopt="${k}"${mSel().includes(k) ? ' checked' : ''}>${l}</label>`).join('')}</div><div class="mb-chart"></div></div>` : ''}
       <p class="mb-note">${below ? '大盤位於季線之下時，盤後名單的歷史表現明顯較差，請審慎參考並控制部位。' : '大盤位於季線之上。盤後名單的回測期間多數處於此狀態。'}明細為 ${esc(m.date.replace(/-/g, '/'))} 收盤資料；支撐壓力依加權指數日 K 計算，計算方式與個股相同。</p></details>`;
   };
+  const drawChart = () => { const el = box.querySelector('.mb-chart'); if (el) el.innerHTML = mktChart(m, mSel());
+    box.querySelectorAll('[data-mopt]').forEach(i => i.onchange = () => { const v = new Set(mSel()); i.checked ? v.add(i.dataset.mopt) : v.delete(i.dataset.mopt); Store.write('jiegou-mopts', MOPTS.map(o => o[0]).filter(k => v.has(k))); Store.touch(); drawChart(); }); };
+  const draw0 = draw; draw = () => { draw0(); drawChart(); };
   draw();
   if (live) { const tick = async () => { try { const r = await fetch('/api/quote?codes=TAIEX'); const j = await r.json(); const q = (j.quotes || []).find(x => x.code === 'TAIEX' && x.price);
       if (q && q.date > m.date) { lq = q; lq.open = !!(j.session && j.session.open); draw(); if (lq.open) setTimeout(tick, 60000); } } catch (e) {} }; tick(); }
@@ -173,4 +177,37 @@ function chipParts(o) {
   if (o.t != null && (Math.abs(o.t) >= 2 || Math.abs(o.t5 || 0) >= 100)) inst('投信', o.t, o.t5);
   if (o.m != null && Math.abs(o.m) >= 3) it(`融資 5 日${o.m > 0 ? '增加' : '減少'} ${Math.abs(o.m).toFixed(1)}%`, -o.m); // 融資增加通常代表散戶加碼，以綠色表示
   return p;
+}
+
+/* 大盤走勢圖：近 6 個月加權指數，使用者可自選月線、季線、支撐壓力、成交金額、KD、RSI、MACD */
+const MOPTS = [['ma20', '月線'], ['ma60', '季線'], ['sr', '支撐壓力'], ['vol', '成交金額'], ['kd', 'KD'], ['rsi', 'RSI'], ['macd', 'MACD']];
+const mSel = () => { const v = Store.read('jiegou-mopts', null); return Array.isArray(v) ? v : ['ma20', 'ma60', 'sr']; };
+function mktChart(m, sel) {
+  const sm = window.innerWidth < 640, S = m.series, n = S.length, W = sm ? 400 : 800, PAD = sm ? 44 : 56, mainH = sm ? 170 : 190, subH = sm ? 56 : 70, gap = 14, has = k => sel.includes(k);
+  const subs = ['kd', 'rsi', 'macd'].filter(has), H = mainH + subs.length * (subH + gap) + 22;
+  const x = i => 4 + i * (W - PAD - 8) / (n - 1);
+  const vals = S.flatMap(r => [r[1], has('ma20') ? r[2] : null, has('ma60') ? r[3] : null]).concat(has('sr') ? [m.sup, m.res] : []).filter(v => v != null);
+  let lo = Math.min(...vals), hi = Math.max(...vals); const pad = (hi - lo) * 0.06 || 1; lo -= pad; hi += pad;
+  const y = v => 8 + (hi - v) / (hi - lo) * (mainH - 16);
+  const line = (idx, cls, yf = y, top = 0) => { let d = '', pen = false; S.forEach((r, i) => { const v = r[idx]; if (v == null) { pen = false; return; } d += (pen ? 'L' : 'M') + x(i).toFixed(1) + ' ' + (top + yf(v)).toFixed(1); pen = true; }); return `<path class="${cls}" d="${d}"/>`; };
+  let g = '';
+  // 主圖格線與價格刻度
+  for (let k = 0; k <= 3; k++) { const v = lo + (hi - lo) * k / 3, yy = y(v); g += `<line class="mc-grid" x1="0" x2="${W - PAD}" y1="${yy}" y2="${yy}"/><text class="mc-t" x="${W - PAD + 6}" y="${yy + 4}">${fi(v)}</text>`; }
+  if (has('vol')) { const mv = Math.max(...S.map(r => r[4] || 0)) || 1, bw = Math.max(1, (W - PAD - 8) / n - 1); S.forEach((r, i) => { if (!r[4]) return; const h = r[4] / mv * 46; g += `<rect class="mc-vol" x="${(x(i) - bw / 2).toFixed(1)}" y="${(mainH - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}"/>`; }); }
+  if (has('sr')) [['sup', m.sup, '支撐'], ['res', m.res, '壓力']].forEach(([c, v, l]) => { if (v == null) return; const yy = y(v); g += `<line class="mc-${c}" x1="0" x2="${W - PAD}" y1="${yy}" y2="${yy}"/><text class="mc-t mc-${c}t" x="4" y="${yy - 4}">${l} ${fi(v)}</text>`; });
+  if (has('ma60')) g += line(3, 'mc-ma60'); if (has('ma20')) g += line(2, 'mc-ma20'); g += line(1, 'mc-px');
+  let top = mainH + gap;
+  for (const k of subs) {
+    g += `<line class="mc-grid" x1="0" x2="${W - PAD}" y1="${top}" y2="${top}"/><text class="mc-t mc-lab" x="4" y="${top + 12}">${k === 'kd' ? 'KD' : k === 'rsi' ? 'RSI(14)' : 'MACD 柱'}</text>`;
+    if (k === 'macd') { const mx = Math.max(...S.map(r => Math.abs(r[8] || 0))) || 1, mid = top + subH / 2, bw = Math.max(1, (W - PAD - 8) / n - 1);
+      S.forEach((r, i) => { const v = r[8]; if (v == null) return; const h = Math.abs(v) / mx * (subH / 2 - 4); g += `<rect class="${v >= 0 ? 'mc-up' : 'mc-dn'}" x="${(x(i) - bw / 2).toFixed(1)}" y="${(v >= 0 ? mid - h : mid).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}"/>`; });
+      g += `<line class="mc-grid" x1="0" x2="${W - PAD}" y1="${mid}" y2="${mid}"/>`; }
+    else { const yf = v => 4 + (100 - v) / 100 * (subH - 8), [a, b] = k === 'kd' ? [20, 80] : [30, 70];
+      [a, b].forEach(v => { g += `<line class="mc-ref" x1="0" x2="${W - PAD}" y1="${top + yf(v)}" y2="${top + yf(v)}"/><text class="mc-t" x="${W - PAD + 6}" y="${top + yf(v) + 4}">${v}</text>`; });
+      if (k === 'kd') { g += line(5, 'mc-ma20', yf, top) + line(6, 'mc-ma60', yf, top); } else g += line(7, 'mc-ma20', yf, top); }
+    top += subH + gap; }
+  // 日期刻度
+  [0, Math.floor((n - 1) / 2), n - 1].forEach((i, j) => { g += `<text class="mc-t" x="${x(i)}" y="${H - 4}" text-anchor="${j === 0 ? 'start' : j === 2 ? 'end' : 'middle'}">${S[i][0].slice(5).replace('-', '/')}</text>`; });
+  const last = S[n - 1], leg = [['mc-px', '加權指數'], has('ma20') && ['mc-ma20', `月線 ${fi(last[2])}`], has('ma60') && ['mc-ma60', `季線 ${fi(last[3])}`], has('kd') && ['', `K ${fx(last[5], 0)}／D ${fx(last[6], 0)}`], has('rsi') && ['', `RSI ${fx(last[7], 1)}`]].filter(Boolean);
+  return `<div class="mc-leg">${leg.map(([c, l]) => `<span>${c ? `<i class="${c}"></i>` : ''}${l}</span>`).join('')}</div><svg viewBox="0 0 ${W} ${H}" class="mc" role="img" aria-label="加權指數近 6 個月走勢">${g}</svg>`;
 }

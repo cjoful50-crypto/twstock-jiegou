@@ -520,3 +520,20 @@ details.mkt-warn p{margin:6px 0 0;font-size:.85rem}
 .colset-g small{font-size:.7rem;color:var(--faint)}
 .stock-table .xcol{white-space:nowrap}
 @media (max-width:640px){.colset-g{grid-template-columns:repeat(2,minmax(0,1fr))}.colset-g label{flex-wrap:wrap;gap:2px 6px}}
+/* 大盤走勢圖 */
+.mb-chartwrap{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.mb-opts{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.78rem;color:var(--muted)}
+.mb-opts label{display:inline-flex;align-items:center;gap:4px;cursor:pointer}
+.mc-leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.75rem;color:var(--muted);margin:8px 0 2px}
+.mc-leg i{display:inline-block;width:14px;height:0;border-top:2px solid;vertical-align:middle;margin-right:4px}
+.mc{width:100%;height:auto;display:block}
+.mc path{fill:none;stroke-width:1.6}
+.mc .mc-px,.mc-leg .mc-px{stroke:var(--ink);border-color:var(--ink)}
+.mc .mc-ma20,.mc-leg .mc-ma20{stroke:var(--accent);border-color:var(--accent)}
+.mc .mc-ma60,.mc-leg .mc-ma60{stroke:var(--warn);border-color:var(--warn)}
+.mc .mc-grid{stroke:var(--line);stroke-width:1}.mc .mc-ref{stroke:var(--line);stroke-dasharray:3 3}
+.mc .mc-sup{stroke:var(--sup);stroke-dasharray:5 4;stroke-width:1.2}.mc .mc-res{stroke:var(--res);stroke-dasharray:5 4;stroke-width:1.2}
+.mc .mc-supt{fill:var(--sup)}.mc .mc-rest{fill:var(--res)}
+.mc .mc-vol{fill:var(--line)}.mc .mc-up{fill:var(--up)}.mc .mc-dn{fill:var(--down)}
+.mc .mc-t{font-size:11px;fill:var(--faint);font-family:var(--f-num)}.mc .mc-lab{fill:var(--muted)}
+@media (max-width:640px){.mc .mc-t{font-size:10px}}

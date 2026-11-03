@@ -79,18 +79,28 @@ const isoOf = d => d.toISOString().slice(0, 10);
   try {
     const OF = path.join(CACHE, 'taiex_ohlc.json'), ohlc = rd(OF) || {}, D = days[last].d;
     // 近 130 個交易日中，有缺資料的月份才重新抓取
-    const need = [...new Set(days.slice(-130).map(x => x.d).filter(d => !ohlc[d] || ohlc[d][4] == null).map(d => d.slice(0, 7)))];
+    const need = [...new Set(days.slice(-200).map(x => x.d).filter(d => !ohlc[d] || ohlc[d][4] == null).map(d => d.slice(0, 7)))];
     for (const ym of need) { const k = ym.replace('-', ''), px = await M.taiexMonth(k), amt = await M.turnoverMonth(k);
       for (const [d, v] of Object.entries(px)) ohlc[d] = [...v, amt[d] ?? null]; console.log('加權指數', ym, Object.keys(px).length); }
     wr(OF, ohlc);
-    const bars = Object.keys(ohlc).sort().filter(d => d <= D).slice(-130).map(d => { const [o, h, l, c, a] = ohlc[d]; return { d, o: o || c, h: h || c, l: l || c, c, v: a || 0 }; }).filter(b => b.c);
+    const allBars = Object.keys(ohlc).sort().filter(d => d <= D).slice(-200).map(d => { const [o, h, l, c, a] = ohlc[d]; return { d, o: o || c, h: h || c, l: l || c, c, v: a || 0 }; }).filter(b => b.c), bars = allBars.slice(-130);
     if (bars.length >= 60 && bars.at(-1).d === D) {
       const C = bars.map(b => b.c), avg = n => C.slice(-n).reduce((a, b) => a + b, 0) / n, c = C.at(-1), p = C.at(-2), ma20 = avg(20), ma60 = avg(60);
       let sup = null, res = null; try { const a = require('../engine.js').analyze({ code: 'TAIEX', bars }); sup = a.st.sup[0] ? a.st.sup[0].level : null; res = a.st.res[0] ? a.st.res[0].level : null; } catch (e) { console.log('大盤支撐壓力計算失敗', e.message); }
       let up = 0, dn = 0, fl = 0; const prev = days[last - 1].q;
       for (const [code, b] of Object.entries(days[last].q)) { if ((names[code] || [])[1] !== '上市' || !prev[code] || !prev[code][3]) continue; const r = (rawDays[last].q[code] || b)[3], q = (rawDays[last - 1].q[code] || prev[code])[3]; if (r > q) up++; else if (r < q) dn++; else fl++; }
       const ins = await M.instTotal(D).catch(() => null);
-      wr(path.join(DATA, 'market.json'), { date: D, taiex: c, chg: +(c - p).toFixed(2), chgPct: +((c / p - 1) * 100).toFixed(2), ma20: Math.round(ma20), ma60: Math.round(ma60), below20: c < ma20, below60: c < ma60, dist60: +((c / ma60 - 1) * 100).toFixed(1), sup, res, up, down: dn, flat: fl, amount: bars.at(-1).v || null, inst: ins });
+      wr(path.join(DATA, 'market.json'), { date: D, taiex: c, chg: +(c - p).toFixed(2), chgPct: +((c / p - 1) * 100).toFixed(2), ma20: Math.round(ma20), ma60: Math.round(ma60), below20: c < ma20, below60: c < ma60, dist60: +((c / ma60 - 1) * 100).toFixed(1), sup, res, up, down: dn, flat: fl, amount: bars.at(-1).v || null, inst: ins, series: (() => {
+        // 圖表用：近 6 個月 [日期, 收盤, 月線, 季線, 成交金額(億), K, D, RSI14, MACD 柱]
+        const B = allBars, C = B.map(b => b.c), n = C.length, out = [], ema = (v, m) => { const k = 2 / (m + 1); let e = v[0]; return v.map(x => (e = x * k + e * (1 - k))); };
+        const e12 = ema(C, 12), e26 = ema(C, 26), dif = C.map((x, i) => e12[i] - e26[i]), dea = ema(dif, 9);
+        let k = 50, dd = 50, ag = 0, al = 0; const K = [], DD = [], RS = [];
+        for (let i = 0; i < n; i++) { if (i >= 8) { const hi = Math.max(...B.slice(i - 8, i + 1).map(b => b.h)), lo = Math.min(...B.slice(i - 8, i + 1).map(b => b.l)), rsv = hi > lo ? (C[i] - lo) / (hi - lo) * 100 : 50; k = k * 2 / 3 + rsv / 3; dd = dd * 2 / 3 + k / 3; }
+          if (i) { const ch = C[i] - C[i - 1], g = Math.max(ch, 0), l = Math.max(-ch, 0); if (i <= 14) { ag += g / 14; al += l / 14; } else { ag = (ag * 13 + g) / 14; al = (al * 13 + l) / 14; } }
+          K.push(k); DD.push(dd); RS.push(al ? 100 - 100 / (1 + ag / al) : 100); }
+        const ma = (i, m) => i >= m - 1 ? C.slice(i - m + 1, i + 1).reduce((a, b) => a + b, 0) / m : null, r = x => x == null ? null : Math.round(x * 10) / 10;
+        for (let i = Math.max(0, n - 126); i < n; i++) out.push([B[i].d, C[i], r(ma(i, 20)), r(ma(i, 60)), B[i].v || null, r(K[i]), r(DD[i]), r(RS[i]), r(dif[i] - dea[i])]);
+        return out; })() });
       console.log('大盤', D, c, '季線', Math.round(ma60), '支撐', sup, '壓力', res, '漲跌家數', up, dn, '法人', JSON.stringify(ins));
     } else console.log('大盤日K不足', bars.length);
   } catch (e) { console.log('::warning::大盤資料失敗 ' + e.message); }
