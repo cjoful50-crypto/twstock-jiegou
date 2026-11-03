@@ -79,7 +79,7 @@ async function revenue() {
 /* 加權指數每月日資料：{ 'YYYY-MM-DD': [開, 高, 低, 收] }（ym 為 'YYYYMM'） */
 const roc2iso = t => { const m = String(t).trim().match(/^(\d{2,3})\/(\d{2})\/(\d{2})$/); return m ? `${+m[1] + 1911}-${m[2]}-${m[3]}` : null; };
 async function taiexMonth(ym) {
-  const out = {}, j = await twse(`/indicesReport/MI_5MINS_HIST?date=${ym}01&response=json`);
+  const out = {}, j = await get(`https://www.twse.com.tw/indicesReport/MI_5MINS_HIST?response=json&date=${ym}01`, 1200); // rwd 路徑不提供此報表
   for (const r of (j && j.data) || []) { const d = roc2iso(r[0]); if (d) out[d] = [num(r[1]), num(r[2]), num(r[3]), num(r[4])]; }
   return out;
 }
