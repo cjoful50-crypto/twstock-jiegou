@@ -438,3 +438,30 @@ details.mkt-warn p{margin:6px 0 0;font-size:.85rem}
 .tg.muted{background:var(--sunk);color:var(--muted)}
 @media (max-width:640px){.mhead,.mrow>summary{grid-template-columns:1.5fr 1fr 1fr 1fr;padding:8px 4px;font-size:.85rem}.mhead .hide-sm,.mrow>summary .hide-sm{display:none}}
 @media (max-width:640px){.mhead{font-size:.72rem}}
+/* 排版整理 2026/11 */
+.card-head{display:flex;justify-content:space-between;align-items:baseline;gap:6px 12px;flex-wrap:wrap}
+.nowrap{white-space:nowrap}
+.rank-more{padding:0;list-style:none;counter-reset:rk 3}
+.rank-more li{counter-increment:rk}
+.rank-more .pick-row{grid-template-columns:20px auto minmax(0,1fr) auto;padding:6px 12px}
+.rank-more .pick-row::before{content:counter(rk);font-family:var(--f-num);font-size:.75rem;color:var(--faint)}
+.frows{display:grid;gap:6px;margin-top:10px}
+.frow{display:grid;grid-template-columns:3em minmax(0,1fr);align-items:center;font-size:.8rem;color:var(--muted)}
+.frow>div{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}.frow>div::-webkit-scrollbar{display:none}
+.frow button{flex:0 0 auto;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:8px;padding:4px 12px;font:inherit;font-size:.8rem;cursor:pointer}
+.frow button[aria-pressed="true"]{color:var(--ink);border-color:var(--ink);font-weight:600}
+.mline{display:grid;grid-template-columns:1.6fr 1fr 1fr .7fr 1.1fr;gap:8px;align-items:center;padding:8px;font-size:.9rem;border-bottom:1px solid var(--line)}
+.mline .r{text-align:right}.mline .th-sub{display:block;font-size:.7rem;color:var(--faint)}
+.mline .wide{grid-column:2/-1}
+.mlist+.mlist{margin-top:16px}
+.mhead .mk,.mrow .mk{padding-left:12px}
+.mrow .fs{font-size:.72rem}
+@media (max-width:640px){
+  .mline{grid-template-columns:1.5fr 1fr 1fr 1fr;padding:8px 4px;font-size:.85rem}.mline .hide-sm{display:none}
+  .mhead .mk,.mrow .mk{padding-left:4px}
+  .card-head h2{width:100%}
+}
+@media (max-width:480px){
+  .nav-links{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;overflow:visible}
+  .nav-links a{text-align:center;padding:6px 4px;font-size:.84rem}
+}

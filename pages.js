@@ -80,7 +80,7 @@ function bindFollow(sc) { const box = $('#follow'); if (!box) return; const d = 
 let pickTab = 'day';
 async function loadPicks(date) {
   const box = $('#picks'); if (!box) return;
-  box.innerHTML = `<h2 id="picksTitle">盤後篩選名單</h2><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">名單載入中…</span></div>`;
+  box.innerHTML = `<h2 id="picksTitle">篩選結果</h2><div class="loading" style="margin-top:10px"><div class="dots"><span></span><span></span><span></span></div><span class="small muted">名單載入中…</span></div>`;
   try {
     const j = await getPicks(date); const idx = await getIndex();
     const sc = await fetch('/data/scorecard.json').then(r => r.ok ? r.json() : null).catch(() => null);
@@ -93,7 +93,7 @@ async function loadPicks(date) {
       <div class="top1"><span><span class="code num" style="color:var(--accent)">${esc(x.code)}</span> <span class="nm">${esc(x.name)}</span>${secTag(x.code)}</span><span class="num ${cls(x.chg)}">${pxd(x.close)} ${sg(x.chg)}%</span></div>
       <div class="why1">${esc(keyWhy(x, cat))}</div>
       <div class="lv num"><span>支撐 <b style="color:var(--sup)">${x.sup != null ? pxd(x.sup) : '—'}</b></span><span>壓力 <b style="color:var(--res)">${x.res != null ? pxd(x.res) : '—'}</b></span></div></button>`).join('') + moreRows(list.slice(3), 'close') : '<div class="empty">本日無符合條件的股票。</div>'}</div>`;
-    box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h2 id="picksTitle">盤後篩選名單</h2><span class="small muted num">${idx && idx.dates.length > 1 ? `<label for="pickDate">查看日期 </label><select id="pickDate">${idx.dates.slice().reverse().map(d => `<option value="${d}"${d.replace(/-/g, '/') === j.date ? ' selected' : ''}>${d.replace(/-/g, '/')}</option>`).join('')}</select>　` : esc(j.date) + ' 收盤・'}掃描 ${j.universe} 檔上市櫃股票</span></div>
+    box.innerHTML = `<div class="card-head"><h2 id="picksTitle">篩選結果</h2><span class="small muted num">${idx && idx.dates.length > 1 ? `<label for="pickDate">查看日期 </label><select id="pickDate">${idx.dates.slice().reverse().map(d => `<option value="${d}"${d.replace(/-/g, '/') === j.date ? ' selected' : ''}>${d.replace(/-/g, '/')}</option>`).join('')}</select>` : esc(j.date) + ' 收盤'}<span class="nowrap">　篩選範圍 ${fi(j.universe)} 檔</span></span></div>
       ${mktBanner(j)}
       <details class="howto-d"><summary>名單說明</summary><div class="howto">
         <div><b>內容</b><span>每個交易日收盤後，依固定規則從上市櫃股票中篩選，分為短線（約 1 週）、波段（約 1 個月）、長線（約 3 個月）三類，每類列出前 10 名。規則以 2025 年起的歷史資料回測選出，同一檔股票可能同時出現在多類名單。</span></div>
@@ -101,7 +101,7 @@ async function loadPicks(date) {
         <div><b>注意事項</b><span>入選代表該股在收盤時符合篩選條件，並非對未來漲跌的預測，也不構成買賣建議。回測期間以多頭行情為主，行情轉弱時表現可能明顯變差。</span></div>
       </div></details>
       <div class="ptabs" role="tablist">${[['day', '短線'], ['swing', '波段'], ['long', '長線']].map(([k, l]) => `<button type="button" data-ptab="${k}" aria-pressed="${k === pickTab}">${l}</button>`).join('')}</div>
-      <div class="picks-grid" data-tab="${pickTab}">${col('短線觀察', '持有約 1 週', j.day, j.counts.day, 'day')}${col('波段觀察', '持有約 1 個月', j.swing, j.counts.swing, 'swing')}${col('長線觀察', '持有約 3 個月', j.long, j.counts.long, 'long')}</div>
+      <div class="picks-grid" data-tab="${pickTab}">${col('短線觀察', '持有 5 個交易日', j.day, j.counts.day, 'day')}${col('波段觀察', '持有 20 個交易日', j.swing, j.counts.swing, 'swing')}${col('長線觀察', '持有 60 個交易日', j.long, j.counts.long, 'long')}</div>
       <div id="follow">${followHtml(sc, pickTab)}</div>
       <details class="rules"><summary>篩選條件</summary>
         <p>共同條件：上市櫃普通股，近 20 日平均每日成交值 10 億元以上，三大法人近 5 個交易日中多數交易日為合計買超。</p>
@@ -117,7 +117,7 @@ async function loadPicks(date) {
     box.querySelectorAll('[data-ptab]').forEach(b => b.onclick = () => { pickTab = b.dataset.ptab; box.querySelector('.picks-grid').dataset.tab = pickTab; box.querySelectorAll('[data-ptab]').forEach(x => x.setAttribute('aria-pressed', x === b)); const f = $('#follow'); if (f) { f.innerHTML = followHtml(sc, pickTab); bindFollow(sc); } });
     if (j.longNote) { const lc = box.querySelectorAll('.pcol')[2]; if (lc) lc.insertAdjacentHTML('beforeend', `<p class="note">${esc(j.longNote)}</p>`); }
   } catch (e) {
-    box.innerHTML = `<h2 id="picksTitle">盤後篩選名單</h2><p class="err">${esc(e.message)}</p><button class="btn ghost" type="button" id="retryPicks">再試一次</button>`;
+    box.innerHTML = `<h2 id="picksTitle">篩選結果</h2><p class="err">${esc(e.message)}</p><button class="btn ghost" type="button" id="retryPicks">再試一次</button>`;
     $('#retryPicks').onclick = loadPicks;
   }
 }
