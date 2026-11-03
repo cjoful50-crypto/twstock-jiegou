@@ -482,3 +482,25 @@ details.mkt-warn p{margin:6px 0 0;font-size:.85rem}
 @media (max-width:640px){.mbar{padding:10px 12px}.mb-detail{grid-template-columns:repeat(2,minmax(0,1fr))}.mbar>summary{gap:4px}}
 .mb-detail b .up{color:var(--up);font-size:inherit}.mb-detail b .down{color:var(--down);font-size:inherit}.mb-detail b span{font-size:inherit}
 .chip-line{margin-top:8px;line-height:1.7}.chip-line .up{color:var(--up)}.chip-line .down{color:var(--down)}.td-note .up{color:var(--up)}.td-note .down{color:var(--down)}
+/* 個股頁狀態列 */
+.stat-rows{display:grid;margin-top:12px;border-top:1px solid var(--line);max-width:640px}
+.srow{all:unset;box-sizing:border-box;cursor:pointer;display:grid;grid-template-columns:3em minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 6px;border-bottom:1px solid var(--line);font-size:.9rem}
+.srow:hover{background:var(--sunk)}.srow:focus-visible{outline:2px solid var(--accent)}
+.srow[hidden]{display:none}
+.srow .sl{font-size:.78rem;color:var(--muted)}
+.srow .sv{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;min-width:0}
+.srow .sv small{font-size:.75rem;color:var(--faint);margin-left:2px}.srow .sep{color:var(--faint);margin:0 2px}
+.srow .go{color:var(--faint);font-size:1.1rem}
+.srow .chip-line{margin:0;line-height:1.5}
+#mktBox{padding:8px 0}#mktBox .mbar{margin:0}
+.gauge svg{width:120px;height:120px}
+@media (max-width:720px){.hero .gauge{display:none}.stat-rows{max-width:none}}
+.srow .sv .nowrap+.nowrap{margin-left:6px}
+.srow .chip-line .dot{color:var(--faint)}
+@media (max-width:720px){
+  .hero .name{font-size:1.4rem}
+  .hero .id{gap:6px 8px}.hero .watch-btn{font-size:.75rem;padding:4px 10px}
+  .price .px{font-size:2.1rem}
+  .srow .sv .nowrap{display:block;margin-left:0!important}
+  .srow .chip-line .dot{display:none}.srow .chip-line>span:not(.dot){display:block}
+}

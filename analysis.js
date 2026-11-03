@@ -131,18 +131,23 @@ function render(s) {
         <div class="id"><span class="code">${esc(s.code)}</span><span class="name">${esc(s.name || '')}</span>${secTag(s.code)}<button class="watch-btn" type="button" id="watchBtn" aria-pressed="${Watch.has(s.code)}">${Watch.has(s.code) ? '★ 已加入我的選股' : '☆ 加入我的選股'}</button><button class="watch-btn share-btn" type="button" id="shareBtn" title="分享這檔股票的分析頁">分享</button></div>
         ${s.live ? `<div class="live-badge"><span class="dot${s.live.open ? ' on' : ''}"></span>${s.live.open ? '盤中即時' : '今日收盤'} ${esc(s.live.time || '')}<span class="muted">・價格約延遲數秒；法人與籌碼為前一交易日資料</span></div>` : `<div class="small muted">資料更新至 ${esc(t.d.replace(/-/g, '/'))} 收盤</div>`}
         <div class="price"><span class="px num">${pxd(c)}</span><span class="ch num ${cls(ind.chg)}">${sg(ind.chg)}（${sg(ind.chgPct)}%）</span></div>
-        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="small muted">走勢</span><span class="pill ${trendCls(a.trendLabel)}">${a.trendLabel}</span><span id="mktTag"></span></div>
-        <div class="chip-line small" id="chipLine"></div>
+        <div class="stat-rows">
+          <button type="button" class="srow" data-go="secMap"><span class="sl">價位</span><span class="sv num"><span class="nowrap">支撐 <b style="color:var(--sup)">${S1 ? pxd(S1.level) : '—'}</b>${S1 ? `<small>（${sg((S1.level / c - 1) * 100, 1)}%）</small>` : ''}</span><span class="nowrap">壓力 <b style="color:var(--res)">${R1 ? pxd(R1.level) : a.st.limitRef ? pxd(a.st.limitRef) : '—'}</b>${R1 ? `<small>（${sg((R1.level / c - 1) * 100, 1)}%）</small>` : a.st.limitRef ? '<small>（漲停參考）</small>' : ''}</span></span><span class="go">›</span></button>
+          <button type="button" class="srow" data-go="secScore"><span class="sl">走勢</span><span class="sv"><span class="pill ${trendCls(a.trendLabel)}">${a.trendLabel}</span><span class="small muted num">強度分數 ${a.index}</span></span><span class="go">›</span></button>
+          <button type="button" class="srow" data-go="mkt" id="mktRow" hidden><span class="sl">大盤</span><span class="sv" id="mktTag"></span><span class="go">›</span></button>
+          <div id="mktBox" hidden></div>
+          <button type="button" class="srow" data-go="tdccCard" id="chipRow" hidden><span class="sl">籌碼</span><span class="sv chip-line" id="chipLine"></span><span class="go">›</span></button>
+        </div>
         <div class="my-hold" id="myHold"></div><div id="pickHist"></div>
       </div>
-      <div class="gauge">${ring(a.index)}<div style="display:grid;gap:6px;justify-items:center"><span class="pill ${legacyCls(a.legacy)}">綜合評等：${a.legacy}</span><span class="small muted num" style="text-align:center">五面向平均 ${fx(a.raw, 1)}${a.pen.length ? `<br>風險扣分 ${a.pen.reduce((x, y) => x + y.pts, 0)} → 強度分數 ${a.index}` : ''}</span></div></div>
+      <div class="gauge" id="secScore">${ring(a.index)}<div style="display:grid;gap:6px;justify-items:center"><span class="pill ${legacyCls(a.legacy)}">綜合評等：${a.legacy}</span><span class="small muted num" style="text-align:center">五面向平均 ${fx(a.raw, 1)}${a.pen.length ? `<br>風險扣分 ${a.pen.reduce((x, y) => x + y.pts, 0)} → 強度分數 ${a.index}` : ''}</span></div></div>
     </div>
-    <p class="note" style="margin:14px 0 0"><b>走勢</b>依強度分數分為強勢、觀察、偏弱、風險四級；<b>綜合評等</b>為下列五個面向分數的平均；<b>強度分數</b>為綜合評等扣除風險因素（如接近強壓力、均線動能轉弱、短線過熱、量增收黑）後的分數，範圍 0～100，分數越高代表目前整體條件越強，但並非漲跌預測；歷史資料顯示其與後續漲跌的關聯性有限（詳見盤後名單頁「歷史成績」）。</p>
+    <details class="howto-d"><summary>指標說明</summary><p class="note" style="margin:8px 0 0"><b>價位</b>為現價下方最近的支撐與上方最近的壓力，括號為與現價的距離，點選可查看價位地圖。<b>走勢</b>依強度分數分為強勢、觀察、偏弱、風險四級；<b>綜合評等</b>為下列五個面向分數的平均；<b>強度分數</b>為綜合評等扣除風險因素（如接近強壓力、均線動能轉弱、短線過熱、量增收黑）後的分數，範圍 0～100，分數越高代表目前整體條件越強，但並非漲跌預測；歷史資料顯示其與後續漲跌的關聯性有限（詳見盤後名單頁「歷史成績」）。<b>大盤</b>為加權指數相對季線的位置。<b>籌碼</b>整理千張大戶、外資、投信與融資的變化。</p></details>
     <div class="dims">${dimsHtml}</div>
     <div class="dates num"><span>行情：${esc(d.price || t.d)}</span>${d.inst ? `<span>法人：${esc(d.inst)}</span>` : ''}${d.chip ? `<span>籌碼：${esc(d.chip)}</span>` : ''}${d.val ? `<span>基本面：${esc(d.val)}</span>` : ''}${d.rev ? `<span>營收：${esc(d.rev)}</span>` : ''}</div>
   </section>
 
-  <section class="card">
+  <section class="card" id="secMap">
     <h2>價位地圖</h2><p class="small muted" style="margin:4px 0 0">現價上下方的支撐與壓力、距離，以及股價在近 20 日區間的位置。</p>
     <div class="map" style="margin-top:12px">
       <div class="ladder">${ladder(a)}</div>
@@ -236,8 +241,14 @@ function render(s) {
     (tdSumP || (tdSumP = Promise.all([fetch('/data/tdcc/summary.json'), fetch('/data/chip.json')].map(p => p.then(r => r.ok ? r.json() : null).catch(() => null))))).then(([T, CHp]) => { const el = $('#chipLine'); if (!el) return;
       const c = CHp && CHp.s && CHp.date === (I.at(-1) || {}).d ? CHp.s[s.code] : null;
       const parts = chipParts({ td: T && T.s && T.s[s.code], f: c ? c[0] : I.length ? chipStreak(f) : null, f5: c ? c[1] : sum5(f), t: c ? c[2] : I.length ? chipStreak(t) : null, t5: c ? c[3] : sum5(t), m: fl && fl.chip ? fl.chip.marginChg : null });
-      el.innerHTML = parts.length ? `<span class="muted">籌碼動向</span>　${parts.join('・')}` : ''; }); }
-  getMarket().then(m => { const el = $('#mktTag'); if (m && el) el.innerHTML = `<span class="small muted" style="margin-left:6px">大盤</span> <span class="pill ${m.below60 ? 'bear' : 'flat'}" title="加權指數 ${fix2(m.taiex)}，季線 ${fi(m.ma60)}（${esc(m.date.replace(/-/g, '/'))}）">${m.below60 ? '季線之下' : '季線之上'}</span>`; });
+      if (parts.length) { el.innerHTML = parts.join('<span class="dot">・</span>'); $('#chipRow').hidden = false; } }); }
+  getMarket().then(m => { const el = $('#mktTag'), row = $('#mktRow'); if (!m || !el) return; row.hidden = false;
+    el.innerHTML = `<span class="pill ${m.below60 ? 'bear' : 'flat'}">${m.below60 ? '季線之下' : '季線之上'}</span><span class="small muted num">加權 ${fix2(m.taiex)} <span class="${cls(m.chg)}">${sg(m.chgPct)}%</span></span>`; });
+  // 狀態列：點選跳到對應區塊；大盤則在下方展開與其他頁相同的大盤明細
+  document.querySelectorAll('.srow[data-go]').forEach(b => b.onclick = () => { const g = b.dataset.go;
+    if (g === 'mkt') { const box = $('#mktBox'); box.hidden = !box.hidden; if (!box.hidden && !box.innerHTML) { box.innerHTML = '<div></div>'; marketBar(box.firstChild).then(() => { const d = box.querySelector('details'); if (d) d.open = true; }); } return; }
+    if (g === 'secScore') { const dd = $('#app .howto-d'); if (dd) { dd.open = true; dd.scrollIntoView({ behavior: 'smooth', block: 'center' }); } return; }
+    const el = document.getElementById(g); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   const sb = $('#shareBtn'); if (sb) sb.onclick = async () => { const url = location.origin + '/analysis/' + encodeURIComponent(s.code), title = `${s.code} ${s.name || ''} 支撐壓力分析｜盤後結構室`;
     if (navigator.share) { try { await navigator.share({ title, url }); } catch (e) {} return; }
     try { await navigator.clipboard.writeText(url); sb.textContent = '已複製連結'; } catch (e) { prompt('複製這個連結', url); } setTimeout(() => { sb.textContent = '分享'; }, 2000); };
