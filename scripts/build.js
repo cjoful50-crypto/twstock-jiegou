@@ -129,6 +129,7 @@ const isoOf = d => d.toISOString().slice(0, 10);
     if (tx.length >= 55 && taiex[x.d]) weakDay[x.d] = taiex[x.d] < tx.reduce((a, b) => a + b, 0) / tx.length; });
   const regime = {}; for (const cat of ['day', 'swing', 'long']) { const rows = picks.filter(p => p.cat === cat && p.rank <= 3 && p.date in weakDay);
     regime[cat] = { up: stat(rows.filter(p => !weakDay[p.date])), down: stat(rows.filter(p => weakDay[p.date])) }; }
+  picks.forEach(p => { if (weakDay[p.date]) p.weak = 1; });
   // 完整歷史紀錄另存一檔，只在「歷史成績」分頁載入
   wr(path.join(DATA, 'scorehist.json'), { through: days[last].d, hold: HOLD, picks: picks.slice().reverse() });
   wr(path.join(DATA, 'scorecard.json'), { updated: new Date().toISOString(), through: days[last].d, cost: COST, hold: HOLD, summary, summaryAll, regime, picks: picks.slice(-3000).reverse() });

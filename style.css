@@ -429,3 +429,12 @@ details.mkt-warn p{margin:6px 0 0;font-size:.85rem}
 .sc-more>summary{font-size:.82rem;color:var(--accent)}
 #scoreStat details>summary h2{font-size:1.05rem}
 .show-sm{display:none!important}@media (max-width:640px){.follow-t .show-sm{display:block!important}}
+.mlist{margin-top:12px;border-top:1px solid var(--line)}
+.mhead,.mrow>summary{display:grid;grid-template-columns:1.6fr 1fr 1fr .7fr 1.1fr;gap:8px;align-items:center;padding:8px;font-size:.9rem}
+.mhead{font-size:.78rem;color:var(--muted);border-bottom:1px solid var(--line)}
+.mrow{border-bottom:1px solid var(--line)}.mrow>summary:hover{background:var(--sunk)}
+.mrow[open]>summary{background:var(--sunk)}.mrow>.scroll{padding:0 4px 10px}
+.mhead .r,.mrow>summary .r{text-align:right}.mrow .th-sub{display:block;font-size:.7rem;color:var(--faint)}
+.tg.muted{background:var(--sunk);color:var(--muted)}
+@media (max-width:640px){.mhead,.mrow>summary{grid-template-columns:1.5fr 1fr 1fr 1fr;padding:8px 4px;font-size:.85rem}.mhead .hide-sm,.mrow>summary .hide-sm{display:none}}
+@media (max-width:640px){.mhead{font-size:.72rem}}

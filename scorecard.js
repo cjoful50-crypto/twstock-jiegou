@@ -2,8 +2,8 @@
 const CAT = { day: ['短線', '持有 5 個交易日'], swing: ['波段', '持有 20 個交易日'], long: ['長線', '持有 60 個交易日'] };
 const pc = v => v == null ? '—' : `<span class="num ${cls(v)}">${sg(v)}%</span>`;
 let scTab = 'day', hf = 'all', hr = 'all', hn = 20, scData = null;
-// 歷史紀錄排序：預設最早在前，選擇會記在這台裝置
-let hs = (() => { try { return localStorage.getItem('jiegou-hsort') || 'old'; } catch (e) { return 'old'; } })();
+// 歷史紀錄排序：預設最新在前，選擇會記在這台裝置
+let hs = (() => { try { return localStorage.getItem('jiegou-hsort') || 'new'; } catch (e) { return 'new'; } })();
 
 /* 分頁切換：今日名單／歷史成績，網址加上 #score 時直接開啟歷史成績 */
 function showPage(tab) {
@@ -44,30 +44,47 @@ function renderScore() {
     <details class="howto-d"><summary>計算方式</summary><div class="howto">
       <div><b>報酬計算</b><span>入選次一交易日以開盤價買進，持有期滿（短線 5 日、波段 20 日、長線 60 個交易日）以收盤價賣出，扣除手續費與證交稅約 ${j.cost}%。勝率為扣除成本後獲利的比例。</span></div>
       <div><b>比較基準</b><span>「同期全市場」為同一天買進全市場股票（日均成交值 2 億元以上）、持有相同天數的平均報酬，同樣扣除成本。「相對全市場」為名單平均報酬減去全市場平均，大於 0 代表名單表現較佳。</span></div>
-      <div><b>資料說明</b><span>2026 年 10 月以前為依目前規則回推的歷史結果，之後為每日實際產生的名單。價格已還原除權息，包含現金股利與配股。過去表現不代表未來結果。</span></div>
+      <div><b>資料說明</b><span>2026 年 10 月以前為依目前規則回推的回測結果，2026 年 11 月起為每日實際發布的名單。價格已還原除權息，包含現金股利與配股。過去表現不代表未來結果。</span></div>
     </div></details>`;
   $('#score').querySelectorAll('[data-sctab]').forEach(b => b.onclick = () => { scTab = b.dataset.sctab; renderScore(); });
 }
 
+// 2026/11 起為每日實際發布的名單，之前為依目前規則回推的回測結果
+const LIVE_FROM = '2026-11-01';
+const PER = [[1, '近 1 個月'], [3, '近 3 個月'], [6, '近 6 個月'], [0, '全部']];
+let hp = 3, hk = 'top', openM = new Set(), fullM = new Set();
 function renderHist() {
-  const j = scData, F = { all: '全部', day: '短線', swing: '波段', long: '長線' }, RF = { all: '全部', win: '獲利', loss: '虧損', broke: '跌破支撐' };
-  const val = p => p.ret ?? p.now;
-  const all = j.picks.filter(p => p.entry != null && (hf === 'all' || p.cat === hf) && (hr === 'all' || (hr === 'win' ? val(p) > 0 : hr === 'loss' ? val(p) < 0 : !!p.broke)));
-  if (hs === 'old') all.reverse();
-  const rows = all.slice(0, hn);
-  const st = p => p.ret != null ? pc(p.ret) : p.now != null ? `${pc(p.now)}<span class="th-sub">持有中 ${p.held}/${j.hold[p.cat]} 日</span>` : '<span class="small muted">不列入統計</span>';
+  const j = scData, F = { all: '全部', day: '短線', swing: '波段', long: '長線' };
+  const latest = j.picks.reduce((m, p) => p.date > m ? p.date : m, '');
+  const cut = hp ? (() => { const d = new Date(latest.slice(0, 7) + '-01T00:00:00Z'); d.setUTCMonth(d.getUTCMonth() - hp + 1); return d.toISOString().slice(0, 7); })() : '';
+  const rows = j.picks.filter(p => p.entry != null && (hf === 'all' || p.cat === hf) && (hk === 'all' || p.rank <= 3) && p.date.slice(0, 7) >= cut);
+  // 依月份彙總：已持有期滿的紀錄列入統計，未滿的另計「持有中」
+  const by = new Map(); rows.forEach(p => { const m = p.date.slice(0, 7); if (!by.has(m)) by.set(m, []); by.get(m).push(p); });
+  let months = [...by.keys()].sort(); if (hs === 'new') months.reverse();
+  const sum = list => { const d = list.filter(p => p.ret != null), b = d.filter(p => p.bench != null), on = list.filter(p => p.ret == null && p.now != null);
+    const avg = d.length ? d.reduce((a, p) => a + p.ret, 0) / d.length : null, bAvg = b.length ? b.reduce((a, p) => a + p.bench, 0) / b.length : null;
+    const days = new Set(list.map(p => p.date)), weak = new Set(list.filter(p => p.weak).map(p => p.date));
+    return { n: d.length, on: on.length, onAvg: on.length ? on.reduce((a, p) => a + p.now, 0) / on.length : null, avg, ex: avg != null && bAvg != null ? avg - bAvg : null, win: d.length ? Math.round(d.filter(p => p.ret > 0).length / d.length * 100) : null, weak: weak.size, days: days.size }; };
+  const mkt = s => s.weak === 0 ? '<span class="small muted">季線之上</span>' : s.weak === s.days ? '<span class="fs bad">季線之下</span>' : `<span class="fs wait">季線下 ${s.weak} 日</span>`;
+  const st = p => p.ret != null ? pc(p.ret) : `${pc(p.now)}<span class="th-sub">持有中 ${p.held}/${j.hold[p.cat]} 日</span>`;
+  const trades = list => `<div class="scroll"><table class="follow-t"><thead><tr><th>股票</th><th class="r">入選日</th><th class="r hide-sm">進場價</th><th class="r">報酬<span class="th-sub">扣除成本</span></th><th class="hide-sm">狀態</th></tr></thead><tbody>${list.map(p => `<tr><td class="nm"><a href="/analysis/${esc(p.code)}"><span class="num">${esc(p.code)}</span> ${esc(p.name)}</a></td><td class="r num">${esc(p.date.slice(5).replace('-', '/'))}<span class="th-sub">${CAT[p.cat][0]}第 ${p.rank} 名</span></td><td class="r num hide-sm">${pxd(p.entry)}</td><td class="r">${st(p)}${p.broke ? '<span class="th-sub show-sm" style="color:var(--warn)">跌破支撐</span>' : ''}</td><td class="hide-sm">${p.broke ? '<span class="fs bad">跌破</span>' : '<span class="fs ok">守住</span>'}</td></tr>`).join('')}</tbody></table></div>`;
+  const live = rows.filter(p => p.date >= LIVE_FROM), back = rows.filter(p => p.date < LIVE_FROM), sl = sum(live), sb = sum(back);
+  const line = (lab, s) => s.n || s.on ? `<tr><td>${lab}</td><td class="r">${s.n ? pc(s.avg) : s.on ? `${pc(s.onAvg)}<span class="th-sub">持有中</span>` : '—'}</td><td class="r">${pc(s.ex)}</td><td class="r num hide-sm">${s.win != null ? s.win + '%' : '—'}</td><td class="r num hide-sm">${fi(s.n)}${s.on ? `<span class="th-sub">持有中 ${s.on}</span>` : ''}</td></tr>` : '';
   $('#scoreList').innerHTML = `<div class="section-head"><h2 id="listT">歷史紀錄</h2></div>
-    <div class="sort-row">${Object.entries(F).map(([k, l]) => `<button type="button" data-hf="${k}" aria-pressed="${hf === k}">${l}</button>`).join('')}</div>
-    <div class="sort-row" style="margin-top:6px">${Object.entries(RF).map(([k, l]) => `<button type="button" data-hr="${k}" aria-pressed="${hr === k}">${l}</button>`).join('')}</div>
-    <div class="sort-row" style="margin-top:6px">排序：${[['old', '最早在前'], ['new', '最新在前']].map(([k, l]) => `<button type="button" data-hs="${k}" aria-pressed="${hs === k}">${l}</button>`).join('')}</div>
-    ${rows.length ? `<div class="scroll"><table class="follow-t"><thead><tr><th>股票</th><th class="r">入選日</th><th class="r hide-sm">進場價</th><th class="r">報酬<span class="th-sub">扣除成本</span></th><th class="hide-sm">狀態</th></tr></thead><tbody>${rows.map(p => `<tr><td class="nm"><a href="/analysis/${esc(p.code)}"><span class="num">${esc(p.code)}</span> ${esc(p.name)}</a></td><td class="r num">${esc(p.date.replace(/-/g, '/'))}<span class="th-sub">${CAT[p.cat][0]}第 ${p.rank} 名</span></td><td class="r num hide-sm">${p.entry != null ? pxd(p.entry) : '—'}</td><td class="r">${st(p)}${p.broke ? '<span class="th-sub show-sm" style="color:var(--warn)">跌破支撐</span>' : ''}</td><td class="hide-sm">${p.broke ? '<span class="fs bad">跌破</span>' : p.entry != null ? '<span class="fs ok">守住</span>' : ''}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">沒有符合條件的紀錄。</div>'}
-    ${all.length > hn ? `<button class="btn ghost" type="button" id="histMore" style="margin-top:10px;width:100%">顯示更多（共 ${fi(all.length)} 筆）</button>` : ''}
-    <p class="note" style="margin:8px 0 0">最新一日入選的股票自次一交易日起列入。「持有中」為截至最新收盤的報酬，持有期滿後列入統計。「跌破」為持有期間曾以收盤價跌破入選時的支撐價位。</p>`;
+    <div class="sort-row">期間：${PER.map(([k, l]) => `<button type="button" data-hp="${k}" aria-pressed="${hp === +k}">${l}</button>`).join('')}</div>
+    <div class="sort-row" style="margin-top:6px">類別：${Object.entries(F).map(([k, l]) => `<button type="button" data-hf="${k}" aria-pressed="${hf === k}">${l}</button>`).join('')}</div>
+    <div class="sort-row" style="margin-top:6px">名次：${[['top', '前 3 名'], ['all', '全部名次']].map(([k, l]) => `<button type="button" data-hk="${k}" aria-pressed="${hk === k}">${l}</button>`).join('')}　排序：${[['new', '最新在前'], ['old', '最早在前']].map(([k, l]) => `<button type="button" data-hs="${k}" aria-pressed="${hs === k}">${l}</button>`).join('')}</div>
+    ${rows.length ? `<div class="scroll" style="margin-top:10px"><table class="follow-t"><thead><tr><th>資料類型</th><th class="r">平均報酬</th><th class="r">相對全市場</th><th class="r hide-sm">勝率</th><th class="r hide-sm">已結算筆數</th></tr></thead><tbody>${line('實際發布<span class="th-sub">' + LIVE_FROM.slice(0, 7).replace('-', '/') + ' 起</span>', sl) || `<tr><td>實際發布<span class="th-sub">${LIVE_FROM.slice(0, 7).replace('-', '/')} 起</span></td><td colspan="4" class="small muted" style="white-space:normal">紀錄累積中，持有期滿後列入統計。</td></tr>`}${line('回測<span class="th-sub">依目前規則回推</span>', sb)}</tbody></table></div>
+    <div class="mlist"><div class="mhead"><span>月份</span><span class="r">平均報酬</span><span class="r">相對全市場</span><span class="r hide-sm">勝率</span><span>大盤</span></div>
+    ${months.map(m => { const list = by.get(m).slice().sort((a, b) => (hs === 'new' ? -1 : 1) * (a.date > b.date ? 1 : a.date < b.date ? -1 : 0) || a.rank - b.rank), s = sum(list); return `<details class="mrow" data-m="${m}"${openM.has(m) ? ' open' : ''}><summary><span><b class="num">${m.replace('-', '/')}</b><span class="th-sub"${m + '-01' >= LIVE_FROM ? ' style="color:var(--sup)"' : ''}>${m + '-01' >= LIVE_FROM ? '實際' : '回測'}・${fi(list.length)} 筆${s.on ? `，持有中 ${s.on}` : ''}</span></span><span class="r">${s.n ? pc(s.avg) : s.on ? `${pc(s.onAvg)}<span class="th-sub">持有中</span>` : '—'}</span><span class="r">${pc(s.ex)}</span><span class="r num hide-sm">${s.win != null ? s.win + '%' : '—'}</span><span>${mkt(s)}</span></summary>${trades(fullM.has(m) ? list : list.slice(0, 30))}${list.length > 30 && !fullM.has(m) ? `<button class="btn ghost" type="button" data-full="${m}" style="width:100%;margin-bottom:10px">顯示當月全部 ${fi(list.length)} 筆</button>` : ''}</details>`; }).join('')}</div>` : '<div class="empty">此期間沒有紀錄。</div>'}
+    <p class="note" style="margin:8px 0 0">點選月份可查看當月入選股票。平均報酬、相對全市場與勝率以持有期滿的紀錄計算；尚未期滿者標示「持有中」，報酬為截至最新收盤。「回測」為依目前規則回推的結果，「實際」為每日實際發布的名單。「跌破」為持有期間曾以收盤價跌破入選時的支撐價位。</p>`;
   const box = $('#scoreList');
-  box.querySelectorAll('[data-hf]').forEach(b => b.onclick = () => { hf = b.dataset.hf; hn = 20; renderHist(); });
-  box.querySelectorAll('[data-hr]').forEach(b => b.onclick = () => { hr = b.dataset.hr; hn = 20; renderHist(); });
-  box.querySelectorAll('[data-hs]').forEach(b => b.onclick = () => { hs = b.dataset.hs; hn = 20; try { localStorage.setItem('jiegou-hsort', hs); } catch (e) {} renderHist(); });
-  const m = $('#histMore'); if (m) m.onclick = () => { hn += 20; renderHist(); };
+  box.querySelectorAll('[data-hf]').forEach(b => b.onclick = () => { hf = b.dataset.hf; renderHist(); });
+  box.querySelectorAll('[data-hp]').forEach(b => b.onclick = () => { hp = +b.dataset.hp; renderHist(); });
+  box.querySelectorAll('[data-hk]').forEach(b => b.onclick = () => { hk = b.dataset.hk; renderHist(); });
+  box.querySelectorAll('[data-hs]').forEach(b => b.onclick = () => { hs = b.dataset.hs; try { localStorage.setItem('jiegou-hsort', hs); } catch (e) {} renderHist(); });
+  box.querySelectorAll('[data-full]').forEach(b => b.onclick = () => { fullM.add(b.dataset.full); openM.add(b.dataset.full); renderHist(); });
+  box.querySelectorAll('.mrow').forEach(d => d.ontoggle = () => { d.open ? openM.add(d.dataset.m) : openM.delete(d.dataset.m); });
 }
 
 /* 強度分數與後續表現：預設收合 */
