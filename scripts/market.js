@@ -92,8 +92,9 @@ async function turnoverMonth(ym) {
 /* 單日三大法人買賣金額（上市，億元）：{ f: 外資, t: 投信, d: 自營商, all: 合計 } */
 async function instTotal(d) {
   const j = await twse(`/fund/BFI82U?type=day&dayDate=${ymd(d)}&response=json`); if (!j || !j.data) return null;
-  const v = name => j.data.filter(r => String(r[0]).includes(name)).reduce((a, r) => a + (num(r[3]) || 0), 0) / 1e8;
-  const tot = j.data.find(r => String(r[0]).includes('合計'));
-  return { f: +(v('外資及陸資') + v('外資自營商')).toFixed(1), t: +v('投信').toFixed(1), d: +(v('自營商') - v('外資自營商')).toFixed(1), all: tot ? +(num(tot[3]) / 1e8).toFixed(1) : null };
+  const row = pre => j.data.filter(r => String(r[0]).trim().startsWith(pre)).reduce((a, r) => a + (num(r[3]) || 0), 0) / 1e8;
+  const tot = j.data.find(r => String(r[0]).trim().startsWith('合計'));
+  // 外資＝外資及陸資＋外資自營商；自營商＝自營商（自行買賣）＋自營商（避險）
+  return { f: +(row('外資及陸資') + row('外資自營商')).toFixed(1), t: +row('投信').toFixed(1), d: +row('自營商').toFixed(1), all: tot ? +(num(tot[3]) / 1e8).toFixed(1) : null };
 }
 module.exports = { daily, inst, val, revenue, sleep, taiexMonth, turnoverMonth, instTotal };
