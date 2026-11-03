@@ -1,9 +1,12 @@
 name: 每日名單與成績單
 on:
   schedule:
-    - cron: '7 4 * * 1-5'    # 台北 12:07 先啟動，等到 16:45 收盤資料公布後才執行（GitHub 排程常延遲數小時，提早啟動才能準時）
-    - cron: '50 8 * * 1-5'   # 台北 16:50，備援
-    - cron: '30 11 * * 1-5'  # 台北 19:30 補跑一次，以防法人資料延遲
+    # GitHub 排程常延遲或略過，因此排多個時段；每次先檢查今天是否已更新，已更新就直接結束
+    - cron: '50 8 * * 1-5'   # 台北 16:50
+    - cron: '15 9 * * 1-5'   # 台北 17:15
+    - cron: '45 9 * * 1-5'   # 台北 17:45
+    - cron: '30 10 * * 1-5'  # 台北 18:30
+    - cron: '30 11 * * 1-5'  # 台北 19:30（法人資料延遲時補齊）
   workflow_dispatch:
     inputs:
       backfill:
@@ -20,24 +23,34 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: 等到收盤資料公布（台北 16:45）
+      - name: 檢查今天是否已更新
+        id: chk
         if: github.event_name == 'schedule'
         run: |
-          node -e "const now=new Date(Date.now()+8*3600e3), m=now.getUTCHours()*60+now.getUTCMinutes(), w=16*60+45-m; if (w>0) { console.log('等待', w, '分鐘'); setTimeout(()=>{}, w*60e3); } else console.log('已過 16:45，直接執行');"
+          node -e "
+          const fs=require('fs'), t=new Date(Date.now()+8*3600e3), today=t.toISOString().slice(0,10), m=t.getUTCHours()*60+t.getUTCMinutes();
+          let L={}; try { L=JSON.parse(fs.readFileSync('data/latest.json','utf8')); } catch(e) {}
+          const d=String(L.date||'').replace(/\\//g,'-'), inst=String(L.instDate||'').replace(/\\//g,'-');
+          const done = d===today && inst===today;
+          console.log('今天', today, '名單日期', d, '法人日期', inst, done ? '已更新，略過' : '需要更新');
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, 'skip=' + (done || m < 14*60+30 ? 'true' : 'false') + '\\n');"
       - name: 除權息等事件
+        if: steps.chk.outputs.skip != 'true'
         run: node scripts/exright.js
         continue-on-error: true
       - run: node scripts/build.js
+        if: steps.chk.outputs.skip != 'true'
         env:
           BACKFILL: ${{ github.event.inputs.backfill || '60' }}
           RESCREEN: ${{ github.event.inputs.rescreen == 'true' && '1' || '' }}
       - name: 存檔
+        if: steps.chk.outputs.skip != 'true'
         run: |
           git config user.name "twstock-bot"
           git config user.email "twstock-bot@users.noreply.github.com"
