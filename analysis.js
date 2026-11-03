@@ -232,8 +232,10 @@ function render(s) {
   showTab();
   drawMyHold(s.code, s.name, c); loadTdcc(s.code, s.bars); pickHist(s.code);
   { const I = s.inst || [], f = I.map(r => r.f), t = I.map(r => r.t), sum5 = v => v.slice(-5).reduce((x, y) => x + (y || 0), 0);
-    (tdSumP || (tdSumP = fetch('/data/tdcc/summary.json').then(r => r.ok ? r.json() : null).catch(() => null))).then(T => { const el = $('#chipLine'); if (!el) return;
-      const parts = chipParts({ td: T && T.s && T.s[s.code], f: I.length ? chipStreak(f) : null, f5: sum5(f), t: I.length ? chipStreak(t) : null, t5: sum5(t), m: fl && fl.chip ? fl.chip.marginChg : null });
+    // 連續天數優先用每日排程算好的 chip.json（涵蓋 10 個交易日），個股頁本身只取得近 5 日法人資料
+    (tdSumP || (tdSumP = Promise.all([fetch('/data/tdcc/summary.json'), fetch('/data/chip.json')].map(p => p.then(r => r.ok ? r.json() : null).catch(() => null))))).then(([T, CHp]) => { const el = $('#chipLine'); if (!el) return;
+      const c = CHp && CHp.s && CHp.date === (I.at(-1) || {}).d ? CHp.s[s.code] : null;
+      const parts = chipParts({ td: T && T.s && T.s[s.code], f: c ? c[0] : I.length ? chipStreak(f) : null, f5: c ? c[1] : sum5(f), t: c ? c[2] : I.length ? chipStreak(t) : null, t5: c ? c[3] : sum5(t), m: fl && fl.chip ? fl.chip.marginChg : null });
       el.innerHTML = parts.length ? `<span class="muted">籌碼動向</span>　${parts.join('・')}` : ''; }); }
   getMarket().then(m => { const el = $('#mktTag'); if (m && el) el.innerHTML = `<span class="small muted" style="margin-left:6px">大盤</span> <span class="pill ${m.below60 ? 'bear' : 'flat'}" title="加權指數 ${fix2(m.taiex)}，季線 ${fi(m.ma60)}（${esc(m.date.replace(/-/g, '/'))}）">${m.below60 ? '季線之下' : '季線之上'}</span>`; });
   const sb = $('#shareBtn'); if (sb) sb.onclick = async () => { const url = location.origin + '/analysis/' + encodeURIComponent(s.code), title = `${s.code} ${s.name || ''} 支撐壓力分析｜盤後結構室`;
