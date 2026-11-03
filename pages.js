@@ -94,7 +94,6 @@ async function loadPicks(date) {
       <div class="why1">${esc(keyWhy(x, cat))}</div>
       <div class="lv num"><span>支撐 <b style="color:var(--sup)">${x.sup != null ? pxd(x.sup) : '—'}</b></span><span>壓力 <b style="color:var(--res)">${x.res != null ? pxd(x.res) : '—'}</b></span></div></button>`).join('') + moreRows(list.slice(3), 'close') : '<div class="empty">本日無符合條件的股票。</div>'}</div>`;
     box.innerHTML = `<div class="card-head"><h2 id="picksTitle">篩選結果</h2><span class="small muted num">${idx && idx.dates.length > 1 ? `<label for="pickDate">查看日期 </label><select id="pickDate">${idx.dates.slice().reverse().map(d => `<option value="${d}"${d.replace(/-/g, '/') === j.date ? ' selected' : ''}>${d.replace(/-/g, '/')}</option>`).join('')}</select>` : esc(j.date) + ' 收盤'}<span class="nowrap">　篩選範圍 ${fi(j.universe)} 檔</span></span></div>
-      ${mktBanner(j)}
       <details class="howto-d"><summary>名單說明</summary><div class="howto">
         <div><b>內容</b><span>每個交易日收盤後，依固定規則從上市櫃股票中篩選，分為短線（約 1 週）、波段（約 1 個月）、長線（約 3 個月）三類，每類列出前 10 名。規則以 2025 年起的歷史資料回測選出，同一檔股票可能同時出現在多類名單。</span></div>
         <div><b>使用方式</b><span>歷史績效以「次一交易日開盤買進、持有期滿賣出」計算，請依各類持有期間參考。點選個股可查看支撐與壓力；入選後若跌破主要支撐，表示入選條件已改變。</span></div>
@@ -329,7 +328,7 @@ async function renderPvPicks() {
     const cats = [['day', '短線'], ['swing', '波段'], ['long', '長線']];
     let cur = 'day';
     const draw = () => { const l = j[cur] || [];
-      box.innerHTML = `${mktBanner(j, true)}<p class="small muted" style="margin:0">${esc(j.date)} 收盤後篩選，各類前 3 名</p><div class="mini-tabs" role="tablist">${cats.map(([k, t]) => `<button type="button" role="tab" data-k="${k}" aria-selected="${k === cur}">${t}</button>`).join('')}</div>${l.length ? `<ul class="mini">${l.slice(0, 3).map(x => miniRow(x.code, x.name, `<span class="num ${cls(x.chg)}">${pxd(x.close)}　${sg(x.chg)}%</span>`)).join('')}</ul>` : '<p class="small muted" style="margin:0">此類別今日沒有符合條件的股票。</p>'}`;
+      box.innerHTML = `<p class="small muted" style="margin:0">${esc(j.date)} 收盤後篩選，各類前 3 名</p><div class="mini-tabs" role="tablist">${cats.map(([k, t]) => `<button type="button" role="tab" data-k="${k}" aria-selected="${k === cur}">${t}</button>`).join('')}</div>${l.length ? `<ul class="mini">${l.slice(0, 3).map(x => miniRow(x.code, x.name, `<span class="num ${cls(x.chg)}">${pxd(x.close)}　${sg(x.chg)}%</span>`)).join('')}</ul>` : '<p class="small muted" style="margin:0">此類別今日沒有符合條件的股票。</p>'}`;
       box.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { cur = b.dataset.k; draw(); }); };
     draw();
   } catch (e) { box.innerHTML = `<p class="small err" style="margin:0">${esc(e.message)}</p>`; }

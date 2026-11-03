@@ -131,7 +131,7 @@ function render(s) {
         <div class="id"><span class="code">${esc(s.code)}</span><span class="name">${esc(s.name || '')}</span>${secTag(s.code)}<button class="watch-btn" type="button" id="watchBtn" aria-pressed="${Watch.has(s.code)}">${Watch.has(s.code) ? '★ 已加入我的選股' : '☆ 加入我的選股'}</button><button class="watch-btn share-btn" type="button" id="shareBtn" title="分享這檔股票的分析頁">分享</button></div>
         ${s.live ? `<div class="live-badge"><span class="dot${s.live.open ? ' on' : ''}"></span>${s.live.open ? '盤中即時' : '今日收盤'} ${esc(s.live.time || '')}<span class="muted">・價格約延遲數秒；法人與籌碼為前一交易日資料</span></div>` : `<div class="small muted">資料更新至 ${esc(t.d.replace(/-/g, '/'))} 收盤</div>`}
         <div class="price"><span class="px num">${pxd(c)}</span><span class="ch num ${cls(ind.chg)}">${sg(ind.chg)}（${sg(ind.chgPct)}%）</span></div>
-        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="small muted">走勢</span><span class="pill ${trendCls(a.trendLabel)}">${a.trendLabel}</span></div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="small muted">走勢</span><span class="pill ${trendCls(a.trendLabel)}">${a.trendLabel}</span><span id="mktTag"></span></div>
         <div class="my-hold" id="myHold"></div><div id="pickHist"></div>
       </div>
       <div class="gauge">${ring(a.index)}<div style="display:grid;gap:6px;justify-items:center"><span class="pill ${legacyCls(a.legacy)}">綜合評等：${a.legacy}</span><span class="small muted num" style="text-align:center">五面向平均 ${fx(a.raw, 1)}${a.pen.length ? `<br>風險扣分 ${a.pen.reduce((x, y) => x + y.pts, 0)} → 強度分數 ${a.index}` : ''}</span></div></div>
@@ -230,6 +230,7 @@ function render(s) {
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; showTab(); });
   showTab();
   drawMyHold(s.code, s.name, c); loadTdcc(s.code, s.bars); pickHist(s.code);
+  getMarket().then(m => { const el = $('#mktTag'); if (m && el) el.innerHTML = `<span class="small muted" style="margin-left:6px">大盤</span> <span class="pill ${m.below60 ? 'bear' : 'flat'}" title="加權指數 ${fix2(m.taiex)}，季線 ${fi(m.ma60)}（${esc(m.date.replace(/-/g, '/'))}）">${m.below60 ? '季線之下' : '季線之上'}</span>`; });
   const sb = $('#shareBtn'); if (sb) sb.onclick = async () => { const url = location.origin + '/analysis/' + encodeURIComponent(s.code), title = `${s.code} ${s.name || ''} 支撐壓力分析｜盤後結構室`;
     if (navigator.share) { try { await navigator.share({ title, url }); } catch (e) {} return; }
     try { await navigator.clipboard.writeText(url); sb.textContent = '已複製連結'; } catch (e) { prompt('複製這個連結', url); } setTimeout(() => { sb.textContent = '分享'; }, 2000); };

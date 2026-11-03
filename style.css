@@ -465,3 +465,19 @@ details.mkt-warn p{margin:6px 0 0;font-size:.85rem}
   .nav-links{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;overflow:visible}
   .nav-links a{text-align:center;padding:6px 4px;font-size:.84rem}
 }
+/* 大盤狀態列 */
+[data-mbar]{margin:0 0 12px}
+.mbar{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:.9rem}
+.mbar.weak{background:color-mix(in srgb,var(--warn) 10%,var(--surface));border-color:color-mix(in srgb,var(--warn) 40%,transparent)}
+.mbar>summary{display:flex;justify-content:space-between;align-items:center;gap:6px 16px;flex-wrap:wrap}
+.mb-main,.mb-st{display:flex;align-items:baseline;gap:4px 10px;flex-wrap:wrap}
+.mb-lab{font-size:.78rem;color:var(--muted)}
+.mb-main b{font-size:1.05rem}
+.mb-tag{font-size:.78rem;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--sunk);color:var(--muted)}
+.mbar.weak .mb-tag{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.mb-detail{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.mb-detail div{display:grid;gap:2px;align-content:start}.mb-detail span{font-size:.75rem;color:var(--muted)}.mb-detail small{font-size:.72rem;color:var(--faint)}
+.mb-detail .wide{grid-column:1/-1}.mb-detail .wide b{font-weight:400;font-size:.85rem}
+.mb-note{margin:8px 0 0;font-size:.78rem;color:var(--muted);line-height:1.6}
+@media (max-width:640px){.mbar{padding:10px 12px}.mb-detail{grid-template-columns:repeat(2,minmax(0,1fr))}.mbar>summary{gap:4px}}
+.mb-detail b .up{color:var(--up);font-size:inherit}.mb-detail b .down{color:var(--down);font-size:inherit}.mb-detail b span{font-size:inherit}

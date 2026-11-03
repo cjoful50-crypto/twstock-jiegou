@@ -76,4 +76,24 @@ async function revenue() {
   }
   return out;
 }
-module.exports = { daily, inst, val, revenue, sleep };
+/* 加權指數每月日資料：{ 'YYYY-MM-DD': [開, 高, 低, 收] }（ym 為 'YYYYMM'） */
+const roc2iso = t => { const m = String(t).trim().match(/^(\d{2,3})\/(\d{2})\/(\d{2})$/); return m ? `${+m[1] + 1911}-${m[2]}-${m[3]}` : null; };
+async function taiexMonth(ym) {
+  const out = {}, j = await twse(`/indicesReport/MI_5MINS_HIST?date=${ym}01&response=json`);
+  for (const r of (j && j.data) || []) { const d = roc2iso(r[0]); if (d) out[d] = [num(r[1]), num(r[2]), num(r[3]), num(r[4])]; }
+  return out;
+}
+/* 上市每月日成交資訊：{ 'YYYY-MM-DD': 成交金額（億元） } */
+async function turnoverMonth(ym) {
+  const out = {}, j = await twse(`/afterTrading/FMTQIK?date=${ym}01&response=json`);
+  for (const r of (j && j.data) || []) { const d = roc2iso(r[0]); if (d) out[d] = Math.round(num(r[2]) / 1e8); }
+  return out;
+}
+/* 單日三大法人買賣金額（上市，億元）：{ f: 外資, t: 投信, d: 自營商, all: 合計 } */
+async function instTotal(d) {
+  const j = await twse(`/fund/BFI82U?type=day&dayDate=${ymd(d)}&response=json`); if (!j || !j.data) return null;
+  const v = name => j.data.filter(r => String(r[0]).includes(name)).reduce((a, r) => a + (num(r[3]) || 0), 0) / 1e8;
+  const tot = j.data.find(r => String(r[0]).includes('合計'));
+  return { f: +(v('外資及陸資') + v('外資自營商')).toFixed(1), t: +v('投信').toFixed(1), d: +(v('自營商') - v('外資自營商')).toFixed(1), all: tot ? +(num(tot[3]) / 1e8).toFixed(1) : null };
+}
+module.exports = { daily, inst, val, revenue, sleep, taiexMonth, turnoverMonth, instTotal };

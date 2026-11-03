@@ -75,6 +75,25 @@ const isoOf = d => d.toISOString().slice(0, 10);
   }
   const latest = rd(path.join(DATA, 'daily', days[last].d + '.json'));
   wr(path.join(DATA, 'latest.json'), latest);
+  // 大盤狀態：加權指數日 K（快取 data/cache/taiex_ohlc.json）、月線季線、支撐壓力、漲跌家數、成交金額、法人合計
+  try {
+    const OF = path.join(CACHE, 'taiex_ohlc.json'), ohlc = rd(OF) || {}, D = days[last].d;
+    // 近 130 個交易日中，有缺資料的月份才重新抓取
+    const need = [...new Set(days.slice(-130).map(x => x.d).filter(d => !ohlc[d] || ohlc[d][4] == null).map(d => d.slice(0, 7)))];
+    for (const ym of need) { const k = ym.replace('-', ''), px = await M.taiexMonth(k), amt = await M.turnoverMonth(k);
+      for (const [d, v] of Object.entries(px)) ohlc[d] = [...v, amt[d] ?? null]; console.log('加權指數', ym, Object.keys(px).length); }
+    wr(OF, ohlc);
+    const bars = Object.keys(ohlc).sort().filter(d => d <= D).slice(-130).map(d => { const [o, h, l, c, a] = ohlc[d]; return { d, o: o || c, h: h || c, l: l || c, c, v: a || 0 }; }).filter(b => b.c);
+    if (bars.length >= 60 && bars.at(-1).d === D) {
+      const C = bars.map(b => b.c), avg = n => C.slice(-n).reduce((a, b) => a + b, 0) / n, c = C.at(-1), p = C.at(-2), ma20 = avg(20), ma60 = avg(60);
+      let sup = null, res = null; try { const a = require('../engine.js').analyze({ code: 'TAIEX', bars }); sup = a.st.sup[0] ? a.st.sup[0].level : null; res = a.st.res[0] ? a.st.res[0].level : null; } catch (e) { console.log('大盤支撐壓力計算失敗', e.message); }
+      let up = 0, dn = 0, fl = 0; const prev = days[last - 1].q;
+      for (const [code, b] of Object.entries(days[last].q)) { if ((names[code] || [])[1] !== '上市' || !prev[code] || !prev[code][3]) continue; const r = (rawDays[last].q[code] || b)[3], q = (rawDays[last - 1].q[code] || prev[code])[3]; if (r > q) up++; else if (r < q) dn++; else fl++; }
+      const ins = await M.instTotal(D).catch(() => null);
+      wr(path.join(DATA, 'market.json'), { date: D, taiex: c, chg: +(c - p).toFixed(2), chgPct: +((c / p - 1) * 100).toFixed(2), ma20: Math.round(ma20), ma60: Math.round(ma60), below20: c < ma20, below60: c < ma60, dist60: +((c / ma60 - 1) * 100).toFixed(1), sup, res, up, down: dn, flat: fl, amount: bars.at(-1).v || null, inst: ins });
+      console.log('大盤', D, c, '季線', Math.round(ma60), '支撐', sup, '壓力', res, '漲跌家數', up, dn, '法人', JSON.stringify(ins));
+    } else console.log('大盤日K不足', bars.length);
+  } catch (e) { console.log('::warning::大盤資料失敗 ' + e.message); }
   // 所有股票的支撐壓力（選股與庫存頁使用）
   wr(path.join(DATA, 'levels.json'), buildLevels(days, instByDay));
   const allDates = fs.readdirSync(path.join(DATA, 'daily')).map(n => n.replace('.json', '')).sort();

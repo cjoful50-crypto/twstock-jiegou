@@ -131,3 +131,32 @@ const PAGES = [['/', '首頁', 'home'], ['/watch', '選股與庫存', 'watch'], 
   </div>`;
   if (withSearch) attachSearch(document.getElementById('navSearch'), document.getElementById('navQ'), document.getElementById('navSuggest'));
 })();
+
+/* 大盤狀態列：各頁上方共用。放 <div data-mbar></div>；data-mbar="live" 時盤中以即時指數更新 */
+let mktP = null;
+const getMarket = () => mktP || (mktP = fetch('/data/market.json').then(r => r.ok ? r.json() : null).catch(() => null));
+const fix2 = x => x == null ? '—' : (+x).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+async function marketBar(box, live) {
+  const m = await getMarket(); if (!m) { box.remove(); return; }
+  let lq = null, open = false;
+  const draw = () => {
+    const px = lq ? lq.price : m.taiex, prev = lq ? lq.prev : m.taiex - m.chg, chg = px - prev, pct = prev ? chg / prev * 100 : 0, below = px < m.ma60;
+    const was = box.querySelector('details'); if (was) open = was.open;
+    const ins = m.inst, insTxt = ins ? `合計 <b class="num ${cls(ins.all)}">${sg(ins.all, 1)}</b> 億（外資 ${sg(ins.f, 1)}、投信 ${sg(ins.t, 1)}、自營商 ${sg(ins.d, 1)}）` : '—';
+    box.innerHTML = `<details class="mbar${below ? ' weak' : ''}"${open ? ' open' : ''}><summary>
+      <span class="mb-main"><span class="mb-lab">加權指數</span><b class="num">${fix2(px)}</b><span class="num ${cls(chg)}">${sg(chg)}（${sg(pct)}%）</span>${lq ? `<span class="small muted">${lq.open ? '盤中 ' + esc((lq.time || '').slice(0, 5)) : '今日收盤'}</span>` : ''}</span>
+      <span class="mb-st"><span class="mb-tag">${below ? '季線之下' : '季線之上'}</span><span class="small num">支撐 ${m.sup != null ? fi(m.sup) : '—'}｜壓力 ${m.res != null ? fi(m.res) : '—'}</span><span class="more">明細</span></span></summary>
+      <div class="mb-detail">
+        <div><span>月線</span><b class="num">${fi(m.ma20)}</b></div>
+        <div><span>季線</span><b class="num">${fi(m.ma60)}</b><small>收盤距季線 ${sg(m.dist60, 1)}%</small></div>
+        <div><span>上漲／下跌家數</span><b class="num"><span class="up">${fi(m.up)}</span>／<span class="down">${fi(m.down)}</span></b><small>上市股票</small></div>
+        <div><span>成交金額</span><b class="num">${m.amount != null ? fi(m.amount) + ' 億' : '—'}</b><small>上市</small></div>
+        <div class="wide"><span>三大法人買賣超</span><b>${insTxt}</b></div>
+      </div>
+      <p class="mb-note">${below ? '大盤位於季線之下時，盤後名單的歷史表現明顯較差，請審慎參考並控制部位。' : '大盤位於季線之上。盤後名單的回測期間多數處於此狀態。'}明細為 ${esc(m.date.replace(/-/g, '/'))} 收盤資料；支撐壓力依加權指數日 K 計算，計算方式與個股相同。</p></details>`;
+  };
+  draw();
+  if (live) { const tick = async () => { try { const r = await fetch('/api/quote?codes=TAIEX'); const j = await r.json(); const q = (j.quotes || []).find(x => x.code === 'TAIEX' && x.price);
+      if (q && q.date > m.date) { lq = q; lq.open = !!(j.session && j.session.open); draw(); if (lq.open) setTimeout(tick, 60000); } } catch (e) {} }; tick(); }
+}
+document.querySelectorAll('[data-mbar]').forEach(el => marketBar(el, el.dataset.mbar === 'live'));
