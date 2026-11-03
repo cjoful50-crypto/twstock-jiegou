@@ -128,13 +128,13 @@ loadPicks();
 let watchTimer = null;
 /* 選股與庫存的支撐壓力：每天收盤後算好的 data/levels.json，配合即時價格標示位置 */
 let LV = null, lvP = null;
-const getLevels = () => lvP || (lvP = Promise.all([fetch('/data/levels.json').then(r => r.ok ? r.json() : null).catch(() => null), fetch('/data/tdcc/summary.json').then(r => r.ok ? r.json() : null).catch(() => null), fetch('/data/chip.json').then(r => r.ok ? r.json() : null).catch(() => null)]).then(([a, b, c]) => { TD = b; CH = c; return (LV = a); }));
-let CH = null;
+const getLevels = () => lvP || (lvP = Promise.all([fetch('/data/levels.json').then(r => r.ok ? r.json() : null).catch(() => null), fetch('/data/tdcc/summary.json').then(r => r.ok ? r.json() : null).catch(() => null), fetch('/data/chip.json').then(r => r.ok ? r.json() : null).catch(() => null), fetch('/data/ind.json').then(r => r.ok ? r.json() : null).catch(() => null)]).then(([a, b, c, d]) => { TD = b; CH = c; IND = d; return (LV = a); }));
+let CH = null, IND = null;
 let TD = null;
 // 千張大戶持股變化小字：優先 4 週，沒有就用 1 週
 // 籌碼動向：名稱下方一行，最多顯示兩項
 const tdNote = code => { const c = CH && CH.s && CH.s[code], parts = chipParts({ td: TD && TD.s && TD.s[code], f: c ? c[0] : null, f5: c ? c[1] : 0, t: c ? c[2] : null, t5: c ? c[3] : 0 });
-  return parts.length ? `<div class="td-note small">${parts.slice(0, 2).join('<span class="dot">・</span>')}</div>` : ''; };
+  return parts.length ? `<div class="td-note small">${parts.slice(0, 2).join('<span class="cdot">・</span>')}</div>` : ''; };
 const LV_STR = ['', '弱', '中', '強', '極強'];
 const lvMode = { get: () => Store.read('jiegou-lvmode', 'simple'), set: v => Store.write('jiegou-lvmode', v) };
 function lvInfo(code, px) {
@@ -186,9 +186,29 @@ function bindLv(box, redraw) {
 const lvToggle = () => `<button class="linkbtn" type="button" data-lvmode title="切換是否展開所有股票的第二道支撐壓力">${lvMode.get() === 'detail' ? '收合價位' : '展開價位'}</button>`;
 const lvNote = () => LV && LV.date ? `價格下方的 ↓ 為下方最近的支撐、↑ 為上方最近的壓力（${esc(LV.date.replace(/-/g, '/'))} 收盤後計算），點選該列可查看所有價位與強度。股票名稱下方為籌碼動向（集保千張大戶每週資料、外資與投信每日買賣超）。` : '';
 
+// 我的選股「欄位設定」：使用者自選額外的技術與基本面欄位（預設不顯示），選擇會記住並隨會員同步
+const XCOLS = [
+  ['kd', 'KD', 'K／D', r => r[0] == null ? '—' : `${fx(r[0], 0)}／${fx(r[1], 0)}`],
+  ['rsi', 'RSI', '14 日', r => fx(r[2], 1)],
+  ['macd', 'MACD', '柱狀體', r => `<span class="${cls(r[3])}">${sg(r[3])}</span>`],
+  ['b20', '月線乖離', '距 20 日均線', r => r[4] == null ? '—' : `<span class="${cls(r[4])}">${sg(r[4], 1)}%</span>`],
+  ['b60', '季線乖離', '距 60 日均線', r => r[5] == null ? '—' : `<span class="${cls(r[5])}">${sg(r[5], 1)}%</span>`],
+  ['vr', '量比', '今日／20 日均量', r => fx(r[6], 2)],
+  ['c20', '近 20 日', '漲跌幅', r => r[7] == null ? '—' : `<span class="${cls(r[7])}">${sg(r[7], 1)}%</span>`],
+  ['pe', '本益比', '', r => r[8] == null ? '—' : fx(r[8], 1)],
+  ['yld', '殖利率', '', r => r[9] == null ? '—' : fx(r[9], 2) + '%'],
+  ['pb', '股價淨值比', '', r => r[10] == null ? '—' : fx(r[10], 2)],
+  ['big', '千張大戶', '持股比例', (r, code) => { const v = TD && TD.s && TD.s[code]; return v && v[0] != null ? fx(v[0], 1) + '%' : '—'; }],
+];
+const Cols = { get() { return Store.read('jiegou-cols', []) || []; }, set(v) { Store.write('jiegou-cols', v); Store.touch(); } };
+let colOpen = false;
+const colPanel = () => { const on = Cols.get(); return `<div class="colset"${colOpen ? '' : ' hidden'}><div class="colset-h"><b>選擇要顯示的欄位</b><button class="linkbtn" type="button" data-colclose>完成</button></div>
+  <div class="colset-g">${XCOLS.map(([k, l, sub]) => `<label><input type="checkbox" data-col="${k}"${on.includes(k) ? ' checked' : ''}> ${l}${sub ? `<small>${sub}</small>` : ''}</label>`).join('')}</div>
+  <p class="note" style="margin:6px 0 0">技術指標依收盤後的日 K 計算（價格已還原除權息），本益比、殖利率與股價淨值比為證交所與櫃買中心公布值。依 2025 年起的歷史資料，KD 與 RSI 位於高檔的股票其後表現反而較強，與「高檔即賣出」的傳統解讀不同，請審慎參考。</p></div>`; };
 async function renderWatch() {
   const box = $('#watch'); if (!box) return; const list = Watch.get();
-  const head = `<div class="section-head"><h2 id="watchTitle">我的選股</h2><span class="small muted">${lvToggle()}　<span id="watchState"></span></span></div>`;
+  const head = `<div class="section-head"><h2 id="watchTitle">我的選股</h2><span class="small muted"><button class="linkbtn" type="button" data-colbtn>欄位設定${Cols.get().length ? `（${Cols.get().length}）` : ''}</button>　${lvToggle()}　<span id="watchState"></span></span></div>${colPanel()}`;
+  const xc = XCOLS.filter(c => Cols.get().includes(c[0])), xv = code => { const r = IND && IND.s && IND.s[code]; return xc.map(c => `<td class="num xcol">${r || c[0] === 'big' ? c[3](r || [], code) : '—'}</td>`).join(''); };
   if (!list.length) {
     box.innerHTML = head + `<p class="small muted" style="margin:6px 0 0">尚未加入股票。可在個股分析頁點選「☆ 加入我的選股」，或在<a href="/sectors">產業分類</a>中點選 ☆。${syncNote()}</p>`;
     return;
@@ -196,12 +216,15 @@ async function renderWatch() {
   const rowsHtml = (q = {}) => list.map(w => { const x = q[w.code] || {}; const chg = x.price && x.prev ? (x.price / x.prev - 1) * 100 : null;
     return `<tr data-code="${esc(w.code)}"><td class="nm"><a href="/analysis/${esc(w.code)}"><span class="num">${esc(w.code)}</span>${esc(w.name || x.name || '')}</a>${secTag(w.code)}${tdNote(w.code)}</td>
       <td class="num">${lvPrice(w.code, x.price || null)}</td><td class="num ${cls(chg)}">${chg == null ? '—' : sg(chg) + '%'}</td><td class="num hide-sm">${x.vol != null ? fi(x.vol) : '—'}</td>
-      <td class="num" style="color:${scoreColor(w.index)}">${w.index ?? '—'}${w.trend ? `<span class="small muted">・${esc(w.trend)}</span>` : ''}</td><td>${starBtn(w.code, w.name)}</td></tr>${lvDetail(w.code, x.price || null, 6)}`; }).join('');
-  const table = q => `${lvSummary(list.map(w => w.code), q, box)}<div class="scroll"><table class="stock-table"><thead><tr><th>股票</th><th>價格<span class="th-sub">↓支撐 ↑壓力</span></th><th>漲跌</th><th class="hide-sm">成交量（張）</th><th>強度分數</th><th></th></tr></thead><tbody>${rowsHtml(q)}</tbody></table></div>
+      <td class="num" style="color:${scoreColor(w.index)}">${w.index ?? '—'}${w.trend ? `<span class="small muted">・${esc(w.trend)}</span>` : ''}</td>${xv(w.code)}<td>${starBtn(w.code, w.name)}</td></tr>${lvDetail(w.code, x.price || null, 6 + xc.length)}`; }).join('');
+  const table = q => `${lvSummary(list.map(w => w.code), q, box)}<div class="scroll"><table class="stock-table"><thead><tr><th>股票</th><th>價格<span class="th-sub">↓支撐 ↑壓力</span></th><th>漲跌</th><th class="hide-sm">成交量（張）</th><th>強度分數</th>${xc.map(c => `<th class="xcol">${c[1]}${c[2] ? `<span class="th-sub">${c[2]}</span>` : ''}</th>`).join('')}<th></th></tr></thead><tbody>${rowsHtml(q)}</tbody></table></div>
     <p class="note" style="margin:6px 0 0">${lvNote()}強度分數為最近一次開啟該股分析頁時的結果，進入個股分析頁即可依最新資料重新計算。${syncNote()}</p>`;
   box.innerHTML = head + table();
   let lastQ = {};
-  const bind = () => { bindStars(box, renderWatch); bindLv(box, renderWatch); applyLvFilter(box, lastQ); };
+  const bind = () => { bindStars(box, renderWatch); bindLv(box, renderWatch); applyLvFilter(box, lastQ);
+    const cb = box.querySelector('[data-colbtn]'); if (cb) cb.onclick = () => { colOpen = !colOpen; renderWatch(); };
+    const cc = box.querySelector('[data-colclose]'); if (cc) cc.onclick = () => { colOpen = false; renderWatch(); };
+    box.querySelectorAll('[data-col]').forEach(i => i.onchange = () => { const v = new Set(Cols.get()); i.checked ? v.add(i.dataset.col) : v.delete(i.dataset.col); Cols.set(XCOLS.map(c => c[0]).filter(k => v.has(k))); renderWatch(); }); };
   bind();
   try {
     const codes = list.map(w => w.code), q = {}; let sess = null;

@@ -241,7 +241,7 @@ function render(s) {
     (tdSumP || (tdSumP = Promise.all([fetch('/data/tdcc/summary.json'), fetch('/data/chip.json')].map(p => p.then(r => r.ok ? r.json() : null).catch(() => null))))).then(([T, CHp]) => { const el = $('#chipLine'); if (!el) return;
       const c = CHp && CHp.s && CHp.date === (I.at(-1) || {}).d ? CHp.s[s.code] : null;
       const parts = chipParts({ td: T && T.s && T.s[s.code], f: c ? c[0] : I.length ? chipStreak(f) : null, f5: c ? c[1] : sum5(f), t: c ? c[2] : I.length ? chipStreak(t) : null, t5: c ? c[3] : sum5(t), m: fl && fl.chip ? fl.chip.marginChg : null });
-      if (parts.length) { el.innerHTML = parts.join('<span class="dot">・</span>'); $('#chipRow').hidden = false; } }); }
+      if (parts.length) { el.innerHTML = parts.join('<span class="cdot">・</span>'); $('#chipRow').hidden = false; } }); }
   getMarket().then(m => { const el = $('#mktTag'), row = $('#mktRow'); if (!m || !el) return; row.hidden = false;
     el.innerHTML = `<span class="pill ${m.below60 ? 'bear' : 'flat'}">${m.below60 ? '季線之下' : '季線之上'}</span><span class="small muted num">加權 ${fix2(m.taiex)} <span class="${cls(m.chg)}">${sg(m.chgPct)}%</span></span>`; });
   // 狀態列：點選跳到對應區塊；大盤則在下方展開與其他頁相同的大盤明細

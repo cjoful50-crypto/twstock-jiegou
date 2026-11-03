@@ -77,7 +77,7 @@ module.exports = async (req, res) => {
     if (req.method === 'GET') return send(res, 200, { user: t.n, data: await readJson(dpath) });
     if (req.method === 'PUT') {
       const b = await body(req);
-      const clean = { watch: Array.isArray(b.watch) ? b.watch.slice(0, 500) : [], holdings: Array.isArray(b.holdings) ? b.holdings.slice(0, 500) : [], updated_at: String(b.updated_at || new Date().toISOString()) };
+      const clean = { watch: Array.isArray(b.watch) ? b.watch.slice(0, 500) : [], holdings: Array.isArray(b.holdings) ? b.holdings.slice(0, 500) : [], prefs: b.prefs && Array.isArray(b.prefs.cols) ? { cols: b.prefs.cols.filter(x => typeof x === 'string').slice(0, 20) } : {}, updated_at: String(b.updated_at || new Date().toISOString()) };
       await writeJson(dpath, clean); return send(res, 200, { ok: true });
     }
     return send(res, 405, { error: '不支援的方法。' });

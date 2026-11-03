@@ -103,6 +103,19 @@ const isoOf = d => d.toISOString().slice(0, 10);
       const f5 = f.slice(-5).reduce((a, b) => a + b, 0), t5 = t.slice(-5).reduce((a, b) => a + b, 0), fs = streak(f), ts = streak(t);
       if (fs || ts || f5 || t5) out[code] = [fs, f5, ts, t5]; }
     wr(path.join(DATA, 'chip.json'), { date: ds.at(-1) || null, s: out }); }
+  // 技術與基本指標（給選股頁「欄位設定」）：K、D、RSI14、MACD 柱、月線乖離、季線乖離、量比、近 20 日漲跌、本益比、殖利率、股價淨值比
+  { const out = {}, win = days.slice(-130), val = valByDay[days[last].d] || valByDay[days[last - 1].d] || {}, r1 = x => x == null || !isFinite(x) ? null : Math.round(x * 10) / 10;
+    const ema = (v, n) => { const k = 2 / (n + 1); let e = v[0]; return v.map(x => (e = x * k + e * (1 - k))); };
+    for (const code of Object.keys(days[last].q)) {
+      const B = win.map(x => x.q[code]).filter(b => b && b[3]); if (B.length < 30 || win.at(-1).q[code] !== B.at(-1)) continue;
+      const C = B.map(b => b[3]), H = B.map(b => b[1] || b[3]), L = B.map(b => b[2] || b[3]), V = B.map(b => b[4] || 0), n = C.length, c = C[n - 1];
+      let k = 50, d = 50; for (let i = 8; i < n; i++) { const hi = Math.max(...H.slice(i - 8, i + 1)), lo = Math.min(...L.slice(i - 8, i + 1)), rsv = hi > lo ? (C[i] - lo) / (hi - lo) * 100 : 50; k = k * 2 / 3 + rsv / 3; d = d * 2 / 3 + k / 3; }
+      let ag = 0, al = 0; for (let i = 1; i < n; i++) { const ch = C[i] - C[i - 1], g = Math.max(ch, 0), l = Math.max(-ch, 0); if (i <= 14) { ag += g / 14; al += l / 14; } else { ag = (ag * 13 + g) / 14; al = (al * 13 + l) / 14; } }
+      const rsi = al ? 100 - 100 / (1 + ag / al) : 100, dif = ema(C, 12).map((x, i) => x - ema(C, 26)[i]), hist = dif.at(-1) - ema(dif, 9).at(-1);
+      const ma = m => n >= m ? C.slice(-m).reduce((a, b) => a + b, 0) / m : null, m20 = ma(20), m60 = ma(60), v20 = V.slice(-20).reduce((a, b) => a + b, 0) / Math.min(20, n), v = val[code] || [];
+      out[code] = [r1(k), r1(d), r1(rsi), Math.round(hist * 100) / 100, r1(m20 ? (c / m20 - 1) * 100 : null), r1(m60 ? (c / m60 - 1) * 100 : null), Math.round((v20 ? V[n - 1] / v20 : 0) * 100) / 100, r1(n > 20 ? (c / C[n - 21] - 1) * 100 : null), v[0] ?? null, v[1] ?? null, v[2] ?? null];
+    }
+    wr(path.join(DATA, 'ind.json'), { date: days[last].d, f: ['k', 'd', 'rsi', 'macd', 'b20', 'b60', 'vr', 'c20', 'pe', 'yld', 'pb'], s: out }); }
   const allDates = fs.readdirSync(path.join(DATA, 'daily')).map(n => n.replace('.json', '')).sort();
   wr(path.join(DATA, 'index.json'), { dates: allDates, latest: days[last].d });
 

@@ -496,18 +496,27 @@ details.mkt-warn p{margin:6px 0 0;font-size:.85rem}
 .gauge svg{width:120px;height:120px}
 @media (max-width:720px){.stat-rows{max-width:none}.hero .gauge svg{width:110px;height:110px}}
 .srow .sv .nowrap+.nowrap{margin-left:6px}
-.srow .chip-line .dot{color:var(--faint)}
+.srow .chip-line .cdot{color:var(--faint)}
 @media (max-width:720px){
   .hero .name{font-size:1.4rem}
   .hero .id{gap:6px 8px}.hero .watch-btn{font-size:.75rem;padding:4px 10px}
   .price .px{font-size:2.1rem}
   .srow .sv .nowrap{display:block;margin-left:0!important}
-  .srow .chip-line .dot{display:none}.srow .chip-line>span:not(.dot){display:block}
+  .srow .chip-line .cdot{display:none}.srow .chip-line>span:not(.cdot){display:block}
 }
 /* 手機版選股與庫存：籌碼小字換行，不撐寬股票欄，讓價格欄位留在畫面內 */
-.td-note .dot{color:var(--faint)}
+.td-note .cdot{color:var(--faint)}
 @media (max-width:720px){
-  #watch .stock-table td.nm,#hold .stock-table td.nm{max-width:7.5em;white-space:normal}
+  #watch .stock-table td.nm,#hold .stock-table td.nm{min-width:8.5em;max-width:9em;white-space:normal}
   .td-note{white-space:normal;font-size:.72rem;line-height:1.45}
-  .td-note .dot{display:none}.td-note>span:not(.dot){display:block}
+  .td-note .cdot{display:none}.td-note>span:not(.cdot){display:block}
 }
+/* 欄位設定 */
+.colset{margin:10px 0 0;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--sunk)}
+.colset[hidden]{display:none}
+.colset-h{display:flex;justify-content:space-between;align-items:center;font-size:.88rem}
+.colset-g{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 12px;margin-top:8px}
+.colset-g label{display:flex;align-items:baseline;gap:6px;font-size:.85rem;cursor:pointer}
+.colset-g small{font-size:.7rem;color:var(--faint)}
+.stock-table .xcol{white-space:nowrap}
+@media (max-width:640px){.colset-g{grid-template-columns:repeat(2,minmax(0,1fr))}.colset-g label{flex-wrap:wrap;gap:2px 6px}}
