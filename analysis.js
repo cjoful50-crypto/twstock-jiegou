@@ -132,6 +132,7 @@ function render(s) {
         ${s.live ? `<div class="live-badge"><span class="dot${s.live.open ? ' on' : ''}"></span>${s.live.open ? '盤中即時' : '今日收盤'} ${esc(s.live.time || '')}<span class="muted">・價格約延遲數秒；法人與籌碼為前一交易日資料</span></div>` : `<div class="small muted">資料更新至 ${esc(t.d.replace(/-/g, '/'))} 收盤</div>`}
         <div class="price"><span class="px num">${pxd(c)}</span><span class="ch num ${cls(ind.chg)}">${sg(ind.chg)}（${sg(ind.chgPct)}%）</span></div>
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="small muted">走勢</span><span class="pill ${trendCls(a.trendLabel)}">${a.trendLabel}</span><span id="mktTag"></span></div>
+        <div class="chip-line small" id="chipLine"></div>
         <div class="my-hold" id="myHold"></div><div id="pickHist"></div>
       </div>
       <div class="gauge">${ring(a.index)}<div style="display:grid;gap:6px;justify-items:center"><span class="pill ${legacyCls(a.legacy)}">綜合評等：${a.legacy}</span><span class="small muted num" style="text-align:center">五面向平均 ${fx(a.raw, 1)}${a.pen.length ? `<br>風險扣分 ${a.pen.reduce((x, y) => x + y.pts, 0)} → 強度分數 ${a.index}` : ''}</span></div></div>
@@ -230,6 +231,10 @@ function render(s) {
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; showTab(); });
   showTab();
   drawMyHold(s.code, s.name, c); loadTdcc(s.code, s.bars); pickHist(s.code);
+  { const I = s.inst || [], f = I.map(r => r.f), t = I.map(r => r.t), sum5 = v => v.slice(-5).reduce((x, y) => x + (y || 0), 0);
+    (tdSumP || (tdSumP = fetch('/data/tdcc/summary.json').then(r => r.ok ? r.json() : null).catch(() => null))).then(T => { const el = $('#chipLine'); if (!el) return;
+      const parts = chipParts({ td: T && T.s && T.s[s.code], f: I.length ? chipStreak(f) : null, f5: sum5(f), t: I.length ? chipStreak(t) : null, t5: sum5(t), m: fl && fl.chip ? fl.chip.marginChg : null });
+      el.innerHTML = parts.length ? `<span class="muted">籌碼動向</span>　${parts.join('・')}` : ''; }); }
   getMarket().then(m => { const el = $('#mktTag'); if (m && el) el.innerHTML = `<span class="small muted" style="margin-left:6px">大盤</span> <span class="pill ${m.below60 ? 'bear' : 'flat'}" title="加權指數 ${fix2(m.taiex)}，季線 ${fi(m.ma60)}（${esc(m.date.replace(/-/g, '/'))}）">${m.below60 ? '季線之下' : '季線之上'}</span>`; });
   const sb = $('#shareBtn'); if (sb) sb.onclick = async () => { const url = location.origin + '/analysis/' + encodeURIComponent(s.code), title = `${s.code} ${s.name || ''} 支撐壓力分析｜盤後結構室`;
     if (navigator.share) { try { await navigator.share({ title, url }); } catch (e) {} return; }
@@ -350,7 +355,7 @@ async function loadTdcc(code, bars) {
 }
 
 /* 這檔股票最近有沒有入選盤後名單，入選後表現如何 */
-let scP = null;
+let scP = null, tdSumP = null;
 async function pickHist(code) {
   const box = $('#pickHist'); if (!box) return;
   const sc = await (scP || (scP = fetch('/data/scorecard.json').then(r => r.ok ? r.json() : null).catch(() => null)));

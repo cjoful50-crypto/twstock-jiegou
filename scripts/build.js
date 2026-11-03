@@ -96,6 +96,13 @@ const isoOf = d => d.toISOString().slice(0, 10);
   } catch (e) { console.log('::warning::大盤資料失敗 ' + e.message); }
   // 所有股票的支撐壓力（選股與庫存頁使用）
   wr(path.join(DATA, 'levels.json'), buildLevels(days, instByDay));
+  // 籌碼動向（給選股與庫存頁）：外資、投信連續買賣超天數與近 5 日合計（張）
+  { const ds = days.slice(-10).map(x => x.d).filter(d => instByDay[d] && Object.keys(instByDay[d]).length), out = {};
+    const streak = v => { let n = 0; const sgn = Math.sign(v.at(-1) || 0); if (!sgn) return 0; for (let k = v.length - 1; k >= 0 && Math.sign(v[k] || 0) === sgn; k--) n++; return n * sgn; };
+    for (const code of Object.keys(days[last].q)) { const f = ds.map(d => (instByDay[d][code] || [0])[0]), t = ds.map(d => (instByDay[d][code] || [0, 0])[1]);
+      const f5 = f.slice(-5).reduce((a, b) => a + b, 0), t5 = t.slice(-5).reduce((a, b) => a + b, 0), fs = streak(f), ts = streak(t);
+      if (fs || ts || f5 || t5) out[code] = [fs, f5, ts, t5]; }
+    wr(path.join(DATA, 'chip.json'), { date: ds.at(-1) || null, s: out }); }
   const allDates = fs.readdirSync(path.join(DATA, 'daily')).map(n => n.replace('.json', '')).sort();
   wr(path.join(DATA, 'index.json'), { dates: allDates, latest: days[last].d });
 

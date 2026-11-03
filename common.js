@@ -160,3 +160,17 @@ async function marketBar(box, live) {
       if (q && q.date > m.date) { lq = q; lq.open = !!(j.session && j.session.open); draw(); if (lq.open) setTimeout(tick, 60000); } } catch (e) {} }; tick(); }
 }
 document.querySelectorAll('[data-mbar]').forEach(el => marketBar(el, el.dataset.mbar === 'live'));
+
+/* 籌碼動向摘要：千張大戶（集保，每週）＋外資、投信（每日）＋融資（個股頁才有）。只描述事實，不做多空判斷 */
+const chipStreak = v => { let n = 0; const g = Math.sign(v.at(-1) || 0); if (!g) return 0; for (let k = v.length - 1; k >= 0 && Math.sign(v[k] || 0) === g; k--) n++; return n * g; };
+function chipParts(o) {
+  const p = [], it = (txt, v) => p.push(`<span class="${v > 0 ? 'up' : v < 0 ? 'down' : ''}">${txt}</span>`);
+  if (o.td) { const [, c1, c4, st] = o.td, c = c4 != null ? c4 : c1;
+    if (Math.abs(st || 0) >= 2) it(`千張大戶連 ${Math.abs(st)} 週${st > 0 ? '增加' : '減少'}`, st);
+    else if (c != null && Math.abs(c) >= 0.3) it(`千張大戶${c4 != null ? '近 4 週' : '近 1 週'}${c > 0 ? '增加' : '減少'} ${Math.abs(c).toFixed(2)} 百分點`, c); }
+  const inst = (lab, s, v5) => { if (Math.abs(s) >= 2) it(`${lab}連 ${Math.abs(s)} 日${s > 0 ? '買超' : '賣超'}`, s); else if (v5) it(`${lab}近 5 日${v5 > 0 ? '買超' : '賣超'} ${fi(Math.abs(v5))} 張`, v5); };
+  if (o.f != null) inst('外資', o.f, o.f5);
+  if (o.t != null && (Math.abs(o.t) >= 2 || Math.abs(o.t5 || 0) >= 100)) inst('投信', o.t, o.t5);
+  if (o.m != null && Math.abs(o.m) >= 3) it(`融資 5 日${o.m > 0 ? '增加' : '減少'} ${Math.abs(o.m).toFixed(1)}%`, -o.m); // 融資增加通常代表散戶加碼，以綠色表示
+  return p;
+}

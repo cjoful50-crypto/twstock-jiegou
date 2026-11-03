@@ -481,3 +481,4 @@ details.mkt-warn p{margin:6px 0 0;font-size:.85rem}
 .mb-note{margin:8px 0 0;font-size:.78rem;color:var(--muted);line-height:1.6}
 @media (max-width:640px){.mbar{padding:10px 12px}.mb-detail{grid-template-columns:repeat(2,minmax(0,1fr))}.mbar>summary{gap:4px}}
 .mb-detail b .up{color:var(--up);font-size:inherit}.mb-detail b .down{color:var(--down);font-size:inherit}.mb-detail b span{font-size:inherit}
+.chip-line{margin-top:8px;line-height:1.7}.chip-line .up{color:var(--up)}.chip-line .down{color:var(--down)}.td-note .up{color:var(--up)}.td-note .down{color:var(--down)}

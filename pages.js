@@ -128,11 +128,13 @@ loadPicks();
 let watchTimer = null;
 /* 選股與庫存的支撐壓力：每天收盤後算好的 data/levels.json，配合即時價格標示位置 */
 let LV = null, lvP = null;
-const getLevels = () => lvP || (lvP = Promise.all([fetch('/data/levels.json').then(r => r.ok ? r.json() : null).catch(() => null), fetch('/data/tdcc/summary.json').then(r => r.ok ? r.json() : null).catch(() => null)]).then(([a, b]) => { TD = b; return (LV = a); }));
+const getLevels = () => lvP || (lvP = Promise.all([fetch('/data/levels.json').then(r => r.ok ? r.json() : null).catch(() => null), fetch('/data/tdcc/summary.json').then(r => r.ok ? r.json() : null).catch(() => null), fetch('/data/chip.json').then(r => r.ok ? r.json() : null).catch(() => null)]).then(([a, b, c]) => { TD = b; CH = c; return (LV = a); }));
+let CH = null;
 let TD = null;
 // 千張大戶持股變化小字：優先 4 週，沒有就用 1 週
-const tdNote = code => { const v = TD && TD.s && TD.s[code]; if (!v) return ''; const [, c1, c4, st] = v; const c = c4 != null ? c4 : c1; if (c == null) return '';
-  return `<div class="td-note small">大戶 ${c4 != null ? '4週' : '1週'} <span class="num ${cls(c)}">${c > 0 ? '+' : ''}${c.toFixed(2)}</span>${Math.abs(st) >= 3 ? `・連${st > 0 ? '增' : '減'} ${Math.abs(st)} 週` : ''}</div>`; };
+// 籌碼動向：名稱下方一行，最多顯示兩項
+const tdNote = code => { const c = CH && CH.s && CH.s[code], parts = chipParts({ td: TD && TD.s && TD.s[code], f: c ? c[0] : null, f5: c ? c[1] : 0, t: c ? c[2] : null, t5: c ? c[3] : 0 });
+  return parts.length ? `<div class="td-note small">${parts.slice(0, 2).join('・')}</div>` : ''; };
 const LV_STR = ['', '弱', '中', '強', '極強'];
 const lvMode = { get: () => Store.read('jiegou-lvmode', 'simple'), set: v => Store.write('jiegou-lvmode', v) };
 function lvInfo(code, px) {
@@ -182,7 +184,7 @@ function bindLv(box, redraw) {
   const b = box.querySelector('[data-lvmode]'); if (b) b.onclick = () => { lvMode.set(lvMode.get() === 'detail' ? 'simple' : 'detail'); redraw(); };
 }
 const lvToggle = () => `<button class="linkbtn" type="button" data-lvmode title="切換是否展開所有股票的第二道支撐壓力">${lvMode.get() === 'detail' ? '收合價位' : '展開價位'}</button>`;
-const lvNote = () => LV && LV.date ? `價格下方的 ↓ 為下方最近的支撐、↑ 為上方最近的壓力（${esc(LV.date.replace(/-/g, '/'))} 收盤後計算），點選該列可查看所有價位與強度。「大戶」為集保千張大戶持股比例的變化（百分點）。` : '';
+const lvNote = () => LV && LV.date ? `價格下方的 ↓ 為下方最近的支撐、↑ 為上方最近的壓力（${esc(LV.date.replace(/-/g, '/'))} 收盤後計算），點選該列可查看所有價位與強度。股票名稱下方為籌碼動向（集保千張大戶每週資料、外資與投信每日買賣超）。` : '';
 
 async function renderWatch() {
   const box = $('#watch'); if (!box) return; const list = Watch.get();
