@@ -504,3 +504,10 @@ details.mkt-warn p{margin:6px 0 0;font-size:.85rem}
   .srow .sv .nowrap{display:block;margin-left:0!important}
   .srow .chip-line .dot{display:none}.srow .chip-line>span:not(.dot){display:block}
 }
+/* 手機版選股與庫存：籌碼小字換行，不撐寬股票欄，讓價格欄位留在畫面內 */
+.td-note .dot{color:var(--faint)}
+@media (max-width:720px){
+  #watch .stock-table td.nm,#hold .stock-table td.nm{max-width:7.5em;white-space:normal}
+  .td-note{white-space:normal;font-size:.72rem;line-height:1.45}
+  .td-note .dot{display:none}.td-note>span:not(.dot){display:block}
+}

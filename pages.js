@@ -134,7 +134,7 @@ let TD = null;
 // 千張大戶持股變化小字：優先 4 週，沒有就用 1 週
 // 籌碼動向：名稱下方一行，最多顯示兩項
 const tdNote = code => { const c = CH && CH.s && CH.s[code], parts = chipParts({ td: TD && TD.s && TD.s[code], f: c ? c[0] : null, f5: c ? c[1] : 0, t: c ? c[2] : null, t5: c ? c[3] : 0 });
-  return parts.length ? `<div class="td-note small">${parts.slice(0, 2).join('・')}</div>` : ''; };
+  return parts.length ? `<div class="td-note small">${parts.slice(0, 2).join('<span class="dot">・</span>')}</div>` : ''; };
 const LV_STR = ['', '弱', '中', '強', '極強'];
 const lvMode = { get: () => Store.read('jiegou-lvmode', 'simple'), set: v => Store.write('jiegou-lvmode', v) };
 function lvInfo(code, px) {
@@ -194,9 +194,9 @@ async function renderWatch() {
     return;
   }
   const rowsHtml = (q = {}) => list.map(w => { const x = q[w.code] || {}; const chg = x.price && x.prev ? (x.price / x.prev - 1) * 100 : null;
-    return `<tr data-code="${esc(w.code)}"><td class="nm"><a href="/analysis/${esc(w.code)}"><span class="num">${esc(w.code)}</span>${esc(w.name || x.name || '')}</a>${secTag(w.code)}</td>
+    return `<tr data-code="${esc(w.code)}"><td class="nm"><a href="/analysis/${esc(w.code)}"><span class="num">${esc(w.code)}</span>${esc(w.name || x.name || '')}</a>${secTag(w.code)}${tdNote(w.code)}</td>
       <td class="num">${lvPrice(w.code, x.price || null)}</td><td class="num ${cls(chg)}">${chg == null ? '—' : sg(chg) + '%'}</td><td class="num hide-sm">${x.vol != null ? fi(x.vol) : '—'}</td>
-      <td class="num" style="color:${scoreColor(w.index)}">${w.index ?? '—'}${w.trend ? `<span class="small muted">・${esc(w.trend)}</span>` : ''}${tdNote(w.code)}</td><td>${starBtn(w.code, w.name)}</td></tr>${lvDetail(w.code, x.price || null, 6)}`; }).join('');
+      <td class="num" style="color:${scoreColor(w.index)}">${w.index ?? '—'}${w.trend ? `<span class="small muted">・${esc(w.trend)}</span>` : ''}</td><td>${starBtn(w.code, w.name)}</td></tr>${lvDetail(w.code, x.price || null, 6)}`; }).join('');
   const table = q => `${lvSummary(list.map(w => w.code), q, box)}<div class="scroll"><table class="stock-table"><thead><tr><th>股票</th><th>價格<span class="th-sub">↓支撐 ↑壓力</span></th><th>漲跌</th><th class="hide-sm">成交量（張）</th><th>強度分數</th><th></th></tr></thead><tbody>${rowsHtml(q)}</tbody></table></div>
     <p class="note" style="margin:6px 0 0">${lvNote()}強度分數為最近一次開啟該股分析頁時的結果，進入個股分析頁即可依最新資料重新計算。${syncNote()}</p>`;
   box.innerHTML = head + table();
