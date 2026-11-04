@@ -42,7 +42,7 @@ const Sync = (() => {
     const box = document.getElementById('acct'); if (!box || !enabled) return;
     if (!user) { box.innerHTML = `<button class="btn ghost acct-btn" type="button" id="loginBtn">登入</button>`; document.getElementById('loginBtn').onclick = () => openForm('login'); return; }
     const st = document.getElementById('syncState'); if (st && document.querySelector('.acct-menu[open]')) { st.textContent = state || ''; return; }
-    box.innerHTML = `<details class="acct-menu"><summary title="${esc(user)}">${esc(user.slice(0, 1).toUpperCase())}</summary><div class="acct-pop"><b>${esc(user)}</b><span class="small muted" id="syncState">${esc(state || '')}</span><span class="small muted">選股與庫存會在登入的裝置間同步。</span><button class="btn ghost" type="button" id="logoutBtn">登出</button></div></details>`;
+    box.innerHTML = `<details class="acct-menu"><summary title="${esc(user)}">${esc(user.slice(0, 1).toUpperCase())}</summary><div class="acct-pop"><b>${esc(user)}</b><span class="small muted" id="syncState">${esc(state || '')}</span><span class="small muted">選股與庫存會在登入的裝置間同步。</span>${String(user).toLowerCase() === 'diane' ? '<a class="small" href="/admin">網站後台 →</a>' : ''}<button class="btn ghost" type="button" id="logoutBtn">登出</button></div></details>`;
     document.getElementById('logoutBtn').onclick = signOut;
   }
   function openForm(mode) {

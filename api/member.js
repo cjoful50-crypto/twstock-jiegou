@@ -6,7 +6,7 @@
 //   PUT  /api/member  （Authorization: Bearer） → 存入 { watch, holdings, updated_at }
 // 密碼以 scrypt 加鹽雜湊保存；登入憑證以 HMAC 簽章，有效 180 天。
 const crypto = require('crypto');
-const { put, get } = require('@vercel/blob');
+const { put, get, list } = require('@vercel/blob');
 
 // 兩種連線方式：BLOB_READ_WRITE_TOKEN，或較新的 BLOB_STORE_ID＋Vercel OIDC（每次請求帶在標頭）
 const RW = process.env.BLOB_READ_WRITE_TOKEN, STORE = process.env.BLOB_STORE_ID;
@@ -42,6 +42,31 @@ function body(req) {
 }
 const send = (res, code, obj) => { res.statusCode = code; res.setHeader('Content-Type', 'application/json; charset=utf-8'); res.setHeader('Cache-Control', 'no-store'); res.end(JSON.stringify(obj)); };
 
+// 後台資料：會員統計（只取檔案清單，不讀個人內容）＋ Vercel Web Analytics（需要環境變數 VERCEL_TOKEN）
+const PROJECT = 'prj_ttQj3GM82Ik1FGW1pctlNv3qCNF6', TEAM = 'team_7jHZyBuJGkDLat8xpzsejtqZ';
+async function adminData() {
+  const out = { members: null, traffic: null };
+  try { const blobs = []; let cursor; do { const r = await list(Object.assign({ prefix: 'members/', limit: 1000, cursor }, AUTH)); blobs.push(...r.blobs); cursor = r.hasMore ? r.cursor : null; } while (cursor);
+    const users = blobs.filter(b => b.pathname.endsWith('/user.json')), data = blobs.filter(b => b.pathname.endsWith('/data.json'));
+    const day = 864e5, now = Date.now(), at = b => new Date(b.uploadedAt).getTime();
+    out.members = { total: users.length, synced: data.length, active7: data.filter(b => now - at(b) < 7 * day).length, active30: data.filter(b => now - at(b) < 30 * day).length,
+      lastSync: data.length ? new Date(Math.max(...data.map(at))).toISOString() : null };
+  } catch (e) { out.members = { error: String(e.message || e) }; }
+  const tok = process.env.VERCEL_TOKEN;
+  if (!tok) { out.traffic = { missing: true }; return out; }
+  const q = async (path, params) => { const u = new URL('https://api.vercel.com/v1/query/web-analytics/visits/' + path); Object.entries(Object.assign({ projectId: PROJECT, teamId: TEAM }, params)).forEach(([k, v]) => u.searchParams.set(k, v));
+    const r = await fetch(u, { headers: { Authorization: 'Bearer ' + tok } }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error((j.error && j.error.message) || 'HTTP ' + r.status); return j.data; };
+  const tpe = d => new Date(d.getTime() + 8 * 3600e3).toISOString().slice(0, 10), today = new Date(), ago = n => tpe(new Date(today.getTime() - n * 864e5));
+  try {
+    const [d1, d7, d30, daily, pages, dev, ref] = await Promise.all([
+      q('count', { since: ago(0), until: ago(0) + 'T23:59:59' }), q('count', { since: ago(6), until: ago(0) + 'T23:59:59' }), q('count', { since: ago(29), until: ago(0) + 'T23:59:59' }),
+      q('aggregate', { since: ago(29), until: ago(0) + 'T23:59:59', by: 'day' }), q('aggregate', { since: ago(6), until: ago(0) + 'T23:59:59', by: 'requestPath', limit: 20 }),
+      q('aggregate', { since: ago(29), until: ago(0) + 'T23:59:59', by: 'deviceType' }), q('aggregate', { since: ago(29), until: ago(0) + 'T23:59:59', by: 'referrerHostname', limit: 10 })]);
+    out.traffic = { today: d1, week: d7, month: d30, daily, pages, dev, ref };
+  } catch (e) { out.traffic = { error: String(e.message || e) }; }
+  return out;
+}
+
 module.exports = async (req, res) => {
   try {
     const oidc = req.headers['x-vercel-oidc-token'] || process.env.VERCEL_OIDC_TOKEN;
@@ -73,6 +98,12 @@ module.exports = async (req, res) => {
     }
 
     const t = readToken(req); if (!t) return send(res, 401, { error: '登入已過期，請重新登入。' });
+    // 後台：只限管理員帳號（ADMIN_USERS 以逗號分隔，預設 diane）
+    if (req.method === 'GET' && req.query && req.query.admin) {
+      const admins = String(process.env.ADMIN_USERS || 'diane').toLowerCase().split(',').map(x => x.trim());
+      if (!admins.includes(String(t.n).toLowerCase())) return send(res, 403, { error: '此帳號沒有後台權限。' });
+      return send(res, 200, await adminData());
+    }
     const dpath = `members/${t.u}/data.json`;
     if (req.method === 'GET') return send(res, 200, { user: t.n, data: await readJson(dpath) });
     if (req.method === 'PUT') {
