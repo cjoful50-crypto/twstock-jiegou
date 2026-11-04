@@ -21,7 +21,9 @@
       <div><h3 class="adm-h">裝置（近 30 日）</h3>${table(T.dev, r => dev[r.deviceType] || esc(r.deviceType), '裝置')}<h3 class="adm-h">來源網站（近 30 日）</h3>${table((T.ref || []).filter(r => r.referrerHostname), r => esc(r.referrerHostname), '來源')}</div></div>
       <p class="note">資料來源為 Vercel Web Analytics，自 2026/11/04 開始統計，免費方案保留最近 30 日。訪客以裝置計算，不使用 cookie。</p>`;
   box.innerHTML = `<section class="card"><h2>流量</h2>${traffic}</section>
-    <section class="card"><h2>會員</h2>${M.error ? `<p class="err">${esc(M.error)}</p>` : `<div class="kpis">${kpi('註冊會員', fi(M.total))}${kpi('近 7 日有同步', fi(M.active7), '登入後有更新選股或庫存')}${kpi('近 30 日有同步', fi(M.active30))}</div><p class="note">最近一次同步：${dt(M.lastSync)}。僅統計人數，不讀取會員的選股與庫存內容。</p>`}</section>
+    <section class="card"><h2>會員</h2>${M.error ? `<p class="err">${esc(M.error)}</p>` : `<div class="kpis">${kpi('註冊會員', fi(M.total))}${kpi('近 7 日有同步', fi(M.active7), '登入後有更新選股或庫存')}${kpi('近 30 日有同步', fi(M.active30))}</div><p class="note">最近一次同步：${dt(M.lastSync)}。</p>
+      ${M.list && M.list.length ? `<h3 class="adm-h">會員列表（依註冊時間，新到舊）</h3><div class="scroll"><table class="follow-t"><thead><tr><th>帳號</th><th class="r">註冊時間</th><th class="r">最近同步</th></tr></thead><tbody>${M.list.map(u => `<tr><td>${esc(u.name)}</td><td class="r num">${dt(u.created)}</td><td class="r num">${u.lastSync ? dt(u.lastSync) : '<span class="muted">尚未同步</span>'}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      <p class="note">僅顯示帳號名稱與時間，不讀取會員的選股與庫存內容。「最近同步」為會員登入後最後一次更新選股或庫存的時間。</p>`}</section>
     <section class="card"><h2>資料更新狀態</h2><div id="admData" class="small muted">檢查中…</div></section>`;
   // 資料更新狀態：各資料檔的日期＋最近幾次自動更新
   const get = u => fetch(u).then(r => r.ok ? r.json() : null).catch(() => null);

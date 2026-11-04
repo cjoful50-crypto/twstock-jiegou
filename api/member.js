@@ -51,6 +51,11 @@ async function adminData() {
     const day = 864e5, now = Date.now(), at = b => new Date(b.uploadedAt).getTime();
     out.members = { total: users.length, synced: data.length, active7: data.filter(b => now - at(b) < 7 * day).length, active30: data.filter(b => now - at(b) < 30 * day).length,
       lastSync: data.length ? new Date(Math.max(...data.map(at))).toISOString() : null };
+    // 會員列表：只列帳號名稱、註冊時間、最近同步時間，不讀取選股與庫存內容
+    const syncOf = new Map(data.map(b => [b.pathname.split('/')[1], b.uploadedAt]));
+    const rows = await Promise.all(users.slice(0, 300).map(async b => { const uid = b.pathname.split('/')[1]; let u = null; try { u = await readJson(b.pathname); } catch (e) {}
+      return { name: u && u.name || '（無法讀取）', created: u && u.created || null, lastSync: syncOf.get(uid) ? new Date(syncOf.get(uid)).toISOString() : null }; }));
+    out.members.list = rows.sort((x, y) => String(y.created || '').localeCompare(String(x.created || '')));
   } catch (e) { out.members = { error: String(e.message || e) }; }
   const tok = process.env.VERCEL_TOKEN;
   if (!tok) { out.traffic = { missing: true }; return out; }
