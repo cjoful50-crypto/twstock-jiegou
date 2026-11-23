@@ -39,7 +39,7 @@ jobs:
           const d=String(L.date||'').replace(/\\//g,'-'), inst=String(L.instDate||'').replace(/\\//g,'-');
           const done = d===today && inst===today;
           console.log('今天', today, '名單日期', d, '法人日期', inst, done ? '已更新，略過' : '需要更新');
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, 'skip=' + (done || m < 14*60+30 ? 'true' : 'false') + '\\n');"
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, 'skip=' + (done ? 'true' : 'false') + '\\n');"
       - name: 除權息等事件
         if: steps.chk.outputs.skip != 'true'
         run: node scripts/exright.js
