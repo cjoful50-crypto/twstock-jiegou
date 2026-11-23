@@ -65,8 +65,8 @@ function spaceSummary(a) {
 }
 
 function candles(a) {
-  const B = a.stock.bars.slice(-90), n = B.length, ind = a.ind, off = a.stock.bars.length - n;
-  const W = 760, H = 330, pl = 8, pr = 58, pt = 12, ph = 230, vt = 258, vh = 60;
+  const sm = window.innerWidth < 720, B = a.stock.bars.slice(sm ? -50 : -90), n = B.length, ind = a.ind, off = a.stock.bars.length - n;
+  const W = sm ? 400 : 760, H = 330, pl = 8, pr = 58, pt = 12, ph = 230, vt = 258, vh = 60;
   const lines = [...a.st.sup.map(b => ['sup', b.level]), ...a.st.res.map(b => ['res', b.level])];
   const ma20 = ind.ma20.slice(-n), ma60 = ind.ma60.slice(-n);
   const all = [...B.flatMap(b => [b.h, b.l]), ...lines.map(l => l[1])];
@@ -86,7 +86,7 @@ function candles(a) {
   g += `<text x="${pl}" y="${vt - 4}" font-size="11" fill="var(--faint)" font-family="var(--f-body)">成交量（張）</text>`;
   g += `<text x="${pl + 4}" y="${pt + 12}" font-size="11" fill="var(--accent)" font-family="var(--f-body)">— MA20</text><text x="${pl + 64}" y="${pt + 12}" font-size="11" fill="var(--warn)" font-family="var(--f-body)">— MA60</text>`;
   g += `<text x="${pl}" y="${H - 2}" font-size="11" fill="var(--faint)" font-family="var(--f-num)">${B[0].d}</text><text x="${W - pr}" y="${H - 2}" text-anchor="end" font-size="11" fill="var(--faint)" font-family="var(--f-num)">${B.at(-1).d}</text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="近 90 日 K 線與結構價位">${g}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="近 ${n} 日 K 線與結構價位">${g}</svg>`;
 }
 
 function levelCard(kind, title, bands, emptyMsg, a) {
@@ -107,7 +107,9 @@ function render(s) {
   const t = s.bars.at(-1), c = t.c, ind = a.ind, fl = a.flows, R1 = a.st.res[0], R2 = a.st.res[1], S1 = a.st.sup[0];
   const d = s.dates || {};
 
-  const dimsHtml = a.dims.map(x => `<div class="dim"><div class="lab">${x.name}</div><div class="val num" style="color:${scoreColor(x.s)}">${x.s ?? '資料不足'}</div><div class="bar"><i style="width:${x.s ?? 0}%;background:${scoreColor(x.s)}"></i></div></div>`).join('');
+  const why1 = x => x.items.filter(i => i.pts).sort((p, q) => Math.abs(q.pts) - Math.abs(p.pts)).slice(0, 2).map(i => esc(i.label.split('，')[0].split('：')[0]));
+  const dimsHtml = a.dims.map(x => `<details class="dim"><summary><span class="lab">${x.name}<small>權重 ${Math.round(x.w * 100)}%</small></span><span class="val num" style="color:${scoreColor(x.s)}">${x.s ?? '資料不足'}</span><span class="bar"><i style="width:${x.s ?? 0}%;background:${scoreColor(x.s)}"></i></span><span class="dwhy small muted">${why1(x).join('｜') || (x.items.length ? '無明顯加減分' : '沒有資料')}</span></summary><ul>${x.items.map(i => `<li><span>${esc(i.label)}</span><span class="num ${cls(i.pts)}">${sgi(i.pts)}</span></li>`).join('') || '<li><span>沒有資料</span></li>'}</ul></details>`).join('')
+    + `<details class="dim"><summary><span class="lab">風險折減</span><span class="val num" style="color:${a.pen.length ? 'var(--down)' : 'var(--muted)'}">${a.pen.reduce((x, y) => x + y.pts, 0)}</span><span class="bar"></span><span class="dwhy small muted">${a.pen.length ? a.pen.map(p => esc(p.label.split('，')[0].split('：')[0])).join('｜') : '無'}</span></summary><ul>${a.pen.map(i => `<li><span>${esc(i.label)}</span><span class="num down">${i.pts}</span></li>`).join('') || '<li><span>無</span></li>'}</ul></details>`;
 
   const strong = a.dims.filter(x => x.ok && x.s >= 55).map(x => `${x.name}（${x.s}）`), weak = a.dims.filter(x => x.ok && x.s < 45).map(x => `${x.name}（${x.s}）`);
   const pts = [];
@@ -143,7 +145,8 @@ function render(s) {
       <div class="gauge" id="secScore">${ring(a.index)}<div style="display:grid;gap:6px;justify-items:center"><span class="pill ${legacyCls(a.legacy)}">綜合評等：${a.legacy}</span><span class="small muted num" style="text-align:center">五面向平均 ${fx(a.raw, 1)}${a.pen.length ? `<br>風險扣分 ${a.pen.reduce((x, y) => x + y.pts, 0)} → 強度分數 ${a.index}` : ''}</span></div></div>
     </div>
     <details class="howto-d"><summary>指標說明</summary><p class="note" style="margin:8px 0 0"><b>價位</b>為現價下方最近的支撐與上方最近的壓力，括號為與現價的距離，點選可查看價位地圖。<b>走勢</b>依強度分數分為強勢、觀察、偏弱、風險四級；<b>綜合評等</b>為下列五個面向分數的平均；<b>強度分數</b>為綜合評等扣除風險因素（如接近強壓力、均線動能轉弱、短線過熱、量增收黑）後的分數，範圍 0～100，分數越高代表目前整體條件越強，但並非漲跌預測；歷史資料顯示其與後續漲跌的關聯性有限（詳見盤後名單頁「歷史成績」）。<b>大盤</b>為加權指數相對季線的位置。<b>籌碼</b>整理千張大戶、外資、投信與融資的變化。</p></details>
-    <div class="dims">${dimsHtml}</div>
+    <div class="dims"><div class="dims-h small muted">各面向分數（點選查看計分項目）</div>${dimsHtml}</div>
+    <details class="howto-d"><summary>計分方式</summary><p class="note" style="margin:8px 0 0">強度分數 = 五面向加權平均（缺少資料的面向不計入，權重重新分配）＋ 風險折減。各面向以基準分起算（趨勢 53、量價 50、法人 50、籌碼 44、基本面 45）；量價的加減分以 0.35 倍、籌碼以 0.6 倍計入，以降低單日波動對分數的影響；各面向分數限制在 0～100。加權原始分即綜合評等（60 以上偏多、38～60 中性、38 以下偏空）；扣除風險折減後為強度分數。走勢依強度分數判定：75 以上強勢、45～74 觀察、36～44 偏弱、35 以下風險。</p></details>
     <div class="dates num"><span>行情：${esc(d.price || t.d)}</span>${d.inst ? `<span>法人：${esc(d.inst)}</span>` : ''}${d.chip ? `<span>籌碼：${esc(d.chip)}</span>` : ''}${d.val ? `<span>基本面：${esc(d.val)}</span>` : ''}${d.rev ? `<span>營收：${esc(d.rev)}</span>` : ''}</div>
   </section>
 
@@ -157,12 +160,8 @@ function render(s) {
           ${spaceSummary(a)}
           <div class="small" style="font-weight:700;margin-top:16px">目前位置</div>
           <p class="small" style="margin:10px 0 0">目前位於區間約 <b class="num">${Math.round(a.posPct)}%</b>，屬「<b>${a.posZone}</b>」。區間從近 20 日最低 <span class="num">${pxd(ind.low20)}</span> 到${R1 && R1.level > ind.high20 ? '第一壓力' : '近 20 日最高'} <span class="num">${pxd(a.top)}</span>。</p>
-          <div class="zones">
-            <div class="${a.posZone === '低檔區' ? 'on' : ''}"><b>低檔區　0～35%</b><span>接近近期低點與支撐，下檔空間相對有限；若走勢轉弱，仍可能續跌。</span></div>
-            <div class="${a.posZone === '中段區' ? 'on' : ''}"><b>中段區　35～70%</b><span>位於近期區間中段，方向尚不明確。</span></div>
-            <div class="${a.posZone === '偏熱區' ? 'on' : ''}"><b>偏熱區　70～100%</b><span>接近近期高點或壓力，短線已有一段漲幅，追價風險較高。</span></div>
-          </div>
-          <p class="note" style="margin:8px 0 0">位置僅描述股價所在區間，不代表買賣建議。</p>
+          <div class="zones">${[['低檔區', '0～35%', '接近近期低點與支撐，下檔空間相對有限；若走勢轉弱，仍可能續跌。'], ['中段區', '35～70%', '位於近期區間中段，方向尚不明確。'], ['偏熱區', '70～100%', '接近近期高點或壓力，短線已有一段漲幅，追價風險較高。']].filter(z => z[0] === a.posZone).map(([n, r, t]) => `<div class="on"><b>${n}　${r}</b><span>${t}</span></div>`).join('')}</div>
+          <p class="note" style="margin:8px 0 0">區間劃分：低檔區 0～35%、中段區 35～70%、偏熱區 70～100%。位置僅描述股價所在區間，不代表買賣建議。</p>
           ${R1 ? `<p class="small" style="margin:14px 0 0">第一壓力 <b class="num" style="color:var(--res)">${pxd(R1.level)}</b> 的價位強度為<b>${R1.strength}</b>，由${R1.cats.map(x => x + '結構').join('、')}組成；價位強度越高，股價接近時越可能遇到賣壓。</p>` : ''}
           <div class="zone-box"><b>${a.zone ? `支撐密集區 <span class="num" style="color:var(--accent)">${pxd(a.zone.lo)}–${pxd(a.zone.hi)}</span>` : '支撐密集區：目前沒有'}</b><span>${a.zone ? '近端兩道支撐落在同一價格帶，且均線與動能沒有同步轉弱；股價回到此區間時，下方有多種結構支撐。' : esc(a.zoneWhy)}</span><span class="note">支撐密集區：多種支撐（如均線、前波低點、大量成交區）集中在同一價格帶，形成較穩固的承接區。</span></div>
 
@@ -198,9 +197,9 @@ function render(s) {
   <section class="card" id="tdccCard" aria-labelledby="tdccT"><h2 id="tdccT">大戶與散戶</h2><p class="small muted" style="margin:4px 0 0">載入集保資料中…</p></section>
 
   <section class="card">
-    <h2>進階資料</h2><p class="small muted" style="margin:4px 0 0">K 線圖、法人買賣、融資借券、本益比與營收，以及分數的計算明細。</p>
+    <h2>進階資料</h2><p class="small muted" style="margin:4px 0 0">K 線圖、法人買賣、融資借券、本益比、營收與財報。</p>
     <div class="tabs" role="tablist">
-      ${[['tech', '技術面'], ['inst', '法人'], ['chip', '籌碼'], ['fund', '基本面'], ['score', '計分明細']].map(([k, l]) => `<button role="tab" type="button" data-tab="${k}" aria-selected="${tab === k}">${l}</button>`).join('')}
+      ${[['tech', '技術面'], ['inst', '法人'], ['chip', '籌碼'], ['fund', '基本面']].map(([k, l]) => `<button role="tab" type="button" data-tab="${k}" aria-selected="${tab === k}">${l}</button>`).join('')}
     </div>
     <div class="panel" id="panel"></div>
   </section>`;
@@ -226,11 +225,7 @@ function render(s) {
       return `<div class="kv"><div><span>融資餘額 5 日變化</span><b class="num">${sg(fl.chip.marginChg)}%</b></div><div><span>借券賣出餘額 5 日變化</span><b class="num">${sg(fl.chip.sblChg)}%</b></div><div><span>券資比</span><b class="num">${fx(fl.chip.ratio, 1)}%</b></div><div><span>近 5 日借券賣出／還券</span><b class="num">${fi(fl.chip.sblSell5)} / ${fi(fl.chip.sblRet5)}</b></div></div>
       <div class="scroll" style="margin-top:12px"><table><thead><tr><th>日期</th><th>融資餘額</th><th>融券餘額</th><th>借券賣出餘額</th><th>借券賣出</th><th>還券</th></tr></thead><tbody>${days.map(dd => { const mm = m.find(x => x.d === dd) || {}, bb = b.find(x => x.d === dd) || {}; return `<tr><td class="num">${dd}</td><td class="num">${fi(mm.mb)}</td><td class="num">${fi(mm.sb)}</td><td class="num">${fi(bb.bal)}</td><td class="num">${fi(bb.sell)}</td><td class="num">${fi(bb.ret)}</td></tr>`; }).join('')}</tbody></table></div><p class="note">單位：張。借券賣出餘額下降代表空方回補，對股價壓力減輕。</p>`;
     },
-    fund: () => { const f = s.fund || {}; return `<div class="kv"><div><span>本益比</span><b class="num">${fx(f.pe)}</b></div><div><span>殖利率</span><b class="num">${f.yld != null ? fx(f.yld) + '%' : '—'}</b></div><div><span>股價淨值比</span><b class="num">${fx(f.pb)}</b></div><div><span>${esc(f.revMonth || '最新')} 營收年增</span><b class="num ${cls(f.revYoY)}">${f.revYoY != null ? sg(f.revYoY) + '%' : '—'}</b></div><div><span>${esc(f.revMonth || '最新')} 營收月增</span><b class="num ${cls(f.revMoM)}">${f.revMoM != null ? sg(f.revMoM) + '%' : '—'}</b></div></div><div id="finBox"><p class="small muted">財報資料載入中…</p></div>`; },
-    score: () => `<p class="small muted" style="margin-top:0">強度分數 = 五面向加權平均（趨勢 25%、量價 15%、法人 25%、籌碼 15%、基本面 20%；缺少資料的面向不計入，權重重新分配）＋ 風險折減。各面向以基準分起算（趨勢 53、量價 50、法人 50、籌碼 44、基本面 45）；量價的加減分以 0.35 倍、籌碼以 0.6 倍計入，以降低單日波動對分數的影響；各面向分數限制在 0～100。</p>
-      ${a.dims.map(x => `<div class="score-dim"><header><span>${x.name}（權重 ${x.w * 100}%）</span><span class="num" style="color:${scoreColor(x.s)}">${x.s ?? '資料不足'}</span></header><ul>${x.items.map(i => `<li><span>${esc(i.label)}</span><span class="num ${cls(i.pts)}">${sgi(i.pts)}</span></li>`).join('') || '<li><span>沒有資料</span></li>'}</ul></div>`).join('')}
-      <div class="score-dim"><header><span>風險折減</span><span class="num">${a.pen.reduce((x, y) => x + y.pts, 0)}</span></header><ul>${a.pen.map(i => `<li><span>${esc(i.label)}</span><span class="num down">${i.pts}</span></li>`).join('') || '<li><span>無</span></li>'}</ul></div>
-      <p class="small muted">加權原始分 ${fx(a.raw, 1)}，即綜合評等（60 以上偏多、38～60 中性、38 以下偏空）；扣掉風險折減後為強度分數 ${a.index}。走勢依強度分數判定：75 以上強勢、45～74 觀察、36～44 偏弱、35 以下風險。</p>`
+    fund: () => { const f = s.fund || {}; return `<div class="kv"><div><span>本益比</span><b class="num">${fx(f.pe)}</b></div><div><span>殖利率</span><b class="num">${f.yld != null ? fx(f.yld) + '%' : '—'}</b></div><div><span>股價淨值比</span><b class="num">${fx(f.pb)}</b></div><div><span>${esc(f.revMonth || '最新')} 營收年增</span><b class="num ${cls(f.revYoY)}">${f.revYoY != null ? sg(f.revYoY) + '%' : '—'}</b></div><div><span>${esc(f.revMonth || '最新')} 營收月增</span><b class="num ${cls(f.revMoM)}">${f.revMoM != null ? sg(f.revMoM) + '%' : '—'}</b></div></div><div id="finBox"><p class="small muted">財報資料載入中…</p></div>`; }
   };
   const showTab = () => { $('#panel').innerHTML = panels[tab](); document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab)); if (tab === 'fund') finBox(s.code); };
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; showTab(); });
