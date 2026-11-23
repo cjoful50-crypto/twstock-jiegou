@@ -559,3 +559,6 @@ details.mkt-warn p{margin:6px 0 0;font-size:.85rem}
   .tabsheet a{padding:10px 14px;border-radius:8px;text-decoration:none;color:var(--ink);font-weight:600;font-size:.92rem}
   .tabsheet a[aria-current="page"]{color:var(--accent);background:var(--accent-soft)}
 }
+/* 個股頁財報 */
+.fin-sum{margin:6px 0 4px;line-height:1.7}
+.fin-h{font-size:.85rem;margin:14px 0 4px;font-weight:600}.fin-h small{font-weight:400;color:var(--faint);margin-left:8px;font-size:.72rem}

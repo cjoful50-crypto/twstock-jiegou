@@ -72,5 +72,8 @@ function quarters(n) { const now = new Date(Date.now() + 8 * 3600e3), y = now.ge
     s[c] = rows.slice(-12); }
   const q = [...all].sort();
   fs.writeFileSync(path.join(DATA, 'fin.json'), JSON.stringify({ updated: new Date().toISOString(), q: q.slice(-12), s }));
+  // 個股頁只載入單檔：data/fin/<代號>.json
+  const DIR = path.join(DATA, 'fin'); fs.mkdirSync(DIR, { recursive: true });
+  for (const [c, rows] of Object.entries(s)) fs.writeFileSync(path.join(DIR, c + '.json'), JSON.stringify({ updated: new Date().toISOString().slice(0, 10), rows }));
   console.log('fin.json：', Object.keys(s).length, '家，季別', q.slice(-12).join(' '));
 })();

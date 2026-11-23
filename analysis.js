@@ -226,13 +226,13 @@ function render(s) {
       return `<div class="kv"><div><span>融資餘額 5 日變化</span><b class="num">${sg(fl.chip.marginChg)}%</b></div><div><span>借券賣出餘額 5 日變化</span><b class="num">${sg(fl.chip.sblChg)}%</b></div><div><span>券資比</span><b class="num">${fx(fl.chip.ratio, 1)}%</b></div><div><span>近 5 日借券賣出／還券</span><b class="num">${fi(fl.chip.sblSell5)} / ${fi(fl.chip.sblRet5)}</b></div></div>
       <div class="scroll" style="margin-top:12px"><table><thead><tr><th>日期</th><th>融資餘額</th><th>融券餘額</th><th>借券賣出餘額</th><th>借券賣出</th><th>還券</th></tr></thead><tbody>${days.map(dd => { const mm = m.find(x => x.d === dd) || {}, bb = b.find(x => x.d === dd) || {}; return `<tr><td class="num">${dd}</td><td class="num">${fi(mm.mb)}</td><td class="num">${fi(mm.sb)}</td><td class="num">${fi(bb.bal)}</td><td class="num">${fi(bb.sell)}</td><td class="num">${fi(bb.ret)}</td></tr>`; }).join('')}</tbody></table></div><p class="note">單位：張。借券賣出餘額下降代表空方回補，對股價壓力減輕。</p>`;
     },
-    fund: () => { const f = s.fund || {}; return `<div class="kv"><div><span>本益比</span><b class="num">${fx(f.pe)}</b></div><div><span>殖利率</span><b class="num">${f.yld != null ? fx(f.yld) + '%' : '—'}</b></div><div><span>股價淨值比</span><b class="num">${fx(f.pb)}</b></div><div><span>${esc(f.revMonth || '最新')} 營收年增</span><b class="num ${cls(f.revYoY)}">${f.revYoY != null ? sg(f.revYoY) + '%' : '—'}</b></div><div><span>${esc(f.revMonth || '最新')} 營收月增</span><b class="num ${cls(f.revMoM)}">${f.revMoM != null ? sg(f.revMoM) + '%' : '—'}</b></div></div>`; },
+    fund: () => { const f = s.fund || {}; return `<div class="kv"><div><span>本益比</span><b class="num">${fx(f.pe)}</b></div><div><span>殖利率</span><b class="num">${f.yld != null ? fx(f.yld) + '%' : '—'}</b></div><div><span>股價淨值比</span><b class="num">${fx(f.pb)}</b></div><div><span>${esc(f.revMonth || '最新')} 營收年增</span><b class="num ${cls(f.revYoY)}">${f.revYoY != null ? sg(f.revYoY) + '%' : '—'}</b></div><div><span>${esc(f.revMonth || '最新')} 營收月增</span><b class="num ${cls(f.revMoM)}">${f.revMoM != null ? sg(f.revMoM) + '%' : '—'}</b></div></div><div id="finBox"><p class="small muted">財報資料載入中…</p></div>`; },
     score: () => `<p class="small muted" style="margin-top:0">強度分數 = 五面向加權平均（趨勢 25%、量價 15%、法人 25%、籌碼 15%、基本面 20%；缺少資料的面向不計入，權重重新分配）＋ 風險折減。各面向以基準分起算（趨勢 53、量價 50、法人 50、籌碼 44、基本面 45）；量價的加減分以 0.35 倍、籌碼以 0.6 倍計入，以降低單日波動對分數的影響；各面向分數限制在 0～100。</p>
       ${a.dims.map(x => `<div class="score-dim"><header><span>${x.name}（權重 ${x.w * 100}%）</span><span class="num" style="color:${scoreColor(x.s)}">${x.s ?? '資料不足'}</span></header><ul>${x.items.map(i => `<li><span>${esc(i.label)}</span><span class="num ${cls(i.pts)}">${sgi(i.pts)}</span></li>`).join('') || '<li><span>沒有資料</span></li>'}</ul></div>`).join('')}
       <div class="score-dim"><header><span>風險折減</span><span class="num">${a.pen.reduce((x, y) => x + y.pts, 0)}</span></header><ul>${a.pen.map(i => `<li><span>${esc(i.label)}</span><span class="num down">${i.pts}</span></li>`).join('') || '<li><span>無</span></li>'}</ul></div>
       <p class="small muted">加權原始分 ${fx(a.raw, 1)}，即綜合評等（60 以上偏多、38～60 中性、38 以下偏空）；扣掉風險折減後為強度分數 ${a.index}。走勢依強度分數判定：75 以上強勢、45～74 觀察、36～44 偏弱、35 以下風險。</p>`
   };
-  const showTab = () => { $('#panel').innerHTML = panels[tab](); document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab)); };
+  const showTab = () => { $('#panel').innerHTML = panels[tab](); document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab)); if (tab === 'fund') finBox(s.code); };
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; showTab(); });
   showTab();
   drawMyHold(s.code, s.name, c); loadTdcc(s.code, s.bars); pickHist(s.code);
@@ -379,4 +379,39 @@ async function pickHist(code) {
   const seen = new Set(), rows = act.filter(p => !seen.has(p.cat) && seen.add(p.cat));
   if (!$('#pickHist')) return;
   $('#pickHist').innerHTML = `<div class="pick-hist">${rows.map(p => `<div><b>${esc(p.date.slice(5).replace('-', '/'))} 入選${CAT[p.cat]}名單</b>（第 ${p.rank} 名）${p.entry == null ? '，自次一交易日開盤起算。' : `，以次一交易日開盤價 <span class="num">${pxd(p.entry)}</span> 計算，至今報酬 <b class="num ${cls(p.now)}">${p.now != null ? sg(p.now) + '%' : '—'}</b>（已扣除成本，持有 ${p.held}/${sc.hold[p.cat]} 日）${p.broke ? `，<b style="color:var(--warn)">持有期間曾跌破入選時的支撐 ${pxd(p.sup)}</b>` : p.sup != null ? `，仍守在入選時的支撐 ${pxd(p.sup)} 之上` : ''}。`}</div>`).join('')}</div>`;
+}
+
+/* 財報：近 8 季 EPS、三率、ROE、負債比（資料來源：公開資訊觀測站，每季更新） */
+const finCache = {};
+async function finBox(code) {
+  const box = $('#finBox'); if (!box) return;
+  const j = finCache[code] || (finCache[code] = await fetch(`/data/fin/${encodeURIComponent(code)}.json`).then(r => r.ok ? r.json() : null).catch(() => null));
+  if (!$('#finBox')) return;
+  const R = (j && j.rows || []).map(r => ({ q: r[0], rev: r[1], gp: r[2], op: r[3], ni: r[4], eps: r[5], assets: r[6], liab: r[7], eq: r[8] }));
+  if (R.length < 2) { box.innerHTML = '<p class="small muted">目前沒有此股票的季度財報資料。</p>'; return; }
+  const pct = (a, b) => a != null && b ? a / b * 100 : null, lab = q => q.replace('Q', ' Q');
+  R.forEach(r => { r.gm = pct(r.gp, r.rev); r.om = pct(r.op, r.rev); r.nm = pct(r.ni, r.rev); });
+  const yoy = (i, k) => { const r = R[i], p = R.find(x => x.q === `${+r.q.slice(0, 4) - 1}${r.q.slice(4)}`); return p && r[k] != null && p[k] != null ? { cur: r[k], prev: p[k] } : null; };
+  const last = R.length - 1, L = R[last], V = R.slice(-8), sum4 = (arr, k) => arr.length === 4 && arr.every(r => r[k] != null) ? arr.reduce((a, r) => a + r[k], 0) : null;
+  const eps4 = sum4(R.slice(-4), 'eps'), eps4p = R.length >= 8 ? sum4(R.slice(-8, -4), 'eps') : null, ni4 = sum4(R.slice(-4), 'ni');
+  const roe = ni4 != null && L.eq ? ni4 / L.eq * 100 : null, debt = pct(L.liab, L.assets), gmY = yoy(last, 'gm');
+  const parts = [];
+  if (eps4 != null) parts.push(`近 4 季 EPS 合計 ${fx(eps4, 2)} 元${eps4p ? `（${eps4 >= eps4p ? '較前 4 季成長' : '較前 4 季衰退'} ${Math.abs((eps4 / Math.abs(eps4p) - Math.sign(eps4p)) * 100).toFixed(0)}%）` : ''}`);
+  if (L.gm != null) parts.push(`${lab(L.q)} 毛利率 ${fx(L.gm, 1)}%${gmY ? `（年${gmY.cur >= gmY.prev ? '增' : '減'} ${Math.abs(gmY.cur - gmY.prev).toFixed(1)} 個百分點）` : ''}`);
+  if (roe != null) parts.push(`ROE（近 4 季）${fx(roe, 1)}%`); if (debt != null) parts.push(`負債比 ${fx(debt, 1)}%`);
+  // 圖：EPS 長條（與去年同季比較著色）＋三率折線
+  const W = 600, H = 150, n = V.length, bw = W / n, mx = Math.max(...V.map(r => Math.abs(r.eps || 0)), 0.01), base = V.some(r => r.eps < 0) ? H / 2 : H - 18;
+  const epsSvg = `<svg viewBox="0 0 ${W} ${H + 20}" class="mc">${V.map((r, i) => { if (r.eps == null) return ''; const h = Math.abs(r.eps) / mx * (base - 16), y = r.eps >= 0 ? base - h : base, yy = yoy(R.indexOf(r), 'eps'), up = yy ? yy.cur >= yy.prev : r.eps >= 0;
+      return `<rect class="${up ? 'mc-up' : 'mc-dn'}" x="${(i * bw + bw * 0.2).toFixed(1)}" y="${y.toFixed(1)}" width="${(bw * 0.6).toFixed(1)}" height="${Math.max(h, 1).toFixed(1)}"/><text class="mc-t" x="${(i * bw + bw / 2).toFixed(1)}" y="${(r.eps >= 0 ? y - 4 : y + h + 12).toFixed(1)}" text-anchor="middle">${fx(r.eps, 2)}</text><text class="mc-t" x="${(i * bw + bw / 2).toFixed(1)}" y="${H + 16}" text-anchor="middle">${r.q.slice(2).replace('Q', 'Q')}</text>`; }).join('')}<line class="mc-grid" x1="0" x2="${W}" y1="${base}" y2="${base}"/></svg>`;
+  const rates = [['gm', '毛利率', 'mc-ma60'], ['om', '營業利益率', 'mc-ma20'], ['nm', '淨利率', 'mc-px']].filter(([k]) => V.some(r => r[k] != null));
+  let rateSvg = '';
+  if (rates.length) { const vals = V.flatMap(r => rates.map(([k]) => r[k])).filter(v => v != null); let lo = Math.min(...vals, 0), hi = Math.max(...vals); const pd = (hi - lo) * 0.1 || 1; lo -= pd; hi += pd;
+    const y = v => 8 + (hi - v) / (hi - lo) * (H - 16), x = i => bw / 2 + i * bw;
+    rateSvg = `<div class="mc-leg">${rates.map(([k, l, c]) => `<span><i class="${c}"></i>${l} ${V.at(-1)[k] != null ? fx(V.at(-1)[k], 1) + '%' : ''}</span>`).join('')}</div><svg viewBox="0 0 ${W} ${H + 20}" class="mc">${rates.map(([k, , c]) => { let d = '', pen = false; V.forEach((r, i) => { if (r[k] == null) { pen = false; return; } d += (pen ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(r[k]).toFixed(1); pen = true; }); return `<path class="${c}" d="${d}"/>`; }).join('')}${V.map((r, i) => `<text class="mc-t" x="${x(i).toFixed(1)}" y="${H + 16}" text-anchor="middle">${r.q.slice(2)}</text>`).join('')}</svg>`; }
+  box.innerHTML = `<h3 class="adm-h" style="margin-top:18px">財報（近 8 季）</h3>
+    ${parts.length ? `<p class="fin-sum">${parts.join('・')}</p>` : ''}
+    <h4 class="fin-h">每股盈餘 EPS（元）<small>紅色為較去年同季成長，綠色為衰退</small></h4>${epsSvg}
+    ${rateSvg ? `<h4 class="fin-h">獲利率</h4>${rateSvg}` : ''}
+    <details class="sc-more"><summary>各季數字 <span class="more">展開</span></summary><div class="scroll"><table class="follow-t"><thead><tr><th>季別</th><th class="r">營收（億）</th><th class="r">EPS</th><th class="r">毛利率</th><th class="r">營益率</th><th class="r">淨利率</th></tr></thead><tbody>${R.slice(-8).reverse().map(r => `<tr><td>${lab(r.q)}</td><td class="r num">${r.rev != null ? fx(r.rev / 1e5, 1) : '—'}</td><td class="r num">${fx(r.eps, 2)}</td><td class="r num">${r.gm != null ? fx(r.gm, 1) + '%' : '—'}</td><td class="r num">${r.om != null ? fx(r.om, 1) + '%' : '—'}</td><td class="r num">${r.nm != null ? fx(r.nm, 1) + '%' : '—'}</td></tr>`).join('')}</tbody></table></div></details>
+    <p class="note">資料來源為公開資訊觀測站各季財務報告（合併報表），每季公布後更新；第 2～4 季為累計數換算的單季數字。財報公布有時間落差（第 3 季約於 11 月中公布），不適合作為短線判斷依據。金融保險業的營收為淨收益，無毛利率。</p>`;
 }
