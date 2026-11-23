@@ -545,3 +545,17 @@ details.mkt-warn p{margin:6px 0 0;font-size:.85rem}
 .adm-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .mc .adm-bar{fill:var(--accent);opacity:.8}
 @media (max-width:640px){.kpis{gap:6px}.kpi{padding:8px}.kpi b{font-size:1.1rem}.adm-grid{grid-template-columns:1fr}}
+/* 手機底部導覽列 */
+.tabbar{display:none}
+@media (max-width:720px){
+  .nav-links{display:none!important}
+  body.has-tabbar{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px))}
+  .tabbar{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--surface);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px))}
+  .tabbar>a,.tabbar>button{all:unset;cursor:pointer;display:grid;justify-items:center;gap:2px;padding:4px 0;color:var(--muted);font-size:.7rem;font-weight:600;-webkit-tap-highlight-color:transparent}
+  .tabbar svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .tabbar>[aria-current="page"]{color:var(--accent)}
+  .tabsheet{position:absolute;right:8px;bottom:calc(100% + 8px);background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.15);padding:6px;display:grid;min-width:160px}
+  .tabsheet[hidden]{display:none}
+  .tabsheet a{padding:10px 14px;border-radius:8px;text-decoration:none;color:var(--ink);font-weight:600;font-size:.92rem}
+  .tabsheet a[aria-current="page"]{color:var(--accent);background:var(--accent-soft)}
+}

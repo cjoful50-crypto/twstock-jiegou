@@ -130,6 +130,18 @@ const PAGES = [['/', '首頁', 'home'], ['/watch', '選股與庫存', 'watch'], 
     <div class="acct" id="acct"></div>
   </div>`;
   if (withSearch) attachSearch(document.getElementById('navSearch'), document.getElementById('navQ'), document.getElementById('navSuggest'));
+  // 手機底部導覽列：常用四頁＋「更多」，單手可按；桌機不顯示
+  const ic = d => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
+  const TABS = [['/', '首頁', 'home', 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z'], ['/picks', '名單', 'picks', 'M5 4h14v16H5zM8 8h8M8 12h8M8 16h5'],
+    ['/watch', '自選庫存', 'watch', 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z'], ['/intraday', '盤中', 'intraday', 'M3 17l5-5 4 4 8-8M15 8h5v5']];
+  const more = PAGES.filter(p => !TABS.some(t => t[2] === p[2]));
+  const bar = document.createElement('nav'); bar.className = 'tabbar'; bar.setAttribute('aria-label', '主要頁面');
+  bar.innerHTML = TABS.map(([href, label, key, d]) => `<a href="${href}"${key === page ? ' aria-current="page"' : ''}>${ic(d)}<span>${label}</span></a>`).join('')
+    + `<button type="button" id="tabMore"${more.some(p => p[2] === page) || page === 'admin' ? ' aria-current="page"' : ''}>${ic('M5 12h.01M12 12h.01M19 12h.01')}<span>更多</span></button>
+    <div class="tabsheet" id="tabSheet" hidden>${more.map(([href, label, key]) => `<a href="${href}"${key === page ? ' aria-current="page"' : ''}>${label}</a>`).join('')}${String(Store.read('jiegou-user', '') || '').toLowerCase() === 'diane' ? '<a href="/admin">網站後台</a>' : ''}</div>`;
+  document.body.appendChild(bar); document.body.classList.add('has-tabbar');
+  const sh = bar.querySelector('#tabSheet'); bar.querySelector('#tabMore').onclick = e => { e.stopPropagation(); sh.hidden = !sh.hidden; };
+  document.addEventListener('click', e => { if (!sh.hidden && !bar.contains(e.target)) sh.hidden = true; });
 })();
 
 /* 大盤狀態列：各頁上方共用。放 <div data-mbar></div>；data-mbar="live" 時盤中以即時指數更新 */
