@@ -14,7 +14,7 @@ async function fetchTable(kind, typek, y, s) {
   const body = new URLSearchParams({ encodeURIComponent: 1, step: 1, firstin: 1, off: 1, isQuery: 'Y', TYPEK: typek, year: String(y - 1911), season: String(s).padStart(2, '0') });
   for (let t = 0; t < 3; t++) {
     try { const r = await fetch(`https://mopsov.twse.com.tw/mops/web/ajax_t163sb0${kind}`, { method: 'POST', headers: UA, body, signal: AbortSignal.timeout(120000) });
-      const h = await r.text(); if (r.ok && h.includes('公司代號')) return h; if (h.includes('查詢無資料') || h.includes('查無')) return ''; console.log('回應異常，重試', kind, typek, y, s, h.slice(0, 120).replace(/\s+/g, ' ')); }
+      const h = await r.text(); if (r.ok && h.includes('hasBorder')) return h; /* 表頭寫成「公司<br>代號」，以表格 class 判斷 */ if (h.includes('查詢無資料') || h.includes('查無')) return ''; console.log('回應異常，重試', kind, typek, y, s, h.slice(0, 120).replace(/\s+/g, ' ')); }
     catch (e) { console.log('連線失敗，重試', kind, typek, y, s, String(e).slice(0, 120)); }
     await sleep(8000 * (t + 1));
   }
@@ -36,7 +36,7 @@ function income(o) { return {
   rev: pick(o, ['營業收入', '淨收益', '收益', '收入']),
   gp: pick(o, ['營業毛利（毛損）淨額', '營業毛利（毛損）']),
   op: pick(o, ['營業利益（損失）']),
-  ni: pick(o, ['淨利（淨損）歸屬於母公司業主', '本期淨利（淨損）', '本期稅後淨利（淨損）']),
+  ni: pick(o, ['淨利（淨損）歸屬於母公司業主', '淨利（損）歸屬於母公司業主', '本期淨利（淨損）', '本期稅後淨利（淨損）']),
   eps: pick(o, ['基本每股盈餘（元）', '基本每股盈餘']) }; }
 function balance(o) { return {
   assets: pick(o, ['資產總計', '資產總額']), liab: pick(o, ['負債總計', '負債總額']),
