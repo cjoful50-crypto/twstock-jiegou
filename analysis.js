@@ -396,14 +396,17 @@ async function finBox(code) {
   const eps4 = sum4(R.slice(-4), 'eps'), eps4p = R.length >= 8 ? sum4(R.slice(-8, -4), 'eps') : null, ni4 = sum4(R.slice(-4), 'ni');
   const roe = ni4 != null && L.eq ? ni4 / L.eq * 100 : null, debt = pct(L.liab, L.assets), gmY = yoy(last, 'gm');
   const parts = [];
-  if (eps4 != null) parts.push(`近 4 季 EPS 合計 ${fx(eps4, 2)} 元${eps4p ? `（${eps4 >= eps4p ? '較前 4 季成長' : '較前 4 季衰退'} ${Math.abs((eps4 / Math.abs(eps4p) - Math.sign(eps4p)) * 100).toFixed(0)}%）` : ''}`);
+  // 與前 4 季比較：兩期皆獲利才算成長率；有虧損時改用文字描述
+  const cmp = eps4p == null ? '' : eps4 > 0 && eps4p > 0 ? `較前 4 季${eps4 >= eps4p ? '成長' : '衰退'} ${Math.abs((eps4 / eps4p - 1) * 100).toFixed(0)}%` : eps4 <= 0 && eps4p <= 0 ? `虧損較前 4 季${eps4 >= eps4p ? '縮小' : '擴大'}` : eps4 > 0 ? '較前 4 季轉虧為盈' : '較前 4 季由盈轉虧';
+  if (eps4 != null) parts.push(`近 4 季 EPS 合計 ${fx(eps4, 2)} 元${cmp ? `（${cmp}）` : ''}`);
   if (L.gm != null) parts.push(`${lab(L.q)} 毛利率 ${fx(L.gm, 1)}%${gmY ? `（年${gmY.cur >= gmY.prev ? '增' : '減'} ${Math.abs(gmY.cur - gmY.prev).toFixed(1)} 個百分點）` : ''}`);
   if (roe != null) parts.push(`ROE（近 4 季）${fx(roe, 1)}%`); if (debt != null) parts.push(`負債比 ${fx(debt, 1)}%`);
   // 圖：EPS 長條（與去年同季比較著色）＋三率折線
-  const W = 600, H = 150, n = V.length, bw = W / n, mx = Math.max(...V.map(r => Math.abs(r.eps || 0)), 0.01), base = V.some(r => r.eps < 0) ? H / 2 : H - 18;
+  const sm = window.innerWidth < 640, W = sm ? 360 : 900, H = sm ? 130 : 140, n = V.length, bw = W / n, mx = Math.max(...V.map(r => Math.abs(r.eps || 0)), 0.01), base = V.some(r => r.eps < 0) ? H / 2 : H - 18;
   const epsSvg = `<svg viewBox="0 0 ${W} ${H + 20}" class="mc">${V.map((r, i) => { if (r.eps == null) return ''; const h = Math.abs(r.eps) / mx * (base - 16), y = r.eps >= 0 ? base - h : base, yy = yoy(R.indexOf(r), 'eps'), up = yy ? yy.cur >= yy.prev : r.eps >= 0;
       return `<rect class="${up ? 'mc-up' : 'mc-dn'}" x="${(i * bw + bw * 0.2).toFixed(1)}" y="${y.toFixed(1)}" width="${(bw * 0.6).toFixed(1)}" height="${Math.max(h, 1).toFixed(1)}"/><text class="mc-t" x="${(i * bw + bw / 2).toFixed(1)}" y="${(r.eps >= 0 ? y - 4 : y + h + 12).toFixed(1)}" text-anchor="middle">${fx(r.eps, 2)}</text><text class="mc-t" x="${(i * bw + bw / 2).toFixed(1)}" y="${H + 16}" text-anchor="middle">${r.q.slice(2).replace('Q', 'Q')}</text>`; }).join('')}<line class="mc-grid" x1="0" x2="${W}" y1="${base}" y2="${base}"/></svg>`;
-  const rates = [['gm', '毛利率', 'mc-ma60'], ['om', '營業利益率', 'mc-ma20'], ['nm', '淨利率', 'mc-px']].filter(([k]) => V.some(r => r[k] != null));
+  // 金融保險業沒有毛利，淨收益波動大，淨利率意義不大，不畫獲利率圖
+  const rates = V.some(r => r.gm != null) ? [['gm', '毛利率', 'mc-ma60'], ['om', '營業利益率', 'mc-ma20'], ['nm', '淨利率', 'mc-px']].filter(([k]) => V.some(r => r[k] != null)) : [];
   let rateSvg = '';
   if (rates.length) { const vals = V.flatMap(r => rates.map(([k]) => r[k])).filter(v => v != null); let lo = Math.min(...vals, 0), hi = Math.max(...vals); const pd = (hi - lo) * 0.1 || 1; lo -= pd; hi += pd;
     const y = v => 8 + (hi - v) / (hi - lo) * (H - 16), x = i => bw / 2 + i * bw;
