@@ -1,0 +1,34 @@
+name: 財報
+on:
+  schedule:
+    - cron: '20 12 * * 1'   # 每週一台北 20:20
+  workflow_dispatch:
+    inputs:
+      back:
+        description: '回補幾季（預設 2）'
+        required: false
+        default: '2'
+permissions:
+  contents: write
+concurrency: { group: fin, cancel-in-progress: false }
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node scripts/fin.js
+        env:
+          BACK: ${{ github.event.inputs.back || '2' }}
+          LOG: '1'
+      - name: 存檔
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/fin.json data/cache/fin
+          git diff --cached --quiet && exit 0
+          git commit -m "財報 $(date -u +%F)"
+          for i in 1 2 3; do git pull --rebase -X theirs && git push && break; sleep 5; done
